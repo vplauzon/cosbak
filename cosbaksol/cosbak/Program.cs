@@ -9,6 +9,7 @@ namespace cosbak
         static void Main(string[] args)
         {
             Console.WriteLine($"cosbak - Cosmos DB Backup Solution - Version {AppVersion.FullVersion}");
+            Console.WriteLine();
 
             if (args.Length == 0)
             {
@@ -20,12 +21,26 @@ namespace cosbak
             }
         }
 
+        #region Help
+        private static void DisplayBasicHelp()
+        {
+            Console.WriteLine("Here are the base commands:");
+            Console.WriteLine();
+            Console.WriteLine("backup:\t\t\t\tTake a backup of a collection (or database or account)");
+        }
+
+        private static void DisplayBackupHelp()
+        {
+            Console.WriteLine("usage:  cosbak backup BACKUP_DESCRIPTION_FILE");
+        }
+        #endregion
+
         private static void BranchCommand(string command, IEnumerable<string> args)
         {
             switch (command)
             {
                 case "backup":
-                    Console.WriteLine("Backup...  work in progress");
+                    Backup(args);
 
                     return;
 
@@ -37,11 +52,16 @@ namespace cosbak
             }
         }
 
-        private static void DisplayBasicHelp()
+        private static void Backup(IEnumerable<string> args)
         {
-            Console.WriteLine("Here are the base commands:");
-            Console.WriteLine();
-            Console.WriteLine("backup:\t\t\t\tTake a backup of a collection (or database or account)");
+            if (!args.Any())
+            {
+                Console.WriteLine("cosbak backup error:  backup description file is required");
+                DisplayBackupHelp();
+            }
+            else
+            {
+            }
         }
     }
 }
