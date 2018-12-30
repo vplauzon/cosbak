@@ -5,6 +5,6 @@ namespace Cosbak.Cosmos
 {
     public interface ICosmosDbGateway
     {
-        Task<IEnumerable<IDatabase>> GetDatabasesAsync();
+        Task<IEnumerable<IDatabaseGateway>> GetDatabasesAsync();
     }
 }

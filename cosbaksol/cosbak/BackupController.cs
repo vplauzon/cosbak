@@ -46,7 +46,7 @@ namespace Cosbak
             }
         }
 
-        private async Task BackupCollectionAsync(IDocCollection collection)
+        private async Task BackupCollectionAsync(ICollectionGateway collection)
         {
             await Task.CompletedTask;
 

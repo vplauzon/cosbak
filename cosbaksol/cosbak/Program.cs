@@ -29,7 +29,14 @@ namespace Cosbak
             }
             else
             {
-                await BranchCommandAsync(args[0], args.Skip(1));
+                try
+                {
+                    await BranchCommandAsync(args[0], args.Skip(1));
+                }
+                catch (BackupException ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
             }
         }
 
@@ -87,6 +94,8 @@ namespace Cosbak
                 catch (BackupException ex)
                 {
                     Console.WriteLine($"Backup Description validation error:  {ex.Message}");
+
+                    return;
                 }
 
                 var cosmosGateways = from a in description.Accounts
