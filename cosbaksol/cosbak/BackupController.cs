@@ -34,6 +34,20 @@ namespace Cosbak
 
         public async Task BackupAsync()
         {
+            foreach (var cosmosAccount in _cosmosDbGateways)
+            {
+                foreach (var db in await cosmosAccount.GetDatabasesAsync())
+                {
+                    foreach (var collection in db.GetCollectionsAsync())
+                    {
+                        await BackupCollectionAsync(collection);
+                    }
+                }
+            }
+        }
+
+        private async Task BackupCollectionAsync(IDocCollection collection)
+        {
             await Task.CompletedTask;
 
             throw new NotImplementedException();
