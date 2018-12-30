@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Linq;
 
-namespace cosbak.Config
+namespace Cosbak.Config
 {
     public class AccountDescription
     {

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace cosbak
+namespace Cosbak
 {
     internal class AppVersion
     {

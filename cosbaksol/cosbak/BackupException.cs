@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace cosbak
+namespace Cosbak
 {
     public class BackupException : Exception
     {

@@ -1,4 +1,4 @@
-﻿using cosbak.Config;
+﻿using Cosbak.Config;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
-namespace cosbak
+namespace Cosbak
 {
     class Program
     {
@@ -86,6 +86,10 @@ namespace cosbak
                 {
                     Console.WriteLine($"Backup Description validation error:  {ex.Message}");
                 }
+
+                var controller = new BackupController(description);
+
+                await controller.BackupAsync();
             }
         }
     }
