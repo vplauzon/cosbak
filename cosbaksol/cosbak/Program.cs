@@ -1,12 +1,22 @@
-﻿using System;
+﻿using cosbak.Config;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
+using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.NamingConventions;
 
 namespace cosbak
 {
     class Program
     {
         static void Main(string[] args)
+        {
+            MainAsync(args).Wait();
+        }
+
+        static async Task MainAsync(string[] args)
         {
             Console.WriteLine($"cosbak - Cosmos DB Backup Solution - Version {AppVersion.FullVersion}");
             Console.WriteLine();
@@ -17,7 +27,7 @@ namespace cosbak
             }
             else
             {
-                BranchCommand(args[0], args.Skip(1));
+                await BranchCommandAsync(args[0], args.Skip(1));
             }
         }
 
@@ -35,12 +45,12 @@ namespace cosbak
         }
         #endregion
 
-        private static void BranchCommand(string command, IEnumerable<string> args)
+        private static async Task BranchCommandAsync(string command, IEnumerable<string> args)
         {
             switch (command)
             {
                 case "backup":
-                    Backup(args);
+                    await BackupAsync(args);
 
                     return;
 
@@ -52,7 +62,7 @@ namespace cosbak
             }
         }
 
-        private static void Backup(IEnumerable<string> args)
+        private static async Task BackupAsync(IEnumerable<string> args)
         {
             if (!args.Any())
             {
@@ -61,6 +71,12 @@ namespace cosbak
             }
             else
             {
+                var filePath = args.First();
+                var content = await File.ReadAllTextAsync(filePath);
+                var deserializer = new DeserializerBuilder()
+                    .WithNamingConvention(new CamelCaseNamingConvention())
+                    .Build();
+                var description = deserializer.Deserialize<BackupDescription>(content);
             }
         }
     }
