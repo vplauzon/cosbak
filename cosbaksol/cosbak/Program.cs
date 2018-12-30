@@ -1,4 +1,6 @@
 ﻿using Cosbak.Config;
+using Cosbak.Cosmos;
+using Cosbak.Storage;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -87,7 +89,12 @@ namespace Cosbak
                     Console.WriteLine($"Backup Description validation error:  {ex.Message}");
                 }
 
-                var controller = new BackupController(description);
+                var cosmosGateways = from a in description.Accounts
+                                     select new CosmosDbGateway(a);
+                var controller = new BackupController(
+                    cosmosGateways,
+                    new StorageGateway(description.Storage),
+                    description.Ram != null ? description.Ram.Backup : null);
 
                 await controller.BackupAsync();
             }
