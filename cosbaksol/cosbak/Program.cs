@@ -77,6 +77,15 @@ namespace cosbak
                     .WithNamingConvention(new CamelCaseNamingConvention())
                     .Build();
                 var description = deserializer.Deserialize<BackupDescription>(content);
+
+                try
+                {
+                    description.Validate();
+                }
+                catch (BackupException ex)
+                {
+                    Console.WriteLine($"Backup Description validation error:  {ex.Message}");
+                }
             }
         }
     }
