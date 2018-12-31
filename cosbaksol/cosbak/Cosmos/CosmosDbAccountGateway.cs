@@ -29,22 +29,34 @@ namespace Cosbak.Cosmos
         {
             var query = _client.CreateDatabaseQuery();
             var dbs = await QueryHelper.GetAllResultsAsync(query.AsDocumentQuery());
-            var filteredDbs = from db in dbs
-                              where _filters.ContainsKey(db.Id)
-                              select new DatabaseGateway(_client, db.Id, this, _filters[db.Id]);
-            var gateways = filteredDbs.ToArray<IDatabaseGateway>();
 
-            if (gateways.Length != _filters.Count)
+            if (_filters.Any())
             {
-                var set = ImmutableSortedSet.Create(gateways.Select(g => g.DatabaseName).ToArray());
-                var notFound = from f in _filters
-                               where !set.Contains(f.Key)
-                               select f.Key;
+                var filteredDbs = from db in dbs
+                                  where _filters.ContainsKey(db.Id)
+                                  select new DatabaseGateway(_client, db.Id, this, _filters[db.Id]);
+                var gateways = filteredDbs.ToArray<IDatabaseGateway>();
 
-                throw new BackupException($"Database '{notFound.First()}' not found in account '{_accountName}'");
+                if (gateways.Length != _filters.Count)
+                {
+                    var set = ImmutableSortedSet.Create(gateways.Select(g => g.DatabaseName).ToArray());
+                    var notFound = from f in _filters
+                                   where !set.Contains(f.Key)
+                                   select f.Key;
+
+                    throw new BackupException($"Database '{notFound.First()}' not found in account '{_accountName}'");
+                }
+
+                return gateways;
             }
+            else
+            {
+                var gateways = dbs
+                    .Select(db => new DatabaseGateway(_client, db.Id, this, new string[0]))
+                    .ToArray<IDatabaseGateway>();
 
-            return gateways;
+                return gateways;
+            }
         }
 
         private IImmutableDictionary<string, string[]> ParseFilters(string[] filters)

@@ -32,22 +32,34 @@ namespace Cosbak.Cosmos
             var databaseUri = UriFactory.CreateDatabaseUri(_databaseName);
             var query = _client.CreateDocumentCollectionQuery(databaseUri);
             var collections = await QueryHelper.GetAllResultsAsync(query.AsDocumentQuery());
-            var filteredCollections = from coll in collections
-                                      where _filters.Contains(coll.Id)
-                                      select new CollectionGateway(_client, coll.Id, this);
-            var gateways = filteredCollections.ToArray<ICollectionGateway>();
 
-            if (gateways.Length != _filters.Count)
+            if (_filters.Any())
             {
-                var set = ImmutableSortedSet.Create(gateways.Select(g => g.CollectionName).ToArray());
-                var notFound = from f in _filters
-                               where !set.Contains(f)
-                               select f;
+                var filteredCollections = from coll in collections
+                                          where _filters.Contains(coll.Id)
+                                          select new CollectionGateway(_client, coll.Id, this);
+                var gateways = filteredCollections.ToArray<ICollectionGateway>();
 
-                throw new BackupException($"Collection '{notFound.First()}' not found in database '{_databaseName}'");
+                if (gateways.Length != _filters.Count)
+                {
+                    var set = ImmutableSortedSet.Create(gateways.Select(g => g.CollectionName).ToArray());
+                    var notFound = from f in _filters
+                                   where !set.Contains(f)
+                                   select f;
+
+                    throw new BackupException($"Collection '{notFound.First()}' not found in database '{_databaseName}'");
+                }
+
+                return gateways;
             }
+            else
+            {
+                var gateways = collections
+                    .Select(coll => new CollectionGateway(_client, coll.Id, this))
+                    .ToArray<ICollectionGateway>();
 
-            return gateways;
+                return gateways;
+            }
         }
     }
 }
