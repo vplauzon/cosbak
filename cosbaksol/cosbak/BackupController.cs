@@ -38,7 +38,7 @@ namespace Cosbak
             {
                 foreach (var db in await cosmosAccount.GetDatabasesAsync())
                 {
-                    foreach (var collection in db.GetCollectionsAsync())
+                    foreach (var collection in await db.GetCollectionsAsync())
                     {
                         await BackupCollectionAsync(collection);
                     }

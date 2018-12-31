@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Cosbak.Cosmos
 {
@@ -8,6 +9,6 @@ namespace Cosbak.Cosmos
 
         string DatabaseName { get; }
 
-        IEnumerable<ICollectionGateway> GetCollectionsAsync();
+        Task<IEnumerable<ICollectionGateway>> GetCollectionsAsync();
     }
 }

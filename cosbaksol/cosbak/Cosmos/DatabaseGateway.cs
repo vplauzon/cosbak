@@ -1,6 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Azure.Documents.Client;
+using Microsoft.Azure.Documents.Linq;
 
 namespace Cosbak.Cosmos
 {
@@ -23,9 +27,27 @@ namespace Cosbak.Cosmos
 
         string IDatabaseGateway.DatabaseName => _databaseName;
 
-        IEnumerable<ICollectionGateway> IDatabaseGateway.GetCollectionsAsync()
+        async Task<IEnumerable<ICollectionGateway>> IDatabaseGateway.GetCollectionsAsync()
         {
-            throw new System.NotImplementedException();
+            var databaseUri = UriFactory.CreateDatabaseUri(_databaseName);
+            var query = _client.CreateDocumentCollectionQuery(databaseUri);
+            var collections = await QueryHelper.GetAllResultsAsync(query.AsDocumentQuery());
+            var filteredCollections = from coll in collections
+                                      where _filters.Contains(coll.Id)
+                                      select new CollectionGateway(_client, coll.Id, this);
+            var gateways = filteredCollections.ToArray<ICollectionGateway>();
+
+            if (gateways.Length != _filters.Count)
+            {
+                var set = ImmutableSortedSet.Create(gateways.Select(g => g.CollectionName).ToArray());
+                var notFound = from f in _filters
+                               where !set.Contains(f)
+                               select f;
+
+                throw new BackupException($"Collection '{notFound.First()}' not found in database '{_databaseName}'");
+            }
+
+            return gateways;
         }
     }
 }
