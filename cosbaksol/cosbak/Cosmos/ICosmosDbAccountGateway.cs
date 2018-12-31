@@ -3,8 +3,10 @@ using System.Threading.Tasks;
 
 namespace Cosbak.Cosmos
 {
-    public interface ICosmosDbGateway
+    public interface ICosmosDbAccountGateway
     {
+        string AccountName { get; }
+
         Task<IEnumerable<IDatabaseGateway>> GetDatabasesAsync();
     }
 }

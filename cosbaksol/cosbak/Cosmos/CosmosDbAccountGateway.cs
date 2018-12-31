@@ -3,39 +3,40 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
-using Cosbak.Config;
 using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.Documents.Linq;
 
 namespace Cosbak.Cosmos
 {
-    internal class CosmosDbGateway : ICosmosDbGateway
+    internal class CosmosDbAccountGateway : ICosmosDbAccountGateway
     {
         private readonly string _accountName;
         private readonly DocumentClient _client;
         private readonly IImmutableDictionary<string, string[]> _filters;
 
-        public CosmosDbGateway(AccountDescription description)
+        public CosmosDbAccountGateway(string accountName, string key, string[] filters)
         {
-            _accountName = description.Name;
+            _accountName = accountName;
             _client = new DocumentClient(
                 new Uri($"https://{_accountName}.documents.azure.com:443/"),
-                description.Key);
-            _filters = ParseFilters(description.Filters);
+                key);
+            _filters = ParseFilters(filters);
         }
 
-        async Task<IEnumerable<IDatabaseGateway>> ICosmosDbGateway.GetDatabasesAsync()
+        string ICosmosDbAccountGateway.AccountName => _accountName;
+
+        async Task<IEnumerable<IDatabaseGateway>> ICosmosDbAccountGateway.GetDatabasesAsync()
         {
             var query = _client.CreateDatabaseQuery();
             var dbs = await QueryHelper.GetAllResultsAsync(query.AsDocumentQuery());
             var filteredDbs = from db in dbs
                               where _filters.ContainsKey(db.Id)
-                              select new DatabaseGateway(_client, this, db.Id, _filters[db.Id]);
+                              select new DatabaseGateway(_client, db.Id, this, _filters[db.Id]);
             var gateways = filteredDbs.ToArray<IDatabaseGateway>();
 
             if (gateways.Length != _filters.Count)
             {
-                var set = ImmutableSortedSet.Create(gateways.Select(g => g.Name).ToArray());
+                var set = ImmutableSortedSet.Create(gateways.Select(g => g.DatabaseName).ToArray());
                 var notFound = from f in _filters
                                where !set.Contains(f.Key)
                                select f.Key;

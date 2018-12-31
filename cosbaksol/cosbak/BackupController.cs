@@ -12,12 +12,12 @@ namespace Cosbak
     {
         private const int DEFAULT_RAM = 20;
 
-        private readonly IImmutableList<ICosmosDbGateway> _cosmosDbGateways;
+        private readonly IImmutableList<ICosmosDbAccountGateway> _cosmosDbGateways;
         private readonly IStorageGateway _storageGateway;
         private readonly int _ram;
 
         public BackupController(
-            IEnumerable<ICosmosDbGateway> cosmosDbGateways,
+            IEnumerable<ICosmosDbAccountGateway> cosmosDbGateways,
             IStorageGateway storageGateway,
             int? ram)
         {
@@ -25,7 +25,7 @@ namespace Cosbak
             {
                 throw new ArgumentNullException(nameof(cosmosDbGateways));
             }
-            _cosmosDbGateways = ImmutableArray<ICosmosDbGateway>.Empty.AddRange(cosmosDbGateways);
+            _cosmosDbGateways = ImmutableArray<ICosmosDbAccountGateway>.Empty.AddRange(cosmosDbGateways);
             _storageGateway = storageGateway ?? throw new ArgumentNullException(nameof(storageGateway));
             _ram = ram == null
                 ? DEFAULT_RAM

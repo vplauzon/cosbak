@@ -4,7 +4,9 @@ namespace Cosbak.Cosmos
 {
     public interface IDatabaseGateway
     {
-        string Name { get; }
+        ICosmosDbAccountGateway Parent { get; }
+
+        string DatabaseName { get; }
 
         IEnumerable<ICollectionGateway> GetCollectionsAsync();
     }

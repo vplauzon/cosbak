@@ -99,7 +99,7 @@ namespace Cosbak
                 }
 
                 var cosmosGateways = from a in description.Accounts
-                                     select new CosmosDbGateway(a);
+                                     select new CosmosDbAccountGateway(a.Name, a.Key, a.Filters);
                 var controller = new BackupController(
                     cosmosGateways,
                     new StorageGateway(description.Storage),
