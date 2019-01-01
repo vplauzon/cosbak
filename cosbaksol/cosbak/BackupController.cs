@@ -48,9 +48,12 @@ namespace Cosbak
 
         private async Task BackupCollectionAsync(ICollectionGateway collection)
         {
-            await Task.CompletedTask;
+            var partitionList = await collection.GetPartitionsAsync();
 
-            throw new NotImplementedException();
+            foreach (var partition in partitionList)
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 }
