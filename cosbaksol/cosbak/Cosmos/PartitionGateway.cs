@@ -5,12 +5,12 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.Documents.Linq;
+using Newtonsoft.Json.Linq;
 
 namespace Cosbak.Cosmos
 {
     public class PartitionGateway : IPartitionGateway
     {
-        Newtonsoft.Json.Linq.JObject
         #region Inner Types
         private class AsyncQuery : IAsyncStream<DocumentObject>
         {
@@ -27,7 +27,7 @@ namespace Cosbak.Cosmos
 
             async Task<DocumentObject[]> IAsyncStream<DocumentObject>.GetBatchAsync()
             {
-                var batch = await _query.ExecuteNextAsync<IDictionary<string, object>>();
+                var batch = await _query.ExecuteNextAsync<JObject>();
                 var documents = (from d in batch
                                  let metaData = ExtractMetaData(d)
                                  select new DocumentObject(metaData, d)).ToArray();
@@ -40,28 +40,32 @@ namespace Cosbak.Cosmos
                 return documents.ToArray();
             }
 
-            private DocumentMetaData ExtractMetaData(IDictionary<string, object> document)
+            private DocumentMetaData ExtractMetaData(JObject document)
             {
                 var partition = ExtractPartition(document, _partitionPathParts);
 
-                return new DocumentMetaData((string)document["id"], partition, (Int64)document["_ts"]);
+                return new DocumentMetaData(document["id"].Value<string>(), partition, document["_ts"].Value<Int64>());
             }
 
-            private object ExtractPartition(IDictionary<string, object> document, IEnumerable<string> partitionPathParts)
+            private object ExtractPartition(JObject document, IEnumerable<string> partitionPathParts)
             {
                 var field = partitionPathParts.First();
 
-                if (document.TryGetValue(field, out var fieldValue))
+                if (document.TryGetValue(field, out var fieldObject))
                 {
                     var trailingFields = partitionPathParts.Skip(1);
 
                     if (trailingFields.Any())
                     {
-                        return ExtractPartition((IDictionary<string, object>)fieldValue, trailingFields);
+                        var fieldValue = fieldObject.Value<JObject>();
+
+                        return ExtractPartition(fieldValue, trailingFields);
                     }
                     else
                     {
-                        return fieldValue;
+                        var fieldValue = fieldObject.Value<JValue>();
+
+                        return fieldValue.Value;
                     }
                 }
                 else
@@ -70,7 +74,7 @@ namespace Cosbak.Cosmos
                 }
             }
 
-            private void Clean(IDictionary<string, object> content)
+            private void Clean(JObject content)
             {
                 RemovePartition(content, _partitionPathParts);
                 content.Remove("id");
@@ -83,7 +87,7 @@ namespace Cosbak.Cosmos
                 content.Remove("_metadata");
             }
 
-            private void RemovePartition(IDictionary<string, object> document, IEnumerable<string> partitionPathParts)
+            private void RemovePartition(JObject document, IEnumerable<string> partitionPathParts)
             {
                 var field = partitionPathParts.First();
 
@@ -93,7 +97,7 @@ namespace Cosbak.Cosmos
 
                     if (trailingFields.Any())
                     {
-                        RemovePartition((IDictionary<string, object>)fieldValue, trailingFields);
+                        RemovePartition(fieldValue.Value<JObject>(), trailingFields);
                     }
                     else
                     {

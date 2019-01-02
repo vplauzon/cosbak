@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,7 +9,7 @@ namespace Cosbak.Cosmos
 {
     public class DocumentObject
     {
-        public DocumentObject(DocumentMetaData metaData, IDictionary<string, object> content)
+        public DocumentObject(DocumentMetaData metaData, JObject content)
         {
             MetaData = metaData;
             Content = content;
@@ -16,15 +17,14 @@ namespace Cosbak.Cosmos
 
         public DocumentMetaData MetaData { get; }
 
-        public IDictionary<string, object> Content { get; }
+        public JObject Content { get; }
 
         public void WriteContentAsync(Stream contentStream)
         {
-            var json = JsonConvert.SerializeObject(Content);
-            var writer = new StreamWriter(contentStream);
+            //  Replace by BsonWriter to serialize in BSON
+            var writer = new JsonTextWriter(new StreamWriter(contentStream));
 
-            writer.Write(json);
-            writer.Flush();
+            Content.WriteTo(writer);
         }
     }
 }
