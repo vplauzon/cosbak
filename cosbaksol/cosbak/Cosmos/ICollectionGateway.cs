@@ -9,6 +9,8 @@ namespace Cosbak.Cosmos
 
         string CollectionName { get; }
 
+        string PartitionPath { get; }
+
         Task<IPartitionGateway[]> GetPartitionsAsync();
     }
 }

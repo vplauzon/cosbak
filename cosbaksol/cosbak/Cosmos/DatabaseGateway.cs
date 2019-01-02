@@ -37,7 +37,7 @@ namespace Cosbak.Cosmos
             {
                 var filteredCollections = from coll in collections
                                           where _filters.Contains(coll.Id)
-                                          select new CollectionGateway(_client, coll.Id, this);
+                                          select new CollectionGateway(_client, coll.Id, coll.PartitionKey.Paths.First(), this);
                 var gateways = filteredCollections.ToArray<ICollectionGateway>();
 
                 if (gateways.Length != _filters.Count)
@@ -55,7 +55,7 @@ namespace Cosbak.Cosmos
             else
             {
                 var gateways = collections
-                    .Select(coll => new CollectionGateway(_client, coll.Id, this))
+                    .Select(coll => new CollectionGateway(_client, coll.Id, coll.PartitionKey.Paths.First(), this))
                     .ToArray<ICollectionGateway>();
 
                 return gateways;

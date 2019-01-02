@@ -11,13 +11,15 @@ namespace Cosbak.Cosmos
     {
         private readonly DocumentClient _client;
         private readonly string _collectionName;
+        private readonly string _partitionPath;
         private readonly IDatabaseGateway _parent;
         private readonly Uri _collectionUri;
 
-        public CollectionGateway(DocumentClient client, string collectionName, IDatabaseGateway parent)
+        public CollectionGateway(DocumentClient client, string collectionName, string partitionPath, IDatabaseGateway parent)
         {
             _client = client;
             _collectionName = collectionName;
+            _partitionPath = partitionPath;
             _parent = parent;
             _collectionUri = UriFactory.CreateDocumentCollectionUri(_parent.DatabaseName, _collectionName);
         }
@@ -25,6 +27,8 @@ namespace Cosbak.Cosmos
         IDatabaseGateway ICollectionGateway.Parent => _parent;
 
         string ICollectionGateway.CollectionName => _collectionName;
+
+        string ICollectionGateway.PartitionPath => _partitionPath;
 
         async Task<IPartitionGateway[]> ICollectionGateway.GetPartitionsAsync()
         {

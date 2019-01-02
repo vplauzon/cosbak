@@ -10,14 +10,17 @@ namespace Cosbak.Cosmos
 {
     public class PartitionGateway : IPartitionGateway
     {
+        Newtonsoft.Json.Linq.JObject
         #region Inner Types
         private class AsyncQuery : IAsyncStream<DocumentObject>
         {
             private readonly IDocumentQuery<Document> _query;
+            private readonly IEnumerable<string> _partitionPathParts;
 
-            public AsyncQuery(IDocumentQuery<Document> query)
+            public AsyncQuery(IDocumentQuery<Document> query, IEnumerable<string> partitionPathParts)
             {
                 _query = query;
+                _partitionPathParts = partitionPathParts;
             }
 
             bool IAsyncStream<DocumentObject>.HasMoreResults => _query.HasMoreResults;
@@ -39,11 +42,37 @@ namespace Cosbak.Cosmos
 
             private DocumentMetaData ExtractMetaData(IDictionary<string, object> document)
             {
-                return new DocumentMetaData((string)document["id"], "TO DO", (Int64)document["_ts"]);
+                var partition = ExtractPartition(document, _partitionPathParts);
+
+                return new DocumentMetaData((string)document["id"], partition, (Int64)document["_ts"]);
+            }
+
+            private object ExtractPartition(IDictionary<string, object> document, IEnumerable<string> partitionPathParts)
+            {
+                var field = partitionPathParts.First();
+
+                if (document.TryGetValue(field, out var fieldValue))
+                {
+                    var trailingFields = partitionPathParts.Skip(1);
+
+                    if (trailingFields.Any())
+                    {
+                        return ExtractPartition((IDictionary<string, object>)fieldValue, trailingFields);
+                    }
+                    else
+                    {
+                        return fieldValue;
+                    }
+                }
+                else
+                {
+                    return null;
+                }
             }
 
             private void Clean(IDictionary<string, object> content)
             {
+                RemovePartition(content, _partitionPathParts);
                 content.Remove("id");
                 content.Remove("_ts");
                 content.Remove("_rid");
@@ -52,6 +81,29 @@ namespace Cosbak.Cosmos
                 content.Remove("_attachments");
                 content.Remove("_lsn");
                 content.Remove("_metadata");
+            }
+
+            private void RemovePartition(IDictionary<string, object> document, IEnumerable<string> partitionPathParts)
+            {
+                var field = partitionPathParts.First();
+
+                if (document.TryGetValue(field, out var fieldValue))
+                {
+                    var trailingFields = partitionPathParts.Skip(1);
+
+                    if (trailingFields.Any())
+                    {
+                        RemovePartition((IDictionary<string, object>)fieldValue, trailingFields);
+                    }
+                    else
+                    {
+                        document.Remove(field);
+                    }
+                }
+                else
+                {
+                    //  Partition key isn't defined
+                }
             }
         }
         #endregion
@@ -79,7 +131,7 @@ namespace Cosbak.Cosmos
                 StartFromBeginning = true
             });
 
-            return new AsyncQuery(query);
+            return new AsyncQuery(query, _parent.PartitionPath.Split('/').Skip(1));
         }
     }
 }

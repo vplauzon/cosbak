@@ -11,8 +11,8 @@ namespace Cosbak.Cosmos
         private enum PartitionKeyType
         {
             String,
-            Int,
-            Float,
+            Int64,
+            Double,
             Boolean,
             Null
         }
@@ -51,11 +51,11 @@ namespace Cosbak.Cosmos
                 case PartitionKeyType.Boolean:
                     writer.Write((bool)PartitionKey);
                     return;
-                case PartitionKeyType.Float:
-                    writer.Write((float)PartitionKey);
+                case PartitionKeyType.Double:
+                    writer.Write((double)PartitionKey);
                     return;
-                case PartitionKeyType.Int:
-                    writer.Write((int)PartitionKey);
+                case PartitionKeyType.Int64:
+                    writer.Write((Int64)PartitionKey);
                     return;
                 case PartitionKeyType.String:
                     writer.Write((string)PartitionKey);
@@ -73,13 +73,13 @@ namespace Cosbak.Cosmos
             {
                 return PartitionKeyType.String;
             }
-            else if (PartitionKey is int)
+            else if (PartitionKey is Int64)
             {
-                return PartitionKeyType.Int;
+                return PartitionKeyType.Int64;
             }
-            else if (PartitionKey is float)
+            else if (PartitionKey is double)
             {
-                return PartitionKeyType.Float;
+                return PartitionKeyType.Double;
             }
             else if (PartitionKey is bool)
             {
