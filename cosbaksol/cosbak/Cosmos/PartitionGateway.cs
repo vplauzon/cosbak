@@ -69,6 +69,8 @@ namespace Cosbak.Cosmos
             _collectionUri = UriFactory.CreateDocumentCollectionUri(_parent.Parent.DatabaseName, _parent.CollectionName);
         }
 
+        string IPartitionGateway.KeyRangeId => _partitionKeyRangeId;
+
         IAsyncStream<DocumentObject> IPartitionGateway.GetChangeFeed()
         {
             var query = _client.CreateDocumentChangeFeedQuery(_collectionUri, new ChangeFeedOptions

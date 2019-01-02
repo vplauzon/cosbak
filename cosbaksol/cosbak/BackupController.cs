@@ -49,14 +49,21 @@ namespace Cosbak
         private async Task BackupCollectionAsync(ICollectionGateway collection)
         {
             var partitionList = await collection.GetPartitionsAsync();
+            var account = collection.Parent.Parent.AccountName;
+            var db = collection.Parent.DatabaseName;
+            var blobPrefix = $"{account}/{db}/{collection.CollectionName}/backups/0/";
 
             foreach (var partition in partitionList)
             {
                 var feed = partition.GetChangeFeed();
+                var contentPath = blobPrefix + partition.KeyRangeId;
 
+                await _storageGateway.CreateBlobAsync(contentPath);
                 while (feed.HasMoreResults)
                 {
                     var batch = await feed.GetBatchAsync();
+
+                    await _storageGateway.AppendBlobContentAsync(contentPath, "test");
                 }
             }
         }

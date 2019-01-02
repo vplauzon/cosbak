@@ -102,7 +102,10 @@ namespace Cosbak
                                      select new CosmosDbAccountGateway(a.Name, a.Key, a.Filters);
                 var controller = new BackupController(
                     cosmosGateways,
-                    new StorageGateway(description.Storage),
+                    new StorageGateway(
+                        description.Storage.Name,
+                        description.Storage.Container,
+                        description.Storage.Token),
                     description.Ram != null ? description.Ram.Backup : null);
 
                 await controller.BackupAsync();
