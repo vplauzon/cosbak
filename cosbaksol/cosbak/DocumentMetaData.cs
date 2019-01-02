@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 
 namespace Cosbak.Cosmos
 {
@@ -18,11 +17,12 @@ namespace Cosbak.Cosmos
         }
         #endregion
 
-        public DocumentMetaData(string id, object partitionKey, Int64 timeStamp)
+        public DocumentMetaData(string id, object partitionKey, Int64 timeStamp, int size)
         {
             Id = id;
             PartitionKey = partitionKey;
             TimeStamp = timeStamp;
+            Size = size;
         }
 
         public string Id { get; }
@@ -31,14 +31,14 @@ namespace Cosbak.Cosmos
 
         public Int64 TimeStamp { get; }
 
-        public void WriteAsync(Stream contentStream)
+        public int Size { get; }
+
+        public void WriteAsync(BinaryWriter writer)
         {
-            using (var writer = new BinaryWriter(contentStream, Encoding.ASCII, true))
-            {
-                writer.Write(Id);
-                WritePartitionKey(writer);
-                writer.Write(TimeStamp);
-            }
+            writer.Write(Id);
+            WritePartitionKey(writer);
+            writer.Write(TimeStamp);
+            writer.Write(Size);
         }
 
         private void WritePartitionKey(BinaryWriter writer)

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 using Cosbak.Config;
 using Cosbak.Cosmos;
@@ -70,12 +71,17 @@ namespace Cosbak
                     var indexStream = new MemoryStream();
                     var contentStream = new MemoryStream();
 
-                    foreach (var doc in batch)
+                    using (var writer = new BinaryWriter(indexStream, Encoding.ASCII, true))
                     {
-                        doc.MetaData.WriteAsync(indexStream);
-                        doc.WriteContentAsync(contentStream);
+                        foreach (var doc in batch)
+                        {
+                            doc.MetaData.WriteAsync(writer);
+                            contentStream.Write(doc.Content);
+                        }
                     }
 
+                    indexStream.Flush();
+                    contentStream.Flush();
                     indexStream.Position = 0;
                     contentStream.Position = 0;
                     await Task.WhenAll(

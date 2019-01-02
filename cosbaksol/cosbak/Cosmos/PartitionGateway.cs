@@ -12,7 +12,7 @@ namespace Cosbak.Cosmos
     public class PartitionGateway : IPartitionGateway
     {
         #region Inner Types
-        private class AsyncQuery : IAsyncStream<DocumentObject>
+        private class AsyncQuery : IAsyncStream<DocumentPackage>
         {
             private readonly IDocumentQuery<Document> _query;
             private readonly IEnumerable<string> _partitionPathParts;
@@ -23,91 +23,15 @@ namespace Cosbak.Cosmos
                 _partitionPathParts = partitionPathParts;
             }
 
-            bool IAsyncStream<DocumentObject>.HasMoreResults => _query.HasMoreResults;
+            bool IAsyncStream<DocumentPackage>.HasMoreResults => _query.HasMoreResults;
 
-            async Task<DocumentObject[]> IAsyncStream<DocumentObject>.GetBatchAsync()
+            async Task<DocumentPackage[]> IAsyncStream<DocumentPackage>.GetBatchAsync()
             {
                 var batch = await _query.ExecuteNextAsync<JObject>();
-                var documents = (from d in batch
-                                 let metaData = ExtractMetaData(d)
-                                 select new DocumentObject(metaData, d)).ToArray();
-
-                foreach (var doc in documents)
-                {
-                    Clean(doc.Content);
-                }
+                var documents = from d in batch
+                                select new DocumentPackage(d, _partitionPathParts);
 
                 return documents.ToArray();
-            }
-
-            private DocumentMetaData ExtractMetaData(JObject document)
-            {
-                var partition = ExtractPartition(document, _partitionPathParts);
-
-                return new DocumentMetaData(document["id"].Value<string>(), partition, document["_ts"].Value<Int64>());
-            }
-
-            private object ExtractPartition(JObject document, IEnumerable<string> partitionPathParts)
-            {
-                var field = partitionPathParts.First();
-
-                if (document.TryGetValue(field, out var fieldObject))
-                {
-                    var trailingFields = partitionPathParts.Skip(1);
-
-                    if (trailingFields.Any())
-                    {
-                        var fieldValue = fieldObject.Value<JObject>();
-
-                        return ExtractPartition(fieldValue, trailingFields);
-                    }
-                    else
-                    {
-                        var fieldValue = fieldObject.Value<JValue>();
-
-                        return fieldValue.Value;
-                    }
-                }
-                else
-                {
-                    return null;
-                }
-            }
-
-            private void Clean(JObject content)
-            {
-                RemovePartition(content, _partitionPathParts);
-                content.Remove("id");
-                content.Remove("_ts");
-                content.Remove("_rid");
-                content.Remove("_self");
-                content.Remove("_etag");
-                content.Remove("_attachments");
-                content.Remove("_lsn");
-                content.Remove("_metadata");
-            }
-
-            private void RemovePartition(JObject document, IEnumerable<string> partitionPathParts)
-            {
-                var field = partitionPathParts.First();
-
-                if (document.TryGetValue(field, out var fieldValue))
-                {
-                    var trailingFields = partitionPathParts.Skip(1);
-
-                    if (trailingFields.Any())
-                    {
-                        RemovePartition(fieldValue.Value<JObject>(), trailingFields);
-                    }
-                    else
-                    {
-                        document.Remove(field);
-                    }
-                }
-                else
-                {
-                    //  Partition key isn't defined
-                }
             }
         }
         #endregion
@@ -127,7 +51,7 @@ namespace Cosbak.Cosmos
 
         string IPartitionGateway.KeyRangeId => _partitionKeyRangeId;
 
-        IAsyncStream<DocumentObject> IPartitionGateway.GetChangeFeed()
+        IAsyncStream<DocumentPackage> IPartitionGateway.GetChangeFeed()
         {
             var query = _client.CreateDocumentChangeFeedQuery(_collectionUri, new ChangeFeedOptions
             {

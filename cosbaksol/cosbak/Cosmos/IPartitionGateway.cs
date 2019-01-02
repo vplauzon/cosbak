@@ -6,6 +6,6 @@ namespace Cosbak.Cosmos
     {
         string KeyRangeId { get; }
 
-        IAsyncStream<DocumentObject> GetChangeFeed();
+        IAsyncStream<DocumentPackage> GetChangeFeed();
     }
 }
