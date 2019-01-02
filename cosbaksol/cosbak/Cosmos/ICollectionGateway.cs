@@ -9,6 +9,6 @@ namespace Cosbak.Cosmos
 
         string CollectionName { get; }
 
-        Task<IImmutableList<IPartitionGateway>> GetPartitionsAsync();
+        Task<IPartitionGateway[]> GetPartitionsAsync();
     }
 }

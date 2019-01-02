@@ -52,7 +52,13 @@ namespace Cosbak
 
             foreach (var partition in partitionList)
             {
-                throw new NotImplementedException();
+                var feed = partition.GetChangeFeed();
+
+                while (feed.HasMoreResults)
+                {
+                    var batch = await feed.GetBatchAsync();
+
+                }
             }
         }
     }

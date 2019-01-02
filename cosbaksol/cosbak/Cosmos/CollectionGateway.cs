@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
@@ -25,14 +26,13 @@ namespace Cosbak.Cosmos
 
         string ICollectionGateway.CollectionName => _collectionName;
 
-        async Task<IImmutableList<IPartitionGateway>> ICollectionGateway.GetPartitionsAsync()
+        async Task<IPartitionGateway[]> ICollectionGateway.GetPartitionsAsync()
         {
             var keyRanges = await _client.ReadPartitionKeyRangeFeedAsync(_collectionUri);
             var gateways = from k in keyRanges
                            select new PartitionGateway(_client, this, k.Id);
-            var partitions = ImmutableArray<IPartitionGateway>.Empty.AddRange(gateways);
 
-            return partitions;
+            return gateways.ToArray();
         }
     }
 }
