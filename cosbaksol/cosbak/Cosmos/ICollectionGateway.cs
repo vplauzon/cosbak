@@ -1,4 +1,5 @@
-﻿using System.Collections.Immutable;
+﻿using System;
+using System.Collections.Immutable;
 using System.Threading.Tasks;
 
 namespace Cosbak.Cosmos
@@ -12,5 +13,7 @@ namespace Cosbak.Cosmos
         string PartitionPath { get; }
 
         Task<IPartitionGateway[]> GetPartitionsAsync();
+
+        Task<Int64> GetLastUpdateTimeAsync();
     }
 }

@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
+using Microsoft.Azure.Documents.Linq;
 
 namespace Cosbak.Cosmos
 {
@@ -29,6 +31,19 @@ namespace Cosbak.Cosmos
         string ICollectionGateway.CollectionName => _collectionName;
 
         string ICollectionGateway.PartitionPath => _partitionPath;
+
+        async Task<long> ICollectionGateway.GetLastUpdateTimeAsync()
+        {
+            var sql = new SqlQuerySpec("SELECT TOP 1 c._ts FROM c ORDER BY c._ts DESC");
+            var query = _client.CreateDocumentQuery<IDictionary<string, long>>(_collectionUri, sql, new FeedOptions
+            {
+                EnableCrossPartitionQuery = true
+            });
+            var results = await QueryHelper.GetAllResultsAsync(query.AsDocumentQuery());
+            var time = results[0].First().Value;
+
+            return time;
+        }
 
         async Task<IPartitionGateway[]> ICollectionGateway.GetPartitionsAsync()
         {

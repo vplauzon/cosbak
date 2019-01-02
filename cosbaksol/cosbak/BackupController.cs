@@ -49,10 +49,11 @@ namespace Cosbak
 
         private async Task BackupCollectionAsync(ICollectionGateway collection)
         {
-            var partitionList = await collection.GetPartitionsAsync();
+            var lastUpdateTime = await collection.GetLastUpdateTimeAsync();
             var account = collection.Parent.Parent.AccountName;
             var db = collection.Parent.DatabaseName;
-            var blobPrefix = $"{account}/{db}/{collection.CollectionName}/backups/0/";
+            var blobPrefix = $"{account}/{db}/{collection.CollectionName}/backups/{lastUpdateTime}/";
+            var partitionList = await collection.GetPartitionsAsync();
 
             foreach (var partition in partitionList)
             {
