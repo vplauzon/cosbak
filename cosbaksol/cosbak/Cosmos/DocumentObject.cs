@@ -22,9 +22,11 @@ namespace Cosbak.Cosmos
         public void WriteContentAsync(Stream contentStream)
         {
             //  Replace by BsonWriter to serialize in BSON
-            var writer = new JsonTextWriter(new StreamWriter(contentStream));
+            var writer = new StreamWriter(contentStream);
+            var jsonWriter = new JsonTextWriter(writer);
 
-            Content.WriteTo(writer);
+            Content.WriteTo(jsonWriter);
+            writer.Flush();
         }
     }
 }
