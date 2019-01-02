@@ -1,6 +1,7 @@
 ﻿using Microsoft.WindowsAzure.Storage.Auth;
 using Microsoft.WindowsAzure.Storage.Blob;
 using System;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace Cosbak.Storage
@@ -25,11 +26,11 @@ namespace Cosbak.Storage
             await blob.CreateOrReplaceAsync();
         }
 
-        async Task IStorageGateway.AppendBlobContentAsync(string appendBlobPath, string content)
+        async Task IStorageGateway.AppendBlobAsync(string appendBlobPath, Stream contentStream)
         {
             var blob = _container.GetAppendBlobReference(appendBlobPath);
 
-            await blob.AppendTextAsync(content);
+            await blob.AppendFromStreamAsync(contentStream);
         }
     }
 }

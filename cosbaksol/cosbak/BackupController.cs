@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.Threading.Tasks;
 using Cosbak.Config;
 using Cosbak.Cosmos;
@@ -56,14 +57,29 @@ namespace Cosbak
             foreach (var partition in partitionList)
             {
                 var feed = partition.GetChangeFeed();
-                var contentPath = blobPrefix + partition.KeyRangeId;
+                var indexPath = blobPrefix + partition.KeyRangeId + ".index";
+                var contentPath = blobPrefix + partition.KeyRangeId + ".content";
 
-                await _storageGateway.CreateBlobAsync(contentPath);
+                await Task.WhenAll(
+                    _storageGateway.CreateBlobAsync(indexPath),
+                    _storageGateway.CreateBlobAsync(contentPath));
                 while (feed.HasMoreResults)
                 {
                     var batch = await feed.GetBatchAsync();
+                    var indexStream = new MemoryStream();
+                    var contentStream = new MemoryStream();
 
-                    await _storageGateway.AppendBlobContentAsync(contentPath, "test");
+                    foreach (var doc in batch)
+                    {
+                        doc.MetaData.WriteAsync(indexStream);
+                        doc.WriteContentAsync(contentStream);
+                    }
+
+                    indexStream.Position = 0;
+                    contentStream.Position = 0;
+                    await Task.WhenAll(
+                        _storageGateway.AppendBlobAsync(indexPath, indexStream),
+                        _storageGateway.AppendBlobAsync(contentPath, contentStream));
                 }
             }
         }

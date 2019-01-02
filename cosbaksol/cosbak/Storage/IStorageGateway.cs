@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.IO;
+using System.Threading.Tasks;
 
 namespace Cosbak.Storage
 {
@@ -6,6 +7,6 @@ namespace Cosbak.Storage
     {
         Task CreateBlobAsync(string appendBlobPath);
 
-        Task AppendBlobContentAsync(string appendBlobPath, string content);
+        Task AppendBlobAsync(string contentPath, Stream contentStream);
     }
 }
