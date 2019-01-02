@@ -6,7 +6,7 @@ namespace Cosbak.Cosmos
 {
     public class DocumentMetaData
     {
-        public DocumentMetaData(string id, object partitionKey, int timeStamp)
+        public DocumentMetaData(string id, object partitionKey, Int64 timeStamp)
         {
             Id = id;
             PartitionKey = partitionKey;
@@ -17,6 +17,6 @@ namespace Cosbak.Cosmos
 
         public object PartitionKey { get; }
 
-        public int TimeStamp { get; }
+        public Int64 TimeStamp { get; }
     }
 }

@@ -4,6 +4,6 @@ namespace Cosbak.Cosmos
 {
     public interface IPartitionGateway
     {
-        IAsyncStream<IDictionary<string, object>> GetChangeFeed();
+        IAsyncStream<DocumentObject> GetChangeFeed();
     }
 }

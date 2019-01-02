@@ -57,7 +57,6 @@ namespace Cosbak
                 while (feed.HasMoreResults)
                 {
                     var batch = await feed.GetBatchAsync();
-
                 }
             }
         }

@@ -11,7 +11,7 @@ namespace Cosbak.Cosmos
     public class PartitionGateway : IPartitionGateway
     {
         #region Inner Types
-        private class AsyncQuery : IAsyncStream<IDictionary<string, object>>
+        private class AsyncQuery : IAsyncStream<DocumentObject>
         {
             private readonly IDocumentQuery<Document> _query;
 
@@ -20,14 +20,38 @@ namespace Cosbak.Cosmos
                 _query = query;
             }
 
-            bool IAsyncStream<IDictionary<string, object>>.HasMoreResults => _query.HasMoreResults;
+            bool IAsyncStream<DocumentObject>.HasMoreResults => _query.HasMoreResults;
 
-            async Task<IDictionary<string, object>[]> IAsyncStream<IDictionary<string, object>>.GetBatchAsync()
+            async Task<DocumentObject[]> IAsyncStream<DocumentObject>.GetBatchAsync()
             {
                 var batch = await _query.ExecuteNextAsync<IDictionary<string, object>>();
-                var batchResult = batch.ToArray();
+                var documents = (from d in batch
+                                 let metaData = ExtractMetaData(d)
+                                 select new DocumentObject(metaData, d)).ToArray();
 
-                return batchResult;
+                foreach (var doc in documents)
+                {
+                    Clean(doc.Content);
+                }
+
+                return documents.ToArray();
+            }
+
+            private DocumentMetaData ExtractMetaData(IDictionary<string, object> document)
+            {
+                return new DocumentMetaData((string)document["id"], "TO DO", (Int64)document["_ts"]);
+            }
+
+            private void Clean(IDictionary<string, object> content)
+            {
+                content.Remove("id");
+                content.Remove("_ts");
+                content.Remove("_rid");
+                content.Remove("_self");
+                content.Remove("_etag");
+                content.Remove("_attachments");
+                content.Remove("_lsn");
+                content.Remove("_metadata");
             }
         }
         #endregion
@@ -45,7 +69,7 @@ namespace Cosbak.Cosmos
             _collectionUri = UriFactory.CreateDocumentCollectionUri(_parent.Parent.DatabaseName, _parent.CollectionName);
         }
 
-        IAsyncStream<IDictionary<string, object>> IPartitionGateway.GetChangeFeed()
+        IAsyncStream<DocumentObject> IPartitionGateway.GetChangeFeed()
         {
             var query = _client.CreateDocumentChangeFeedQuery(_collectionUri, new ChangeFeedOptions
             {
