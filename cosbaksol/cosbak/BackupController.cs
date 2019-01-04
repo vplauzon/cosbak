@@ -55,44 +55,50 @@ namespace Cosbak
 
         private async Task BackupCollectionAsync(ICollectionGateway collection)
         {
-            var lastUpdateTime = await collection.GetLastUpdateTimeAsync();
             var account = collection.Parent.Parent.AccountName;
             var db = collection.Parent.DatabaseName;
-            var blobPrefix = $"{account}/{db}/{collection.CollectionName}/backups/{lastUpdateTime}/";
+            var backupPrefix = $"{account}/{db}/{collection.CollectionName}/backups/";
+            var lastUpdateTime = await collection.GetLastUpdateTimeAsync();
+            var blobPrefix = $"{backupPrefix}/{lastUpdateTime}/";
             var partitionList = await collection.GetPartitionsAsync();
 
             foreach (var partition in partitionList)
             {
-                var feed = partition.GetChangeFeed();
-                var indexPath = blobPrefix + partition.KeyRangeId + ".index";
-                var contentPath = blobPrefix + partition.KeyRangeId + ".content";
+                await BackupPartitionAsync(blobPrefix, partition);
+            }
+        }
 
-                await Task.WhenAll(
-                    _storageGateway.CreateBlobAsync(indexPath),
-                    _storageGateway.CreateBlobAsync(contentPath));
-                while (feed.HasMoreResults)
+        private async Task BackupPartitionAsync(string blobPrefix, IPartitionGateway partition)
+        {
+            var feed = partition.GetChangeFeed();
+            var indexPath = blobPrefix + partition.KeyRangeId + ".index";
+            var contentPath = blobPrefix + partition.KeyRangeId + ".content";
+
+            await Task.WhenAll(
+                _storageGateway.CreateBlobAsync(indexPath),
+                _storageGateway.CreateBlobAsync(contentPath));
+            while (feed.HasMoreResults)
+            {
+                var batch = await feed.GetBatchAsync();
+                var indexStream = new MemoryStream();
+                var contentStream = new MemoryStream();
+
+                using (var writer = new BinaryWriter(indexStream, Encoding.ASCII, true))
                 {
-                    var batch = await feed.GetBatchAsync();
-                    var indexStream = new MemoryStream();
-                    var contentStream = new MemoryStream();
-
-                    using (var writer = new BinaryWriter(indexStream, Encoding.ASCII, true))
+                    foreach (var doc in batch)
                     {
-                        foreach (var doc in batch)
-                        {
-                            doc.MetaData.WriteAsync(writer);
-                            contentStream.Write(doc.Content);
-                        }
+                        doc.MetaData.WriteAsync(writer);
+                        contentStream.Write(doc.Content);
                     }
-
-                    indexStream.Flush();
-                    contentStream.Flush();
-                    indexStream.Position = 0;
-                    contentStream.Position = 0;
-                    await Task.WhenAll(
-                        _storageGateway.AppendBlobAsync(indexPath, indexStream),
-                        _storageGateway.AppendBlobAsync(contentPath, contentStream));
                 }
+
+                indexStream.Flush();
+                contentStream.Flush();
+                indexStream.Position = 0;
+                contentStream.Position = 0;
+                await Task.WhenAll(
+                    _storageGateway.AppendBlobAsync(indexPath, indexStream),
+                    _storageGateway.AppendBlobAsync(contentPath, contentStream));
             }
         }
     }
