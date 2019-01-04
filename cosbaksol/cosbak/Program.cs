@@ -112,8 +112,8 @@ namespace Cosbak
                     new StorageGateway(
                         description.Storage.Name,
                         description.Storage.Container,
-                        description.Storage.Token),
-                    description.Storage.Prefix ?? string.Empty,
+                        description.Storage.Token,
+                        description.Storage.Prefix),
                     description.Ram != null ? description.Ram.Backup : null);
 
                 try

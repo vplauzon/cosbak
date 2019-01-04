@@ -18,14 +18,12 @@ namespace Cosbak
         private readonly TelemetryClient _telemetry;
         private readonly IImmutableList<ICosmosDbAccountGateway> _cosmosDbGateways;
         private readonly IStorageGateway _storageGateway;
-        private readonly string _blobPrefix;
         private readonly int _ram;
 
         public BackupController(
             TelemetryClient telemetry,
             IEnumerable<ICosmosDbAccountGateway> cosmosDbGateways,
             IStorageGateway storageGateway,
-            string blobPrefix,
             int? ram)
         {
             if (cosmosDbGateways == null)
@@ -35,7 +33,6 @@ namespace Cosbak
             _telemetry = telemetry;
             _cosmosDbGateways = ImmutableArray<ICosmosDbAccountGateway>.Empty.AddRange(cosmosDbGateways);
             _storageGateway = storageGateway ?? throw new ArgumentNullException(nameof(storageGateway));
-            _blobPrefix = blobPrefix;
             _ram = ram == null
                 ? DEFAULT_RAM
                 : ram.Value;
@@ -61,8 +58,7 @@ namespace Cosbak
             var lastUpdateTime = await collection.GetLastUpdateTimeAsync();
             var account = collection.Parent.Parent.AccountName;
             var db = collection.Parent.DatabaseName;
-            var blobPrefix = (string.IsNullOrWhiteSpace(_blobPrefix) ? "" : _blobPrefix + '/')
-                + $"{account}/{db}/{collection.CollectionName}/backups/{lastUpdateTime}/";
+            var blobPrefix = $"{account}/{db}/{collection.CollectionName}/backups/{lastUpdateTime}/";
             var partitionList = await collection.GetPartitionsAsync();
 
             foreach (var partition in partitionList)
