@@ -13,6 +13,8 @@ namespace Cosbak.Config
 
         public RamDescription Ram { get; set; }
 
+        public AppInsightsDescription AppInsights { get; set; }
+
         public void Validate()
         {
             if (Accounts == null || !Accounts.Any())
@@ -31,6 +33,10 @@ namespace Cosbak.Config
             if (Ram != null)
             {
                 Ram.Validate();
+            }
+            if (AppInsights != null)
+            {
+                AppInsights.Validate();
             }
         }
     }

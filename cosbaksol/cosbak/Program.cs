@@ -1,6 +1,8 @@
-﻿using Cosbak.Config;
+﻿using AppInsights.TelemetryInitializers;
+using Cosbak.Config;
 using Cosbak.Cosmos;
 using Cosbak.Storage;
+using Microsoft.ApplicationInsights.Extensibility;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -98,6 +100,8 @@ namespace Cosbak
                     return;
                 }
 
+                InitializeAppInsights(description.AppInsights);
+
                 var cosmosGateways = from a in description.Accounts
                                      select new CosmosDbAccountGateway(a.Name, a.Key, a.Filters);
                 var controller = new BackupController(
@@ -109,6 +113,19 @@ namespace Cosbak
                     description.Ram != null ? description.Ram.Backup : null);
 
                 await controller.BackupAsync();
+            }
+        }
+
+        private static void InitializeAppInsights(AppInsightsDescription appInsights)
+        {
+            if (appInsights != null)
+            {
+                TelemetryConfiguration.Active.InstrumentationKey = appInsights.Key;
+
+                if (!string.IsNullOrWhiteSpace(appInsights.Role))
+                {
+                    TelemetryConfiguration.Active.TelemetryInitializers.Add(new RoleNameInitializer(appInsights.Role));
+                }
             }
         }
     }

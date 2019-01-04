@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Cosbak.Config;
 using Cosbak.Cosmos;
 using Cosbak.Storage;
+using Microsoft.ApplicationInsights;
 
 namespace Cosbak
 {
@@ -14,6 +15,7 @@ namespace Cosbak
     {
         private const int DEFAULT_RAM = 20;
 
+        private readonly TelemetryClient _telemetry = new TelemetryClient();
         private readonly IImmutableList<ICosmosDbAccountGateway> _cosmosDbGateways;
         private readonly IStorageGateway _storageGateway;
         private readonly int _ram;
@@ -36,6 +38,7 @@ namespace Cosbak
 
         public async Task BackupAsync()
         {
+            _telemetry.TrackEvent("Backup-Start");
             foreach (var cosmosAccount in _cosmosDbGateways)
             {
                 foreach (var db in await cosmosAccount.GetDatabasesAsync())
@@ -46,6 +49,7 @@ namespace Cosbak
                     }
                 }
             }
+            _telemetry.Flush();
         }
 
         private async Task BackupCollectionAsync(ICollectionGateway collection)
