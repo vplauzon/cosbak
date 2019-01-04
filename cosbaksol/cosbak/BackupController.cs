@@ -58,7 +58,8 @@ namespace Cosbak
             var account = collection.Parent.Parent.AccountName;
             var db = collection.Parent.DatabaseName;
             var backupPrefix = $"{account}/{db}/{collection.CollectionName}/backups/";
-            var lastBackupTime = await GetLastBackupTimeAsync(backupPrefix);
+            var lastBackupPath = backupPrefix + "lastBackup";
+            var lastBackupTime = await GetLastBackupTimeAsync(lastBackupPath);
             var lastUpdateTime = await collection.GetLastUpdateTimeAsync();
 
             if (lastUpdateTime != lastBackupTime)
@@ -77,13 +78,11 @@ namespace Cosbak
             }
         }
 
-        private async Task<long?> GetLastBackupTimeAsync(string backupPrefix)
+        private async Task<long?> GetLastBackupTimeAsync(string lastBackupPath)
         {
-            var path = backupPrefix + "lastBackup";
-
-            if (await _storageGateway.DoesExistAsync(path))
+            if (await _storageGateway.DoesExistAsync(lastBackupPath))
             {
-                var text = await _storageGateway.GetContentAsync(path);
+                var text = await _storageGateway.GetContentAsync(lastBackupPath);
                 var lastUpdateTime = int.Parse(text);
 
                 return lastUpdateTime;
