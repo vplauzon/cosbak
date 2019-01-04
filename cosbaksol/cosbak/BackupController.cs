@@ -45,20 +45,52 @@ namespace Cosbak
 
         public async Task BackupAsync()
         {
-            _telemetry.TrackEvent("Backup-Start");
+            TrackEvent("Backup-Start");
             foreach (var cosmosAccount in _cosmosDbGateways)
             {
+                var accountProperties = ImmutableDictionary<string, string>
+                    .Empty
+                    .Add("account", cosmosAccount.AccountName);
+
+                TrackEvent("Backup-Start-Account", accountProperties);
                 foreach (var db in await cosmosAccount.GetDatabasesAsync())
                 {
+                    var dbProperties = accountProperties.Add("db", db.DatabaseName);
+
+                    TrackEvent("Backup-Start-Db", dbProperties);
                     foreach (var collection in await db.GetCollectionsAsync())
                     {
-                        await BackupCollectionAsync(collection);
+                        var collectionProperties =
+                            dbProperties.Add("collection", collection.CollectionName);
+
+                        TrackEvent("Backup-Start-Collection", collectionProperties);
+                        await BackupCollectionAsync(collection, collectionProperties);
+                        TrackEvent("Backup-End-Collection", collectionProperties);
                     }
+                    TrackEvent("Backup-End-Db", dbProperties);
                 }
+                TrackEvent("Backup-End-Account", accountProperties);
+            }
+            TrackEvent("Backup-End");
+        }
+
+        private void TrackEvent(string eventName, IImmutableDictionary<string, string> properties = null)
+        {
+            if (properties == null)
+            {
+                _telemetry.TrackEvent(eventName);
+            }
+            else
+            {
+                _telemetry.TrackEvent(
+                    eventName,
+                    properties.ToDictionary(p => p.Key, p => p.Value));
             }
         }
 
-        private async Task BackupCollectionAsync(ICollectionGateway collection)
+        private async Task BackupCollectionAsync(
+            ICollectionGateway collection,
+            IImmutableDictionary<string, string> collectionProperties)
         {
             var account = collection.Parent.Parent.AccountName;
             var db = collection.Parent.DatabaseName;
@@ -86,7 +118,11 @@ namespace Cosbak
 
                     foreach (var partition in partitionList)
                     {
+                        var partitionProperties = collectionProperties.Add("partition", partition.KeyRangeId);
+
+                        TrackEvent("Backup-Start-Partition", partitionProperties);
                         await BackupPartitionAsync(blobPrefix, partition);
+                        TrackEvent("Backup-End-Partition", partitionProperties);
                     }
 
                     var doneMarkerTask = _storageGateway.UploadBlockBlobAsync(blobPrefix + "done", string.Empty);
@@ -98,7 +134,7 @@ namespace Cosbak
                 }
                 else
                 {
-                    _telemetry.TrackEvent("Backup-No Backup required");
+                    TrackEvent("Backup-No Backup required", collectionProperties);
                 }
                 if (currentBackup != null)
                 {
