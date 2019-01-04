@@ -65,8 +65,6 @@ namespace Cosbak
                 + $"{account}/{db}/{collection.CollectionName}/backups/{lastUpdateTime}/";
             var partitionList = await collection.GetPartitionsAsync();
 
-
-
             foreach (var partition in partitionList)
             {
                 var feed = partition.GetChangeFeed();
