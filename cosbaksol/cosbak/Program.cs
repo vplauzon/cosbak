@@ -2,6 +2,7 @@
 using Cosbak.Config;
 using Cosbak.Cosmos;
 using Cosbak.Storage;
+using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using System;
 using System.Collections.Generic;
@@ -102,9 +103,11 @@ namespace Cosbak
 
                 InitializeAppInsights(description.AppInsights);
 
+                var telemetry = new TelemetryClient();
                 var cosmosGateways = from a in description.Accounts
                                      select new CosmosDbAccountGateway(a.Name, a.Key, a.Filters);
                 var controller = new BackupController(
+                    telemetry,
                     cosmosGateways,
                     new StorageGateway(
                         description.Storage.Name,
@@ -112,7 +115,18 @@ namespace Cosbak
                         description.Storage.Token),
                     description.Ram != null ? description.Ram.Backup : null);
 
-                await controller.BackupAsync();
+                try
+                {
+                    await controller.BackupAsync();
+                }
+                catch (Exception ex)
+                {
+                    telemetry.TrackException(ex);
+                }
+                finally
+                {
+                    telemetry.Flush();
+                }
             }
         }
 

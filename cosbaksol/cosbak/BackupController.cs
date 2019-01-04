@@ -15,12 +15,13 @@ namespace Cosbak
     {
         private const int DEFAULT_RAM = 20;
 
-        private readonly TelemetryClient _telemetry = new TelemetryClient();
+        private readonly TelemetryClient _telemetry;
         private readonly IImmutableList<ICosmosDbAccountGateway> _cosmosDbGateways;
         private readonly IStorageGateway _storageGateway;
         private readonly int _ram;
 
         public BackupController(
+            TelemetryClient telemetry,
             IEnumerable<ICosmosDbAccountGateway> cosmosDbGateways,
             IStorageGateway storageGateway,
             int? ram)
@@ -29,6 +30,7 @@ namespace Cosbak
             {
                 throw new ArgumentNullException(nameof(cosmosDbGateways));
             }
+            _telemetry = telemetry;
             _cosmosDbGateways = ImmutableArray<ICosmosDbAccountGateway>.Empty.AddRange(cosmosDbGateways);
             _storageGateway = storageGateway ?? throw new ArgumentNullException(nameof(storageGateway));
             _ram = ram == null
@@ -49,7 +51,6 @@ namespace Cosbak
                     }
                 }
             }
-            _telemetry.Flush();
         }
 
         private async Task BackupCollectionAsync(ICollectionGateway collection)
