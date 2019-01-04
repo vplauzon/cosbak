@@ -77,8 +77,9 @@ namespace Cosbak
 
                 if (currentBackup.FromTimeStamp != currentBackup.ToTimeStamp)
                 {
+                    //  Max long is 9223372036854775807, hence 19 digits
                     var blobPrefix =
-                        await PickContentFolderAsync($"{backupPrefix}{currentBackup.ToTimeStamp}") + '/';
+                        await PickContentFolderAsync($"{backupPrefix}{currentBackup.ToTimeStamp.ToString("D19")}") + '/';
                     var partitionList = await collection.GetPartitionsAsync();
 
                     foreach (var partition in partitionList)
