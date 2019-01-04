@@ -104,7 +104,7 @@ namespace Cosbak
                 InitializeAppInsights(description.AppInsights);
 
                 var telemetry = new TelemetryClient();
-                var cosmosGateways = from a in description.Accounts
+                var cosmosGateways = from a in description.CosmosAccounts
                                      select new CosmosDbAccountGateway(a.Name, a.Key, a.Filters);
                 var controller = new BackupController(
                     telemetry,
@@ -113,6 +113,7 @@ namespace Cosbak
                         description.Storage.Name,
                         description.Storage.Container,
                         description.Storage.Token),
+                    description.Storage.Prefix ?? string.Empty,
                     description.Ram != null ? description.Ram.Backup : null);
 
                 try

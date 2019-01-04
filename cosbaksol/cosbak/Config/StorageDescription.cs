@@ -8,6 +8,8 @@ namespace Cosbak.Config
 
         public string Container { get; set; }
 
+        public string Prefix { get; set; }
+
         public string Token { get; set; }
 
         internal void Validate()

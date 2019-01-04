@@ -7,7 +7,7 @@ namespace Cosbak.Config
 {
     public class BackupDescription
     {
-        public AccountDescription[] Accounts { get; set; }
+        public CosmosAccountDescription[] CosmosAccounts { get; set; }
 
         public StorageDescription Storage { get; set; }
 
@@ -17,7 +17,7 @@ namespace Cosbak.Config
 
         public void Validate()
         {
-            if (Accounts == null || !Accounts.Any())
+            if (CosmosAccounts == null || !CosmosAccounts.Any())
             {
                 throw new BackupException("Backup Description must contain at least one Cosmos DB account");
             }
@@ -25,7 +25,7 @@ namespace Cosbak.Config
             {
                 throw new BackupException("Backup Description must contain storage description");
             }
-            foreach (var a in Accounts)
+            foreach (var a in CosmosAccounts)
             {
                 a.Validate();
             }

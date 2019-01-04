@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace Cosbak.Config
 {
-    public class AccountDescription
+    public class CosmosAccountDescription
     {
         public string Name { get; set; }
 
