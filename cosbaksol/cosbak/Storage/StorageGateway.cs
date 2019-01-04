@@ -24,6 +24,12 @@ namespace Cosbak.Storage
             _container = client.GetContainerReference(container);
             _blobPrefix = (string.IsNullOrWhiteSpace(blobPrefix) ? "" : blobPrefix + '/');
         }
+        async Task<bool> IStorageGateway.DoesExistAsync(string contentPath)
+        {
+            var blob = _container.GetBlobReference(_blobPrefix + contentPath);
+
+            return await blob.ExistsAsync();
+        }
 
         async Task IStorageGateway.CreateBlobAsync(string appendBlobPath)
         {
@@ -37,6 +43,23 @@ namespace Cosbak.Storage
             var blob = _container.GetAppendBlobReference(_blobPrefix + appendBlobPath);
 
             await blob.AppendFromStreamAsync(contentStream);
+        }
+
+        async Task<string> IStorageGateway.GetContentAsync(string contentPath)
+        {
+            var blob = _container.GetBlobReference(_blobPrefix + contentPath);
+
+            using (var stream = new MemoryStream())
+            {
+                await blob.DownloadToStreamAsync(stream);
+
+                stream.Position = 0;
+
+                using (var reader = new StreamReader(stream))
+                {
+                    return reader.ReadToEnd();
+                }
+            }
         }
     }
 }

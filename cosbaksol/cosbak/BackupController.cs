@@ -58,13 +58,39 @@ namespace Cosbak
             var account = collection.Parent.Parent.AccountName;
             var db = collection.Parent.DatabaseName;
             var backupPrefix = $"{account}/{db}/{collection.CollectionName}/backups/";
+            var lastBackupTime = await GetLastBackupTimeAsync(backupPrefix);
             var lastUpdateTime = await collection.GetLastUpdateTimeAsync();
-            var blobPrefix = $"{backupPrefix}/{lastUpdateTime}/";
-            var partitionList = await collection.GetPartitionsAsync();
 
-            foreach (var partition in partitionList)
+            if (lastUpdateTime != lastBackupTime)
             {
-                await BackupPartitionAsync(blobPrefix, partition);
+                var blobPrefix = $"{backupPrefix}/{lastUpdateTime}/";
+                var partitionList = await collection.GetPartitionsAsync();
+
+                foreach (var partition in partitionList)
+                {
+                    await BackupPartitionAsync(blobPrefix, partition);
+                }
+            }
+            else
+            {
+                _telemetry.TrackEvent("Backup-No Backup required");
+            }
+        }
+
+        private async Task<long?> GetLastBackupTimeAsync(string backupPrefix)
+        {
+            var path = backupPrefix + "lastBackup";
+
+            if (await _storageGateway.DoesExistAsync(path))
+            {
+                var text = await _storageGateway.GetContentAsync(path);
+                var lastUpdateTime = int.Parse(text);
+
+                return lastUpdateTime;
+            }
+            else
+            {
+                return null;
             }
         }
 
