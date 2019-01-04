@@ -7,10 +7,14 @@ namespace Cosbak.Storage
     {
         Task<bool> DoesExistAsync(string contentPath);
 
-        Task CreateBlobAsync(string appendBlobPath);
-
-        Task AppendBlobAsync(string contentPath, Stream contentStream);
-
         Task<string> GetContentAsync(string contentPath);
+
+        Task CreateAppendBlobAsync(string blobPath);
+
+        Task UploadBlockBlobAsync(string blobPath, string content);
+
+        Task AppendBlobAsync(string blobPath, Stream contentStream);
+
+        Task<BlobLease> GetLeaseAsync(string contentPath);
     }
 }

@@ -58,24 +58,40 @@ namespace Cosbak
             var account = collection.Parent.Parent.AccountName;
             var db = collection.Parent.DatabaseName;
             var backupPrefix = $"{account}/{db}/{collection.CollectionName}/backups/";
-            var lastBackupPath = backupPrefix + "lastBackup";
-            var lastBackupTime = await GetLastBackupTimeAsync(lastBackupPath);
-            var lastUpdateTime = await collection.GetLastUpdateTimeAsync();
+            var currentBackupPath = backupPrefix + "currentBackup.txt";
 
-            if (lastUpdateTime != lastBackupTime)
+            using (var currentBackup = await GetCurrentBackupLease(currentBackupPath))
             {
-                var blobPrefix = $"{backupPrefix}/{lastUpdateTime}/";
-                var partitionList = await collection.GetPartitionsAsync();
+                var lastBackupPath = backupPrefix + "lastBackup.txt";
+                var lastBackupTime = await GetLastBackupTimeAsync(lastBackupPath);
+                var lastUpdateTime = await collection.GetLastUpdateTimeAsync();
 
-                foreach (var partition in partitionList)
+                if (lastUpdateTime != lastBackupTime)
                 {
-                    await BackupPartitionAsync(blobPrefix, partition);
+                    var blobPrefix = $"{backupPrefix}{lastUpdateTime}/";
+                    var partitionList = await collection.GetPartitionsAsync();
+
+                    foreach (var partition in partitionList)
+                    {
+                        await BackupPartitionAsync(blobPrefix, partition);
+                    }
                 }
+                else
+                {
+                    _telemetry.TrackEvent("Backup-No Backup required");
+                }
+                await currentBackup.ReleaseLeaseAsync();
             }
-            else
+        }
+
+        private async Task<BlobLease> GetCurrentBackupLease(string currentBackupPath)
+        {
+            if (!await _storageGateway.DoesExistAsync(currentBackupPath))
             {
-                _telemetry.TrackEvent("Backup-No Backup required");
+                await _storageGateway.UploadBlockBlobAsync(currentBackupPath, string.Empty);
             }
+
+            return await _storageGateway.GetLeaseAsync(currentBackupPath);
         }
 
         private async Task<long?> GetLastBackupTimeAsync(string lastBackupPath)
@@ -100,8 +116,8 @@ namespace Cosbak
             var contentPath = blobPrefix + partition.KeyRangeId + ".content";
 
             await Task.WhenAll(
-                _storageGateway.CreateBlobAsync(indexPath),
-                _storageGateway.CreateBlobAsync(contentPath));
+                _storageGateway.CreateAppendBlobAsync(indexPath),
+                _storageGateway.CreateAppendBlobAsync(contentPath));
             while (feed.HasMoreResults)
             {
                 var batch = await feed.GetBatchAsync();

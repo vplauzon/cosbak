@@ -24,26 +24,6 @@ namespace Cosbak.Storage
             _container = client.GetContainerReference(container);
             _blobPrefix = (string.IsNullOrWhiteSpace(blobPrefix) ? "" : blobPrefix + '/');
         }
-        async Task<bool> IStorageGateway.DoesExistAsync(string contentPath)
-        {
-            var blob = _container.GetBlobReference(_blobPrefix + contentPath);
-
-            return await blob.ExistsAsync();
-        }
-
-        async Task IStorageGateway.CreateBlobAsync(string appendBlobPath)
-        {
-            var blob = _container.GetAppendBlobReference(_blobPrefix + appendBlobPath);
-
-            await blob.CreateOrReplaceAsync();
-        }
-
-        async Task IStorageGateway.AppendBlobAsync(string appendBlobPath, Stream contentStream)
-        {
-            var blob = _container.GetAppendBlobReference(_blobPrefix + appendBlobPath);
-
-            await blob.AppendFromStreamAsync(contentStream);
-        }
 
         async Task<string> IStorageGateway.GetContentAsync(string contentPath)
         {
@@ -54,12 +34,46 @@ namespace Cosbak.Storage
                 await blob.DownloadToStreamAsync(stream);
 
                 stream.Position = 0;
-
                 using (var reader = new StreamReader(stream))
                 {
                     return reader.ReadToEnd();
                 }
             }
+        }
+
+        async Task<bool> IStorageGateway.DoesExistAsync(string contentPath)
+        {
+            var blob = _container.GetBlobReference(_blobPrefix + contentPath);
+
+            return await blob.ExistsAsync();
+        }
+
+        async Task IStorageGateway.CreateAppendBlobAsync(string blobPath)
+        {
+            var blob = _container.GetAppendBlobReference(_blobPrefix + blobPath);
+
+            await blob.CreateOrReplaceAsync();
+        }
+
+        async Task IStorageGateway.UploadBlockBlobAsync(string blobPath, string content)
+        {
+            var blob = _container.GetBlockBlobReference(_blobPrefix + blobPath);
+
+            await blob.UploadTextAsync(content);
+        }
+
+        async Task IStorageGateway.AppendBlobAsync(string blobPath, Stream contentStream)
+        {
+            var blob = _container.GetAppendBlobReference(_blobPrefix + blobPath);
+
+            await blob.AppendFromStreamAsync(contentStream);
+        }
+
+        async Task<BlobLease> IStorageGateway.GetLeaseAsync(string blobPath)
+        {
+            var blob = _container.GetBlobReference(_blobPrefix + blobPath);
+
+            return await BlobLease.CreateLeaseAsync(blob);
         }
     }
 }
