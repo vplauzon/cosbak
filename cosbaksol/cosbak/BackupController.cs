@@ -2,18 +2,23 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Cosbak.Config;
 using Cosbak.Cosmos;
 using Cosbak.Storage;
 using Microsoft.ApplicationInsights;
+using Microsoft.WindowsAzure.Storage;
+using Newtonsoft.Json;
 
 namespace Cosbak
 {
     public class BackupController
     {
         private const int DEFAULT_RAM = 20;
+        private static readonly TimeSpan WAIT_FOR_CURRENT_BACKUP_PERIOD = TimeSpan.FromSeconds(2);
+        private static readonly TimeSpan WAIT_FOR_CURRENT_BACKUP_TOTAL = TimeSpan.FromSeconds(15);
 
         private readonly TelemetryClient _telemetry;
         private readonly IImmutableList<ICosmosDbAccountGateway> _cosmosDbGateways;
@@ -58,17 +63,22 @@ namespace Cosbak
             var account = collection.Parent.Parent.AccountName;
             var db = collection.Parent.DatabaseName;
             var backupPrefix = $"{account}/{db}/{collection.CollectionName}/backups/";
-            var currentBackupPath = backupPrefix + "currentBackup.txt";
+            var currentBackupPath = backupPrefix + "currentBackup.json";
 
-            using (var currentBackup = await GetCurrentBackupLease(currentBackupPath))
+            //  Winner of the current backup lease becomes the master process
+            using (var currentBackupLease = await GetCurrentBackupLease(currentBackupPath))
             {
                 var lastBackupPath = backupPrefix + "lastBackup.txt";
-                var lastBackupTime = await GetLastBackupTimeAsync(lastBackupPath);
-                var lastUpdateTime = await collection.GetLastUpdateTimeAsync();
+                var currentBackup = await GetCurrentBackupLeaseAsync(
+                    currentBackupLease,
+                    currentBackupPath,
+                    lastBackupPath,
+                    collection);
 
-                if (lastUpdateTime != lastBackupTime)
+                if (currentBackup.FromTimeStamp != currentBackup.ToTimeStamp)
                 {
-                    var blobPrefix = $"{backupPrefix}{lastUpdateTime}/";
+                    var blobPrefix =
+                        await PickContentFolderAsync($"{backupPrefix}{currentBackup.ToTimeStamp}") + '/';
                     var partitionList = await collection.GetPartitionsAsync();
 
                     foreach (var partition in partitionList)
@@ -80,15 +90,99 @@ namespace Cosbak
                 {
                     _telemetry.TrackEvent("Backup-No Backup required");
                 }
-                await currentBackup.ReleaseLeaseAsync();
+                if (currentBackup != null)
+                {
+                    await currentBackupLease.ReleaseLeaseAsync();
+                }
             }
+        }
+
+        private async Task<string> PickContentFolderAsync(string blobPrefix)
+        {
+            var i = 0;
+            var suffix = string.Empty;
+
+            while (true)
+            {
+                var path = blobPrefix + suffix;
+                var blobs = await _storageGateway.ListBlobsAsync(path);
+
+                if (blobs.Any())
+                {
+                    ++i;
+                    suffix = "." + i;
+                }
+                else
+                {
+                    return path;
+                }
+            }
+        }
+
+        private async Task<CurrentBackup> GetCurrentBackupLeaseAsync(
+            BlobLease currentBackupLease,
+            string currentBackupPath,
+            string lastBackupPath,
+            ICollectionGateway collection)
+        {
+            if (currentBackupLease == null)
+            {
+                var currentBackup = await GetCurrentBackupAsync(currentBackupPath);
+
+                return currentBackup;
+            }
+            else
+            {
+                var lastBackupTimeTask = GetLastBackupTimeAsync(lastBackupPath);
+                var lastUpdateTimeTask = collection.GetLastUpdateTimeAsync();
+                var lastBackupTime = await lastBackupTimeTask;
+                var lastUpdateTime = await lastUpdateTimeTask;
+                var currentBackup = new CurrentBackup
+                {
+                    FromTimeStamp = lastBackupTime,
+                    ToTimeStamp = lastUpdateTime
+                };
+                var currentBackupContent = JsonConvert.SerializeObject(currentBackup);
+
+                await _storageGateway.UploadBlockBlobAsync(currentBackupPath, currentBackupContent, currentBackupLease.LeaseId);
+
+                return currentBackup;
+            }
+        }
+
+        private async Task<CurrentBackup> GetCurrentBackupAsync(string currentBackupPath)
+        {
+            var start = DateTime.Now;
+
+            while (start.Add(WAIT_FOR_CURRENT_BACKUP_TOTAL) < DateTime.Now)
+            {
+                var content = await _storageGateway.GetContentAsync(currentBackupPath);
+
+                if (string.IsNullOrWhiteSpace(content))
+                {
+                    await Task.Delay(WAIT_FOR_CURRENT_BACKUP_PERIOD);
+                }
+                else
+                {
+                    var currentBackup = JsonConvert.DeserializeObject<CurrentBackup>(content);
+
+                    return currentBackup;
+                }
+            }
+
+            throw new BackupException("Master backup process didn't materialize backup parameters");
         }
 
         private async Task<BlobLease> GetCurrentBackupLease(string currentBackupPath)
         {
-            if (!await _storageGateway.DoesExistAsync(currentBackupPath))
+            try
             {
+                //  Clean record if no lease ; so we never read stale data
                 await _storageGateway.UploadBlockBlobAsync(currentBackupPath, string.Empty);
+            }
+            catch (StorageException)
+            {
+                return null;
             }
 
             return await _storageGateway.GetLeaseAsync(currentBackupPath);

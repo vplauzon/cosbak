@@ -11,10 +11,12 @@ namespace Cosbak.Storage
 
         Task CreateAppendBlobAsync(string blobPath);
 
-        Task UploadBlockBlobAsync(string blobPath, string content);
+        Task UploadBlockBlobAsync(string blobPath, string content, string leaseId = null);
 
         Task AppendBlobAsync(string blobPath, Stream contentStream);
 
         Task<BlobLease> GetLeaseAsync(string contentPath);
+
+        Task<string[]> ListBlobsAsync(string blobPrefix);
     }
 }

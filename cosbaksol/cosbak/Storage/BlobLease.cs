@@ -25,6 +25,11 @@ namespace Cosbak.Storage
             _timer.Elapsed += OnElapsed;
         }
 
+        public string LeaseId
+        {
+            get => _leaseId;
+        }
+
         public static async Task<BlobLease> CreateLeaseAsync(CloudBlob blob)
         {
             try
