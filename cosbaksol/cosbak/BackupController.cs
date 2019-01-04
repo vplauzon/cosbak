@@ -80,12 +80,21 @@ namespace Cosbak
                     //  Max long is 9223372036854775807, hence 19 digits
                     var blobPrefix =
                         await PickContentFolderAsync($"{backupPrefix}{currentBackup.ToTimeStamp.ToString("D19")}") + '/';
+                    //  Ensures a folder is created as fast as possible to avoid clashes
+                    var startedMarkerTask = _storageGateway.UploadBlockBlobAsync(blobPrefix + "started", string.Empty);
                     var partitionList = await collection.GetPartitionsAsync();
 
                     foreach (var partition in partitionList)
                     {
                         await BackupPartitionAsync(blobPrefix, partition);
                     }
+
+                    var doneMarkerTask = _storageGateway.UploadBlockBlobAsync(blobPrefix + "done", string.Empty);
+                    if (currentBackupLease != null)
+                    {   //  Marker blob stating the backup was fully completed
+                        await _storageGateway.UploadBlockBlobAsync(lastBackupPath, currentBackup.ToTimeStamp.ToString("D19"));
+                    }
+                    await Task.WhenAll(startedMarkerTask, doneMarkerTask);
                 }
                 else
                 {
