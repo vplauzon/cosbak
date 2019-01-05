@@ -10,25 +10,27 @@ namespace Cosbak.Config
 
         public string Prefix { get; set; }
 
+        public string Key { get; set; }
+
         public string Token { get; set; }
 
         internal void Validate()
         {
             if (string.IsNullOrWhiteSpace(Name))
             {
-                throw new BackupException("Storage description must have a name");
+                throw new BackupException("Storage account name is required");
             }
             if (string.IsNullOrWhiteSpace(Container))
             {
-                throw new BackupException("Storage description must have an existing container");
+                throw new BackupException("Storage container is required");
             }
-            if (string.IsNullOrWhiteSpace(Token))
+            if (string.IsNullOrWhiteSpace(Key) && string.IsNullOrWhiteSpace(Token))
             {
-                throw new BackupException("Storage description must have a token");
+                throw new BackupException("Storage token or key is required");
             }
-            if (Token[0] != '?')
+            if (!string.IsNullOrWhiteSpace(Token) && Token[0] != '?')
             {
-                throw new BackupException("Storage description's token must start with a '?'");
+                throw new BackupException("Storage token must start with a '?'");
             }
         }
     }

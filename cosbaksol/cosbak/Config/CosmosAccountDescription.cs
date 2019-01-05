@@ -15,17 +15,17 @@ namespace Cosbak.Config
         {
             if (string.IsNullOrWhiteSpace(Name))
             {
-                throw new BackupException("Account description must have a name");
+                throw new BackupException("Cosmos Account name is required");
             }
             if (string.IsNullOrWhiteSpace(Key))
             {
-                throw new BackupException("Account description must have a key");
+                throw new BackupException("Cosmos Account key is required");
             }
             if (Filters != null)
             {
                 if (Filters.Any(s => string.IsNullOrWhiteSpace(s)))
                 {
-                    throw new BackupException("Account description filters are optional ; if present they must be non-empty");
+                    throw new BackupException("Cosmos filters are optional ; if present they must be non-empty");
                 }
 
                 var untrimmed = from f in Filters
@@ -34,7 +34,7 @@ namespace Cosbak.Config
 
                 if (untrimmed.Any())
                 {
-                    throw new BackupException($"Account description filter has leading or trailing spaces: '{untrimmed.First()}'");
+                    throw new BackupException($"Cosmos filter has leading or trailing spaces: '{untrimmed.First()}'");
                 }
 
                 var repeat = from g in (from f in Filters
@@ -45,7 +45,7 @@ namespace Cosbak.Config
 
                 if (repeat.Any())
                 {
-                    throw new BackupException($"Account description's filter is repeated:  '{repeat.First()}'");
+                    throw new BackupException($"Cosmos filter is repeated:  '{repeat.First()}'");
                 }
 
                 var splitted = from f in Filters
@@ -53,7 +53,7 @@ namespace Cosbak.Config
 
                 if (splitted.Any(s => s.Length > 2))
                 {
-                    throw new BackupException("Account description's filters can't have more than one dot as it represents <DB NAME> or <DB NAME>.<COLLECTION>");
+                    throw new BackupException("Cosmos filters can't have more than one dot as it represents <DB NAME> or <DB NAME>.<COLLECTION>");
                 }
 
                 var grouping = from p in splitted
@@ -67,7 +67,7 @@ namespace Cosbak.Config
 
                 if (collectionAndNot.Any())
                 {
-                    throw new BackupException($"Account description's filters contain both a database and some of its collections:  '{collectionAndNot.First()}'");
+                    throw new BackupException($"Cosmos filter contain both a database and some of its collections:  '{collectionAndNot.First()}'");
                 }
             }
         }

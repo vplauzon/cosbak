@@ -1,4 +1,5 @@
 ﻿using AppInsights.TelemetryInitializers;
+using Cosbak.CommandContext;
 using Cosbak.Config;
 using Cosbak.Cosmos;
 using Cosbak.Storage;
@@ -6,6 +7,7 @@ using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -54,7 +56,11 @@ namespace Cosbak
 
         private static void DisplayBackupHelp()
         {
-            Console.WriteLine("usage:  cosbak backup BACKUP_DESCRIPTION_FILE");
+            Console.WriteLine("usage:");
+            Console.WriteLine("\tcosbak backup -f BACKUP_DESCRIPTION_FILE");
+            Console.WriteLine("\tcosbak backup -ca COSMOS_ACCOUNT_NAME -ck COSMOS_ACCOUNT_KEY [-cf COSMOS_FILTER] "
+                + "-sa STORAGE_ACCOUNT_NAME -sc STORAGE_CONTAINER [-sp STORAGE_PREFIX] [-st STORAGE_TOKEN] [-sk STORAGE_KEY] "
+                + "[-ak APPLICATION_INSIGHTS_INSTRUMENTATION_KEY -ar APPLICATION_INSIGHTS_ROLE]");
         }
         #endregion
 
@@ -77,60 +83,160 @@ namespace Cosbak
 
         private static async Task BackupAsync(IEnumerable<string> args)
         {
-            if (!args.Any())
+            var switches = ImmutableSortedDictionary<string, Action<BackupContext, string>>
+                .Empty
+                .Add("f", (c, a) => c.File = a)
+                .Add("ca", (c, a) => c.CosmosAccountName = a)
+                .Add("ck", (c, a) => c.CosmosAccountKey = a)
+                .Add("cf", (c, a) => c.CosmosFilter = a)
+                .Add("sa", (c, a) => c.StorageAccountName = a)
+                .Add("sc", (c, a) => c.StorageContainer = a)
+                .Add("sp", (c, a) => c.StoragePrefix = a)
+                .Add("st", (c, a) => c.StorageToken = a)
+                .Add("sk", (c, a) => c.StorageKey = a)
+                .Add("ak", (c, a) => c.ApplicationInsightsKey = a)
+                .Add("ar", (c, a) => c.ApplicationInsightsRole = a);
+            var context = ReadContext(args, switches);
+            var description = await InferDescriptionAsync(context);
+
+            InitializeAppInsights(description.AppInsights);
+
+            var telemetry = new TelemetryClient();
+            var cosmosGateways = from a in description.CosmosAccounts
+                                 select new CosmosDbAccountGateway(a.Name, a.Key, a.Filters);
+            var controller = new BackupController(
+                telemetry,
+                cosmosGateways,
+                new StorageGateway(
+                    description.Storage.Name,
+                    description.Storage.Container,
+                    description.Storage.Token,
+                    description.Storage.Prefix));
+
+            try
             {
-                Console.WriteLine("cosbak backup error:  backup description file is required");
+                await controller.BackupAsync();
+            }
+            catch (Exception ex)
+            {
+                telemetry.TrackException(ex);
+            }
+            finally
+            {
+                telemetry.Flush();
+            }
+        }
+
+        private async static Task<BackupDescription> InferDescriptionAsync(BackupContext context)
+        {
+            try
+            {
+                var description = string.IsNullOrWhiteSpace(context.File)
+                    ? CreateFromContext(context)
+                    : await ReadDescriptionAsync(context.File);
+
+                description.Validate();
+
+                return description;
+            }
+            catch (BackupException)
+            {
                 DisplayBackupHelp();
+                Console.WriteLine();
+
+                throw;
             }
-            else
+        }
+
+        private static BackupDescription CreateFromContext(BackupContext context)
+        {
+            var description = new BackupDescription
             {
-                var filePath = new Uri(args.First(), UriKind.RelativeOrAbsolute);
-                var content = filePath.IsAbsoluteUri
-                    ? await GetWebContent(filePath)
-                    : await File.ReadAllTextAsync(filePath.ToString());
-                var deserializer = new DeserializerBuilder()
-                    .WithNamingConvention(new CamelCaseNamingConvention())
-                    .Build();
-                var description = deserializer.Deserialize<BackupDescription>(content);
-
-                try
+                CosmosAccounts = new[]
                 {
-                    description.Validate();
-                }
-                catch (BackupException ex)
+                    new CosmosAccountDescription
+                    {
+                        Name=context.CosmosAccountName,
+                        Key=context.CosmosAccountKey
+                    }
+                },
+                Storage = new StorageDescription
                 {
-                    Console.WriteLine($"Backup Description validation error:  {ex.Message}");
-
-                    return;
+                    Name = context.StorageAccountName,
+                    Container = context.StorageContainer,
+                    Prefix = context.StoragePrefix,
+                    Token = context.StorageToken,
+                    Key = context.StorageKey
                 }
+            };
 
-                InitializeAppInsights(description.AppInsights);
-
-                var telemetry = new TelemetryClient();
-                var cosmosGateways = from a in description.CosmosAccounts
-                                     select new CosmosDbAccountGateway(a.Name, a.Key, a.Filters);
-                var controller = new BackupController(
-                    telemetry,
-                    cosmosGateways,
-                    new StorageGateway(
-                        description.Storage.Name,
-                        description.Storage.Container,
-                        description.Storage.Token,
-                        description.Storage.Prefix));
-
-                try
+            if (!string.IsNullOrWhiteSpace(context.CosmosFilter))
+            {
+                description.CosmosAccounts[0].Filters = new[]
                 {
-                    await controller.BackupAsync();
-                }
-                catch (Exception ex)
-                {
-                    telemetry.TrackException(ex);
-                }
-                finally
-                {
-                    telemetry.Flush();
-                }
+                    context.CosmosFilter
+                };
             }
+            if (!string.IsNullOrWhiteSpace(context.ApplicationInsightsKey)
+                || !string.IsNullOrWhiteSpace(context.ApplicationInsightsRole))
+            {
+                description.AppInsights = new AppInsightsDescription
+                {
+                    Key = context.ApplicationInsightsKey,
+                    Role = context.ApplicationInsightsRole
+                };
+            }
+
+            return description;
+        }
+
+        private static CONTEXT ReadContext<CONTEXT>(
+            IEnumerable<string> args,
+            IImmutableDictionary<string, Action<CONTEXT, string>> switches) where CONTEXT : new()
+        {
+            var context = new CONTEXT();
+
+            while (args.Any())
+            {
+                var first = args.First();
+
+                if (string.IsNullOrWhiteSpace(first) || first.Length < 2 || first[0] != '-')
+                {
+                    throw new BackupException($"'{first}' isn't a switch");
+                }
+
+                var switchLabel = first.Substring(1);
+
+                if (!switches.ContainsKey(switchLabel))
+                {
+                    throw new BackupException($"'{switchLabel}' isn't a valid switch");
+                }
+                if (!args.Skip(1).Any())
+                {
+                    throw new BackupException($"'{switchLabel}' doesn't have an argument");
+                }
+
+                var argument = args.Skip(1).First();
+
+                switches[switchLabel](context, argument);
+                args = args.Skip(2);
+            }
+
+            return context;
+        }
+
+        private static async Task<BackupDescription> ReadDescriptionAsync(string path)
+        {
+            var uri = new Uri(path, UriKind.RelativeOrAbsolute);
+            var content = uri.IsAbsoluteUri
+                ? await GetWebContent(uri)
+                : await File.ReadAllTextAsync(uri.ToString());
+            var deserializer = new DeserializerBuilder()
+                .WithNamingConvention(new CamelCaseNamingConvention())
+                .Build();
+            var description = deserializer.Deserialize<BackupDescription>(content);
+
+            return description;
         }
 
         private async static Task<string> GetWebContent(Uri filePath)
