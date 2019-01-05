@@ -21,7 +21,7 @@
     "variables": {
         "connectionName": "CosmosDB-Connection",
         "Account Id": "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('Cosmos DB Account Name'))]",
-        "Target Cosmos Config URL": "https://raw.githubusercontent.com/vplauzon/cosbak/master/cosbaksol/deployment/target-cosmos-config/config.json"
+        "Target Cosmos Config URL": "https://raw.githubusercontent.com/vplauzon/cosbak/master/deployment/target-cosmos-config/config.json"
     },
     "resources": [
         {
