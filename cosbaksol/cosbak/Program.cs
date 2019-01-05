@@ -111,6 +111,7 @@ namespace Cosbak
                     description.Storage.Name,
                     description.Storage.Container,
                     description.Storage.Token,
+                    description.Storage.Key,
                     description.Storage.Prefix));
 
             try

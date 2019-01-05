@@ -18,11 +18,15 @@ namespace Cosbak.Storage
             string accountName,
             string container,
             string token,
+            string key,
             string blobPrefix)
         {
+            var credentials = string.IsNullOrWhiteSpace(token)
+                ? new StorageCredentials(accountName, key)
+                : new StorageCredentials(token);
             var client = new CloudBlobClient(
                 new Uri($"https://{accountName}.blob.core.windows.net"),
-                new StorageCredentials(token));
+                credentials);
 
             _container = client.GetContainerReference(container);
             _blobPrefix = (string.IsNullOrWhiteSpace(blobPrefix) ? "" : blobPrefix.Trim() + '/');
