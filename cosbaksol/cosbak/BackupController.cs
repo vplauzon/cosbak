@@ -46,17 +46,20 @@ namespace Cosbak
                     .Empty
                     .Add("account", cosmosAccount.AccountName);
 
+                Console.WriteLine($"Account:  {cosmosAccount.AccountName}");
                 TrackEvent("Backup-Start-Account", accountProperties);
                 foreach (var db in await cosmosAccount.GetDatabasesAsync())
                 {
                     var dbProperties = accountProperties.Add("db", db.DatabaseName);
 
+                    Console.WriteLine($"Db:  {db.DatabaseName}");
                     TrackEvent("Backup-Start-Db", dbProperties);
                     foreach (var collection in await db.GetCollectionsAsync())
                     {
                         var collectionProperties =
                             dbProperties.Add("collection", collection.CollectionName);
 
+                        Console.WriteLine($"Collection:  {collection.CollectionName}");
                         TrackEvent("Backup-Start-Collection", collectionProperties);
                         await BackupCollectionAsync(collection, collectionProperties);
                         TrackEvent("Backup-End-Collection", collectionProperties);
@@ -114,6 +117,7 @@ namespace Cosbak
                     {
                         var partitionProperties = collectionProperties.Add("partition", partition.KeyRangeId);
 
+                        Console.WriteLine($"Partition:  {partition.KeyRangeId}");
                         TrackEvent("Backup-Start-Partition", partitionProperties);
                         await BackupPartitionAsync(blobPrefix, partition);
                         TrackEvent("Backup-End-Partition", partitionProperties);
