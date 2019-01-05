@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
@@ -83,8 +84,10 @@ namespace Cosbak
             }
             else
             {
-                var filePath = args.First();
-                var content = await File.ReadAllTextAsync(filePath);
+                var filePath = new Uri(args.First(), UriKind.RelativeOrAbsolute);
+                var content = filePath.IsAbsoluteUri
+                    ? await GetWebContent(filePath)
+                    : await File.ReadAllTextAsync(filePath.ToString());
                 var deserializer = new DeserializerBuilder()
                     .WithNamingConvention(new CamelCaseNamingConvention())
                     .Build();
@@ -127,6 +130,18 @@ namespace Cosbak
                 {
                     telemetry.Flush();
                 }
+            }
+        }
+
+        private async static Task<string> GetWebContent(Uri filePath)
+        {
+            var request = WebRequest.Create(filePath);
+
+            using (var response = await request.GetResponseAsync())
+            using (var stream = response.GetResponseStream())
+            using (var reader = new StreamReader(stream))
+            {
+                return await reader.ReadToEndAsync();
             }
         }
 
