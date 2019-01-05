@@ -1,8 +1,8 @@
 cosmosAccounts:
   - name:  <COSMOS ACCOUNT NAME>
     key:  <COSMOS KEY>
-   filters:
-     - mydb.mycoll
+    filters:
+      - mydb.mycoll
 storage:
   name:  <STORAGE ACCOUNT NAME>
   container:  backups
