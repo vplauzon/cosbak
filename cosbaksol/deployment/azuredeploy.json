@@ -148,7 +148,7 @@
                                             }
                                         },
                                         "method": "post",
-                                        "path": "/dbs/@{encodeURIComponent('mydb')}/colls/@{encodeURIComponent('mycoll')}/sprocs/@{encodeURIComponent('createRecords')}",
+                                        "path": "/dbs/@{encodeURIComponent('pre-filled-db')}/colls/@{encodeURIComponent('pre-filled-collection')}/sprocs/@{encodeURIComponent('createRecords')}",
                                         "headers": {
                                             "x-ms-documentdb-partitionkey": "@{outputs('GeneratePartition')}"
                                         },
