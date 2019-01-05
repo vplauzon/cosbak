@@ -330,4 +330,4 @@ ASALocalRun/
 .mfractor/
 
 #   Remove local configuration
-/deployment/azuredeploy.parameters.json
+/deployment/main-deploy.parameters.json
