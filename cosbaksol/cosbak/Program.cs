@@ -113,8 +113,7 @@ namespace Cosbak
                         description.Storage.Name,
                         description.Storage.Container,
                         description.Storage.Token,
-                        description.Storage.Prefix),
-                    description.Ram != null ? description.Ram.Backup : null);
+                        description.Storage.Prefix));
 
                 try
                 {

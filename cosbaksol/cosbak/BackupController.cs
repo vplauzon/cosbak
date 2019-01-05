@@ -16,20 +16,17 @@ namespace Cosbak
 {
     public class BackupController
     {
-        private const int DEFAULT_RAM = 20;
         private static readonly TimeSpan WAIT_FOR_CURRENT_BACKUP_PERIOD = TimeSpan.FromSeconds(2);
         private static readonly TimeSpan WAIT_FOR_CURRENT_BACKUP_TOTAL = TimeSpan.FromSeconds(15);
 
         private readonly TelemetryClient _telemetry;
         private readonly IImmutableList<ICosmosDbAccountGateway> _cosmosDbGateways;
         private readonly IStorageGateway _storageGateway;
-        private readonly int _ram;
 
         public BackupController(
             TelemetryClient telemetry,
             IEnumerable<ICosmosDbAccountGateway> cosmosDbGateways,
-            IStorageGateway storageGateway,
-            int? ram)
+            IStorageGateway storageGateway)
         {
             if (cosmosDbGateways == null)
             {
@@ -38,9 +35,6 @@ namespace Cosbak
             _telemetry = telemetry;
             _cosmosDbGateways = ImmutableArray<ICosmosDbAccountGateway>.Empty.AddRange(cosmosDbGateways);
             _storageGateway = storageGateway ?? throw new ArgumentNullException(nameof(storageGateway));
-            _ram = ram == null
-                ? DEFAULT_RAM
-                : ram.Value;
         }
 
         public async Task BackupAsync()

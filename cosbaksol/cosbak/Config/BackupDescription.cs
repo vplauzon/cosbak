@@ -11,8 +11,6 @@ namespace Cosbak.Config
 
         public StorageDescription Storage { get; set; }
 
-        public RamDescription Ram { get; set; }
-
         public AppInsightsDescription AppInsights { get; set; }
 
         public void Validate()
@@ -30,10 +28,6 @@ namespace Cosbak.Config
                 a.Validate();
             }
             Storage.Validate();
-            if (Ram != null)
-            {
-                Ram.Validate();
-            }
             if (AppInsights != null)
             {
                 AppInsights.Validate();
