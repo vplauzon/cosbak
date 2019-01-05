@@ -19,7 +19,8 @@
       }
     },
     "variables": {
-      "connectionName": "CosmosDB-Connection"
+      "connectionName": "CosmosDB-Connection",
+      "Account Id": "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('Cosmos DB Account Name'))]"
     },
     "resources": [
       {
@@ -44,6 +45,47 @@
         "dependsOn": []
       },
       {
+        "type": "Microsoft.ContainerInstance/containerGroups",
+        "apiVersion": "2018-04-01",
+        "name": "container-group",
+        "location": "East US",
+        "dependsOn": [
+          "[variables('Account Id')]"
+        ],
+        "properties": {
+          "restartPolicy": "Never",
+          "containers": [
+            {
+              "name": "cosmos-target",
+              "properties": {
+                "image": "vplauzon/cosmos-db-target-config",
+                "environmentVariables": [
+                  {
+                    "name": "ACCOUNT_ENDPOINT",
+                    "value": "[reference(variables('Account Id')).documentEndpoint]"
+                  },
+                  {
+                    "name": "ACCOUNT_KEY",
+                    "value": "[listKeys(variables('Account Id'), '2015-04-08').primaryMasterKey]"
+                  },
+                  {
+                    "name": "TARGET_URL",
+                    "value": "[variables('Target URL')]"
+                  }
+                ],
+                "resources": {
+                  "requests": {
+                    "cpu": 1,
+                    "memoryInGb": 0.2
+                  }
+                }
+              }
+            }
+          ],
+          "osType": "Linux"
+        }
+      },
+      {
         "apiVersion": "2016-06-01",
         "type": "Microsoft.Web/connections",
         "name": "[variables('connectionName')]",
@@ -59,7 +101,7 @@
           }
         },
         "dependsOn": [
-          "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('Cosmos DB Account Name'))]"
+          "[variables('Account Id')]"
         ]
       },
       {
