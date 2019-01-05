@@ -1,4 +1,7 @@
-﻿using System;
+﻿using Microsoft.Azure.Documents.Client;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace cosmos_seed
@@ -41,9 +44,67 @@ namespace cosmos_seed
             int partitionCount,
             string key)
         {
-            await Task.CompletedTask;
+            var client = new DocumentClient(
+                new Uri($"https://{account}.documents.azure.com:443/"),
+                key);
+            var collectionUri = UriFactory.CreateDocumentCollectionUri(db, collection);
+            var random = new Random();
+            var tasks = new List<Task>();
 
-            throw new NotImplementedException();
+            for (int p = 0; p != partitionCount; ++p)
+            {
+                var partition = CreateRandomPartition(random);
+
+                for (int d = 0; d != docCount / partitionCount; ++d)
+                {
+                    var content = new
+                    {
+                        name = CreateRandomString(random, 50),
+                        age = random.Next(10, 100),
+                        address = new
+                        {
+                            number = random.Next(1, 40000),
+                            street = CreateRandomString(random, 45)
+                        },
+                        salary = random.NextDouble() * 100000 + 10000,
+                        background = CreateRandomString(random, 100),
+                        province = CreateRandomString(random, 15)
+                    };
+                    var document = new Dictionary<string, object>
+                    {
+                        { "id", CreateRandomString(random, 40) },
+                        { partitionKey, partition },
+                        {"content", content }
+                    };
+
+                    tasks.Add(client.CreateDocumentAsync(collectionUri, document));
+                }
+                Console.WriteLine($"Partition:  {partition}");
+                await Task.WhenAll(tasks.ToArray());
+                tasks.Clear();
+            }
+        }
+
+        private static object CreateRandomPartition(Random random)
+        {
+            switch (random.Next(0, 3))
+            {
+                case 0:
+                    return random.Next(0, 2) == 0 ? true : false;
+                case 1:
+                    return random.Next();
+                default:
+                    return CreateRandomString(random, 30);
+            }
+        }
+
+        private static string CreateRandomString(Random random, int length)
+        {
+            var array = from i in Enumerable.Range(0, length)
+                        select (char)random.Next((int)'A', (int)'Z' + 1);
+            var value = new string(array.ToArray());
+
+            return value;
         }
     }
 }
