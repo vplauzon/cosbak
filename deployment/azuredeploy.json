@@ -51,7 +51,7 @@
         {
             "type": "Microsoft.ContainerInstance/containerGroups",
             "apiVersion": "2018-04-01",
-            "name": "[uniqueString(deployment().name)]",
+            "name": "cosmos-db-target-config",
             "location": "Canada Central",
             "dependsOn": [
                 "[variables('Account Id')]"
@@ -208,7 +208,7 @@
             }
         },
         {
-            "apiVersion": "2018-02-01",
+            "apiVersion": "2018-07-01",
             "type": "Microsoft.Storage/storageAccounts",
             "name": "[parameters('Storage Account Name')]",
             "location": "[resourceGroup().location]",
@@ -218,7 +218,33 @@
             "kind": "StorageV2",
             "properties": {
                 "isHnsEnabled": false
-            }
+            },
+            "resources": [
+                {
+                    "apiVersion": "2018-07-01",
+                    "type": "blobServices/containers",
+                    "name": "default/backup",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Storage/storageAccounts', parameters('Storage Account Name'))]"
+                    ],
+                    "properties": {
+                        "publicAccess": "None",
+                        "metadata": {}
+                    },
+                    "resources": []
+                }
+            ]
+        },
+        {
+            "apiVersion": "2015-05-01",
+            "type": "Microsoft.Insights/components",
+            "name": "insights",
+            "location": "[resourceGroup().location]",
+            "kind": "other",
+            "properties": {
+                "Application_Type": "other"
+            },
+            "dependsOn": []
         }
     ],
     "outputs": {}
