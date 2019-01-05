@@ -5,6 +5,9 @@
         "Cosmos DB Account Name": {
             "type": "String"
         },
+        "Storage Account Name": {
+            "type": "String"
+        },
         "Partition Count": {
             "type": "int",
             "defaultValue": 4000
@@ -91,6 +94,9 @@
             "type": "Microsoft.Web/connections",
             "name": "[variables('connectionName')]",
             "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[variables('Account Id')]"
+            ],
             "properties": {
                 "displayName": "[concat('Connection to Cosmos DB account \"', parameters('Cosmos DB Account Name'), '\"')]",
                 "api": {
@@ -100,16 +106,16 @@
                     "databaseAccount": "[parameters('Cosmos DB Account Name')]",
                     "accessKey": "[listKeys(variables('Account Id'), '2015-04-08').primaryMasterKey]"
                 }
-            },
-            "dependsOn": [
-                "[variables('Account Id')]"
-            ]
+            }
         },
         {
             "apiVersion": "2016-06-01",
             "type": "Microsoft.Logic/workflows",
             "name": "RandomLoadCollectionApp",
             "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/connections', variables('connectionName'))]"
+            ],
             "properties": {
                 "state": "Enabled",
                 "parameters": {
@@ -199,16 +205,21 @@
                     "contentVersion": "1.0.0.0",
                     "outputs": {}
                 }
+            }
+        },
+        {
+            "apiVersion": "2018-02-01",
+            "type": "Microsoft.Storage/storageAccounts",
+            "name": "[parameters('Storage Account Name')]",
+            "location": "[resourceGroup().location]",
+            "sku": {
+                "name": "Standard_LRS"
             },
-            "dependsOn": [
-                "[resourceId('Microsoft.Web/connections', variables('connectionName'))]"
-            ]
+            "kind": "StorageV2",
+            "properties": {
+                "isHnsEnabled": false
+            }
         }
     ],
-    "outputs": {
-        "Primary Key":{
-            "type": "string",
-            "value": "[listKeys(variables('Account Id'), '2015-04-08').primaryMasterKey]"
-        }
-    }
+    "outputs": {}
 }
