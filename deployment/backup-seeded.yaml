@@ -1,13 +1,14 @@
 cosmosAccounts:
-  - name:  vplback
-    key:  Qs9zA0BfmJATK9K5sixQQyy3L69Twe7QhJ18NMfqUB0pIzF3qN7CQigrzOiuZasXoaFiQKnaahPwzUB3DAJvuQ==
+  - name:  <COSMOS ACCOUNT NAME>
+    key:  <COSMOS KEY>
    filters:
      - mydb.mycoll
 storage:
-  name:  vplback
+  name:  <STORAGE ACCOUNT NAME>
   container:  backups
+  key:  <STORAGE KEY>
   #prefix: 1
-  token:  "?st=2018-12-30T15%3A11%3A46Z&se=2019-01-31T15%3A11%3A00Z&sp=rwdl&sv=2018-03-28&sr=c&sig=0ADZUtyRGnDWPzGBXIqUdQ6%2FHSkxxGSAAEhQ%2FDtCHUI%3D"
+  #token:  ...
 appInsights:
-  key:  bf54880f-f3cf-44a7-bf7d-378dc6f8533f
+  key:  <INSTRUMENTATION KEY>
   role:  cosmos-backup
