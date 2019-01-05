@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.28407.52
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cosbak", "cosbak\cosbak.csproj", "{0EA4CA00-47BD-4284-9739-96CB533A8538}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "cosbak", "cosbak\cosbak.csproj", "{0EA4CA00-47BD-4284-9739-96CB533A8538}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cosmos-seed", "cosmos-seed\cosmos-seed.csproj", "{63232C45-D0AB-4905-A841-76415AA0D51C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{0EA4CA00-47BD-4284-9739-96CB533A8538}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0EA4CA00-47BD-4284-9739-96CB533A8538}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0EA4CA00-47BD-4284-9739-96CB533A8538}.Release|Any CPU.Build.0 = Release|Any CPU
+		{63232C45-D0AB-4905-A841-76415AA0D51C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{63232C45-D0AB-4905-A841-76415AA0D51C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{63232C45-D0AB-4905-A841-76415AA0D51C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{63232C45-D0AB-4905-A841-76415AA0D51C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
