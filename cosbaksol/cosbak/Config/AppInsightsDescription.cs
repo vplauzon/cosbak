@@ -12,6 +12,10 @@
             {
                 throw new BackupException("App Insights description must have a key");
             }
+            if (string.IsNullOrWhiteSpace(Role))
+            {
+                throw new BackupException("App Insights description must have a role");
+            }
         }
     }
 }
