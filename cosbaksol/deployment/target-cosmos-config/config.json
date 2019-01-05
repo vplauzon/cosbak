@@ -1,18 +1,24 @@
 {
-    "$schema": "https://raw.githubusercontent.com/vplauzon/cosmos-db-target-config/master/documentation/cosmos-target-schema.json",
-    "destructiveFlags": [
-      "storedProcedure"
-    ],
-    "databases": [
-      {
-        "name": "pre-filled-db",
-        "collections": [
-          {
-            "name": "pre-filled-collection",
-            "partitionKey": "/dept",
-            "requestUnits": 400
-          }
-        ]
-      }
-    ]
-  }
+  "$schema": "https://raw.githubusercontent.com/vplauzon/cosmos-db-target-config/master/documentation/cosmos-target-schema.json",
+  "destructiveFlags": [
+    "storedProcedure"
+  ],
+  "databases": [
+    {
+      "name": "pre-filled-db",
+      "collections": [
+        {
+          "name": "pre-filled-collection",
+          "partitionKey": "/dept",
+          "requestUnits": 400,
+          "storedProcedures": [
+            {
+              "name": "createRecords",
+              "targetUrl": "createRecords.js"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
