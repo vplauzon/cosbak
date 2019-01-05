@@ -9,7 +9,7 @@
       "collections": [
         {
           "name": "pre-filled-collection",
-          "partitionKey": "/dept",
+          "partitionKey": "/part",
           "requestUnits": 400,
           "storedProcedures": [
             {

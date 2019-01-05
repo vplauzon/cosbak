@@ -4,6 +4,9 @@
   "parameters": {
     "Cosmos DB Account Name": {
         "value": "cosbak-vpl"
-    }
+    },
+    "Partition Count": {
+      "value": 1
   }
+}
 }

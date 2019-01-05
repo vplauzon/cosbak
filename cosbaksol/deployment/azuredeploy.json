@@ -98,7 +98,7 @@
                 },
                 "parameterValues": {
                     "databaseAccount": "[parameters('Cosmos DB Account Name')]",
-                    "accessKey": "[listKeys(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('Cosmos DB Account Name')), '2015-04-08').primaryMasterKey]"
+                    "accessKey": "[listKeys(variables('Account Id'), '2015-04-08').primaryMasterKey]"
                 }
             },
             "dependsOn": [
@@ -206,5 +206,9 @@
         }
     ],
     "outputs": {
+        "Primary Key":{
+            "type": "string",
+            "value": "[listKeys(variables('Account Id'), '2015-04-08').primaryMasterKey]"
+        }
     }
 }
