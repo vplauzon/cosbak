@@ -113,6 +113,7 @@ namespace Cosbak
                     var startedMarkerTask = _storageGateway.UploadBlockBlobAsync(blobPrefix + "started", string.Empty);
                     var partitionList = await collection.GetPartitionsAsync();
 
+                    Console.WriteLine($"{partitionList.Length} partitions");
                     //  Run all partitions in parallel to take advantage of Cosmos Compute
                     await Task.WhenAll(from partition in partitionList
                                        select LogBackupPartitionAsync(blobPrefix, partition, collectionProperties));
@@ -142,7 +143,6 @@ namespace Cosbak
         {
             var partitionProperties = collectionProperties.Add("partition", partition.KeyRangeId);
 
-            Console.WriteLine($"Partition:  {partition.KeyRangeId}");
             TrackEvent("Backup-Start-Partition", partitionProperties);
             await BackupPartitionAsync(blobPrefix, partition);
             TrackEvent("Backup-End-Partition", partitionProperties);
@@ -285,9 +285,10 @@ namespace Cosbak
                 //  Make sure work done on blobs is done
                 await pendingStorageTask;
                 //  Push more work to storage
-                pendingStorageTask = Task.WhenAll(
-                    _storageGateway.AppendBlobAsync(indexPath, indexStream),
-                    _storageGateway.AppendBlobAsync(contentPath, contentStream));
+                //  ####!!!!! Removing storage operations to measure impact only
+                //pendingStorageTask = Task.WhenAll(
+                //    _storageGateway.AppendBlobAsync(indexPath, indexStream),
+                //    _storageGateway.AppendBlobAsync(contentPath, contentStream));
             }
             //  Make sure storage work is done
             await pendingStorageTask;
