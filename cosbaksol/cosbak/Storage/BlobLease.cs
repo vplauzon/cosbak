@@ -23,6 +23,7 @@ namespace Cosbak.Storage
             _leaseId = leaseId;
             _timer = new Timer(DEFAULT_LEASE_RENEWAL_PERIOD.TotalMilliseconds);
             _timer.Elapsed += OnElapsed;
+            _timer.Enabled = true;
         }
 
         public string LeaseId
