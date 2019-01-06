@@ -18,7 +18,6 @@ namespace Cosbak
     {
         private static readonly TimeSpan WAIT_FOR_CURRENT_BACKUP_PERIOD = TimeSpan.FromSeconds(2);
         private static readonly TimeSpan WAIT_FOR_CURRENT_BACKUP_TOTAL = TimeSpan.FromSeconds(15);
-        private const int MAX_BUFFER = 100 * 1024;
 
         private readonly TelemetryClient _telemetry;
         private readonly IImmutableList<ICosmosDbAccountGateway> _cosmosDbGateways;
@@ -253,8 +252,6 @@ namespace Cosbak
             var feed = partition.GetChangeFeed();
             var indexPath = blobPrefix + partition.KeyRangeId + ".index";
             var contentPath = blobPrefix + partition.KeyRangeId + ".content";
-            var indexStream = new MemoryStream();
-            var contentStream = new MemoryStream();
             var pendingStorageTask = Task.WhenAll(
                 _storageGateway.CreateAppendBlobAsync(indexPath),
                 _storageGateway.CreateAppendBlobAsync(contentPath));
@@ -262,37 +259,31 @@ namespace Cosbak
             while (feed.HasMoreResults)
             {
                 var batch = await feed.GetBatchAsync();
+                var indexStream = new MemoryStream();
+                var contentStream = new MemoryStream();
 
-                if (batch.Length > 0)
+                using (var writer = new BinaryWriter(indexStream, Encoding.ASCII, true))
                 {
-                    using (var writer = new BinaryWriter(indexStream, Encoding.ASCII, true))
+                    foreach (var doc in batch)
                     {
-                        foreach (var doc in batch)
-                        {
-                            doc.MetaData.WriteAsync(writer);
-                            contentStream.Write(doc.Content);
-                        }
+                        doc.MetaData.WriteAsync(writer);
+                        contentStream.Write(doc.Content);
                     }
                 }
 
-                //  Let buffer accumulate until MAX_BUFFER to batch bigger storage workloads
-                if (pendingStorageTask.IsCompleted || contentStream.Length > MAX_BUFFER || !feed.HasMoreResults)
-                {
-                    //  Make sure work done on blobs is done
-                    await pendingStorageTask;
-                    indexStream.Flush();
-                    contentStream.Flush();
-                    indexStream.Position = 0;
-                    contentStream.Position = 0;
-                    //  Push more work to storage
-                    pendingStorageTask = Task.WhenAll(
-                        _storageGateway.AppendBlobAsync(indexPath, indexStream),
-                        _storageGateway.AppendBlobAsync(contentPath, contentStream));
-                    //  Reset streams for next round
-                    indexStream = new MemoryStream();
-                    contentStream = new MemoryStream();
-                }
+                indexStream.Flush();
+                contentStream.Flush();
+                indexStream.Position = 0;
+                contentStream.Position = 0;
+                //  Make sure work done on blobs is done
+                await pendingStorageTask;
+                //  Push more work to storage
+                pendingStorageTask = Task.WhenAll(
+                    _storageGateway.AppendBlobAsync(indexPath, indexStream),
+                    _storageGateway.AppendBlobAsync(contentPath, contentStream));
             }
+            //  Make sure storage work is done
+            await pendingStorageTask;
         }
     }
 }
