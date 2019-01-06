@@ -10,11 +10,11 @@
         },
         "Partition Count": {
             "type": "int",
-            "defaultValue": 4000
+            "defaultValue": 15000
         },
         "Records per partition": {
             "type": "int",
-            "defaultValue": 300
+            "defaultValue": 20000
         },
         "Geo Ratio": {
             "type": "string",
