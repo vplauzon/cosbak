@@ -113,15 +113,9 @@ namespace Cosbak
                     var startedMarkerTask = _storageGateway.UploadBlockBlobAsync(blobPrefix + "started", string.Empty);
                     var partitionList = await collection.GetPartitionsAsync();
 
-                    foreach (var partition in partitionList)
-                    {
-                        var partitionProperties = collectionProperties.Add("partition", partition.KeyRangeId);
-
-                        Console.WriteLine($"Partition:  {partition.KeyRangeId}");
-                        TrackEvent("Backup-Start-Partition", partitionProperties);
-                        await BackupPartitionAsync(blobPrefix, partition);
-                        TrackEvent("Backup-End-Partition", partitionProperties);
-                    }
+                    //  Run all partitions in parallel to take advantage of Cosmos Compute
+                    await Task.WhenAll(from partition in partitionList
+                                       select LogBackupPartitionAsync(blobPrefix, partition, collectionProperties));
 
                     var doneMarkerTask = _storageGateway.UploadBlockBlobAsync(blobPrefix + "done", string.Empty);
                     if (currentBackupLease != null)
@@ -139,6 +133,19 @@ namespace Cosbak
                     await currentBackupLease.ReleaseLeaseAsync();
                 }
             }
+        }
+
+        private async Task LogBackupPartitionAsync(
+            string blobPrefix,
+            IPartitionGateway partition,
+            IImmutableDictionary<string, string> collectionProperties)
+        {
+            var partitionProperties = collectionProperties.Add("partition", partition.KeyRangeId);
+
+            Console.WriteLine($"Partition:  {partition.KeyRangeId}");
+            TrackEvent("Backup-Start-Partition", partitionProperties);
+            await BackupPartitionAsync(blobPrefix, partition);
+            TrackEvent("Backup-End-Partition", partitionProperties);
         }
 
         private async Task<string> PickContentFolderAsync(string blobPrefix)
