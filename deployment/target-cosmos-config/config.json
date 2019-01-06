@@ -10,7 +10,7 @@
         {
           "name": "pre-filled-collection",
           "partitionKey": "/part",
-          "requestUnits": 400,
+          "requestUnits": 100000,
           "storedProcedures": [
             {
               "name": "createRecords",
