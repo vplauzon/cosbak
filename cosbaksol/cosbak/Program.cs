@@ -258,6 +258,7 @@ namespace Cosbak
             {
                 TelemetryConfiguration.Active.InstrumentationKey = appInsights.Key;
 
+                TelemetryConfiguration.Active.TelemetryInitializers.Add(new SessionInitializer());
                 if (!string.IsNullOrWhiteSpace(appInsights.Role))
                 {
                     TelemetryConfiguration.Active.TelemetryInitializers.Add(new RoleNameInitializer(appInsights.Role));
