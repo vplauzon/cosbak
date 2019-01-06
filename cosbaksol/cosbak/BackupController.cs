@@ -104,7 +104,7 @@ namespace Cosbak
                     lastBackupPath,
                     collection);
 
-                if (currentBackup.FromTimeStamp != currentBackup.ToTimeStamp)
+                if (currentBackup != null && currentBackup.FromTimeStamp != currentBackup.ToTimeStamp)
                 {
                     //  Max long is 9223372036854775807, hence 19 digits
                     var blobPrefix =
@@ -129,7 +129,7 @@ namespace Cosbak
                 {
                     TrackEvent("Backup-No Backup required", collectionProperties);
                 }
-                if (currentBackup != null)
+                if (currentBackupLease != null)
                 {
                     await currentBackupLease.ReleaseLeaseAsync();
                 }
@@ -188,16 +188,24 @@ namespace Cosbak
                 var lastUpdateTimeTask = collection.GetLastUpdateTimeAsync();
                 var lastBackupTime = await lastBackupTimeTask;
                 var lastUpdateTime = await lastUpdateTimeTask;
-                var currentBackup = new CurrentBackup
+
+                if (lastUpdateTime != null)
                 {
-                    FromTimeStamp = lastBackupTime,
-                    ToTimeStamp = lastUpdateTime
-                };
-                var currentBackupContent = JsonConvert.SerializeObject(currentBackup);
+                    var currentBackup = new CurrentBackup
+                    {
+                        FromTimeStamp = lastBackupTime,
+                        ToTimeStamp = lastUpdateTime.Value
+                    };
+                    var currentBackupContent = JsonConvert.SerializeObject(currentBackup);
 
-                await _storageGateway.UploadBlockBlobAsync(currentBackupPath, currentBackupContent, currentBackupLease.LeaseId);
+                    await _storageGateway.UploadBlockBlobAsync(currentBackupPath, currentBackupContent, currentBackupLease.LeaseId);
 
-                return currentBackup;
+                    return currentBackup;
+                }
+                else
+                {
+                    return null;
+                }
             }
         }
 
@@ -285,10 +293,9 @@ namespace Cosbak
                 //  Make sure work done on blobs is done
                 await pendingStorageTask;
                 //  Push more work to storage
-                //  ####!!!!! Removing storage operations to measure impact only
-                //pendingStorageTask = Task.WhenAll(
-                //    _storageGateway.AppendBlobAsync(indexPath, indexStream),
-                //    _storageGateway.AppendBlobAsync(contentPath, contentStream));
+                pendingStorageTask = Task.WhenAll(
+                    _storageGateway.AppendBlobAsync(indexPath, indexStream),
+                    _storageGateway.AppendBlobAsync(contentPath, contentStream));
             }
             //  Make sure storage work is done
             await pendingStorageTask;

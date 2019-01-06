@@ -14,6 +14,6 @@ namespace Cosbak.Cosmos
 
         Task<IPartitionGateway[]> GetPartitionsAsync();
 
-        Task<Int64> GetLastUpdateTimeAsync();
+        Task<Int64?> GetLastUpdateTimeAsync();
     }
 }

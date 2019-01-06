@@ -32,7 +32,7 @@ namespace Cosbak.Cosmos
 
         string ICollectionGateway.PartitionPath => _partitionPath;
 
-        async Task<long> ICollectionGateway.GetLastUpdateTimeAsync()
+        async Task<long?> ICollectionGateway.GetLastUpdateTimeAsync()
         {
             var sql = new SqlQuerySpec("SELECT TOP 1 c._ts FROM c ORDER BY c._ts DESC");
             var query = _client.CreateDocumentQuery<IDictionary<string, long>>(_collectionUri, sql, new FeedOptions
@@ -40,7 +40,7 @@ namespace Cosbak.Cosmos
                 EnableCrossPartitionQuery = true
             });
             var results = await QueryHelper.GetAllResultsAsync(query.AsDocumentQuery());
-            var time = results[0].First().Value;
+            var time = results.Length == 0 ? (long?)null : results[0].First().Value;
 
             return time;
         }
