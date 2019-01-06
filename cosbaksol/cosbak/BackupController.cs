@@ -252,8 +252,7 @@ namespace Cosbak
             var feed = partition.GetChangeFeed();
             var indexPath = blobPrefix + partition.KeyRangeId + ".index";
             var contentPath = blobPrefix + partition.KeyRangeId + ".content";
-
-            await Task.WhenAll(
+            var pendingStorageTask = Task.WhenAll(
                 _storageGateway.CreateAppendBlobAsync(indexPath),
                 _storageGateway.CreateAppendBlobAsync(contentPath));
             while (feed.HasMoreResults)
@@ -275,10 +274,15 @@ namespace Cosbak
                 contentStream.Flush();
                 indexStream.Position = 0;
                 contentStream.Position = 0;
-                await Task.WhenAll(
+                //  Make sure work done on blobs is done
+                await pendingStorageTask;
+                //  Push more work to storage
+                pendingStorageTask = Task.WhenAll(
                     _storageGateway.AppendBlobAsync(indexPath, indexStream),
                     _storageGateway.AppendBlobAsync(contentPath, contentStream));
             }
+            //  Make sure storage work is done
+            await pendingStorageTask;
         }
     }
 }
