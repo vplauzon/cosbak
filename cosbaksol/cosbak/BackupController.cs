@@ -61,8 +61,12 @@ namespace Cosbak
 
                         Console.WriteLine($"Collection:  {collection.CollectionName}");
                         TrackEvent("Backup-Start-Collection", collectionProperties);
-                        await BackupCollectionAsync(collection, collectionProperties);
-                        TrackEvent("Backup-End-Collection", collectionProperties);
+
+                        var toTimeStamp = await BackupCollectionAsync(collection, collectionProperties);
+
+                        TrackEvent(
+                            "Backup-End-Collection",
+                            collectionProperties.Add("time", toTimeStamp.ToString()));
                     }
                     TrackEvent("Backup-End-Db", dbProperties);
                 }
@@ -71,21 +75,18 @@ namespace Cosbak
             TrackEvent("Backup-End");
         }
 
-        private void TrackEvent(string eventName, IImmutableDictionary<string, string> properties = null)
+        private void TrackEvent(
+            string eventName,
+            IImmutableDictionary<string, string> properties = null,
+            IImmutableDictionary<string, double> metrics = null)
         {
-            if (properties == null)
-            {
-                _telemetry.TrackEvent(eventName);
-            }
-            else
-            {
-                _telemetry.TrackEvent(
-                    eventName,
-                    properties.ToDictionary(p => p.Key, p => p.Value));
-            }
+            _telemetry.TrackEvent(
+                eventName,
+                properties == null ? null : properties.ToDictionary(p => p.Key, p => p.Value),
+                metrics == null ? null : metrics.ToDictionary(p => p.Key, p => p.Value));
         }
 
-        private async Task BackupCollectionAsync(
+        private async Task<long?> BackupCollectionAsync(
             ICollectionGateway collection,
             IImmutableDictionary<string, string> collectionProperties)
         {
@@ -116,7 +117,7 @@ namespace Cosbak
                     Console.WriteLine($"{partitionList.Length} partitions");
                     //  Run all partitions in parallel to take advantage of Cosmos Compute
                     await Task.WhenAll(from partition in partitionList
-                                       select LogBackupPartitionAsync(blobPrefix, partition, collectionProperties));
+                                       select BackupPartitionAsync(blobPrefix, partition, collectionProperties));
 
                     var doneMarkerTask = _storageGateway.UploadBlockBlobAsync(blobPrefix + "done", string.Empty);
                     if (currentBackupLease != null)
@@ -133,19 +134,9 @@ namespace Cosbak
                 {
                     await currentBackupLease.ReleaseLeaseAsync();
                 }
+
+                return currentBackup == null ? (long?)null : currentBackup.ToTimeStamp;
             }
-        }
-
-        private async Task LogBackupPartitionAsync(
-            string blobPrefix,
-            IPartitionGateway partition,
-            IImmutableDictionary<string, string> collectionProperties)
-        {
-            var partitionProperties = collectionProperties.Add("partition", partition.KeyRangeId);
-
-            TrackEvent("Backup-Start-Partition", partitionProperties);
-            await BackupPartitionAsync(blobPrefix, partition);
-            TrackEvent("Backup-End-Partition", partitionProperties);
         }
 
         private async Task<string> PickContentFolderAsync(string blobPrefix)
@@ -262,14 +253,22 @@ namespace Cosbak
             }
         }
 
-        private async Task BackupPartitionAsync(string blobPrefix, IPartitionGateway partition)
+        private async Task BackupPartitionAsync(
+            string blobPrefix,
+            IPartitionGateway partition,
+            IImmutableDictionary<string, string> collectionProperties)
         {
+            var partitionProperties = collectionProperties.Add("partition", partition.KeyRangeId);
+
+            TrackEvent("Backup-Start-Partition", partitionProperties);
+
             var feed = partition.GetChangeFeed();
             var indexPath = blobPrefix + partition.KeyRangeId + ".index";
             var contentPath = blobPrefix + partition.KeyRangeId + ".content";
             var pendingStorageTask = Task.WhenAll(
                 _storageGateway.CreateAppendBlobAsync(indexPath),
                 _storageGateway.CreateAppendBlobAsync(contentPath));
+            long totalIndex = 0, totalContent = 0, totalDocuments = 0;
 
             while (feed.HasMoreResults)
             {
@@ -290,6 +289,9 @@ namespace Cosbak
                 contentStream.Flush();
                 indexStream.Position = 0;
                 contentStream.Position = 0;
+                totalIndex += indexStream.Length;
+                totalContent += contentStream.Length;
+                totalDocuments += batch.Length;
                 //  Make sure work done on blobs is done
                 await pendingStorageTask;
                 //  Push more work to storage
@@ -299,6 +301,13 @@ namespace Cosbak
             }
             //  Make sure storage work is done
             await pendingStorageTask;
+
+            var metrics = ImmutableDictionary<string, double>.Empty
+                .Add("totalIndex", totalIndex)
+                .Add("totalContent", totalContent)
+                .Add("totalDocuments", totalDocuments);
+
+            TrackEvent("Backup-End-Partition", partitionProperties, metrics);
         }
     }
 }
