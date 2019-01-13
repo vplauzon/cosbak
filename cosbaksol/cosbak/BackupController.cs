@@ -280,7 +280,7 @@ namespace Cosbak
                 {
                     foreach (var doc in batch)
                     {
-                        doc.MetaData.WriteAsync(writer);
+                        doc.MetaData.Write(writer);
                         contentStream.Write(doc.Content);
                     }
                 }

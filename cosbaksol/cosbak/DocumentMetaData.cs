@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace Cosbak.Cosmos
+namespace Cosbak
 {
     public class DocumentMetaData
     {
@@ -33,7 +33,12 @@ namespace Cosbak.Cosmos
 
         public int Size { get; }
 
-        public void WriteAsync(BinaryWriter writer)
+        public static DocumentMetaData Read(BinaryReader reader)
+        {
+            throw new NotImplementedException();
+        }
+
+        public virtual void Write(BinaryWriter writer)
         {
             writer.Write(Id);
             WritePartitionKey(writer);
