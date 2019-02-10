@@ -28,12 +28,8 @@ namespace Cosbak
             ICosmosDbAccountGateway cosmosDbGateway,
             IStorageGateway storageGateway)
         {
-            if (cosmosDbGateway == null)
-            {
-                throw new ArgumentNullException(nameof(cosmosDbGateway));
-            }
             _telemetry = telemetry;
-            _cosmosDbGateway = cosmosDbGateway;
+            _cosmosDbGateway = cosmosDbGateway ?? throw new ArgumentNullException(nameof(cosmosDbGateway));
             _storageGateway = storageGateway ?? throw new ArgumentNullException(nameof(storageGateway));
         }
 
