@@ -55,7 +55,7 @@ namespace Cosbak
                     Console.WriteLine($"Collection:  {collection.CollectionName}");
                     TrackEvent("Backup-Start-Collection", collectionProperties);
 
-                    var toTimeStamp = await BackupCollectionAsync(collection, collectionProperties);
+                    var toTimeStamp = await BackupCollectionAsync(1, collection, collectionProperties);
 
                     TrackEvent(
                         "Backup-End-Collection",
@@ -78,12 +78,12 @@ namespace Cosbak
         }
 
         private async Task<long?> BackupCollectionAsync(
+            int rotation,
             ICollectionGateway collection,
             IImmutableDictionary<string, string> collectionProperties)
         {
-            var account = collection.Parent.Parent.AccountName;
             var db = collection.Parent.DatabaseName;
-            var backupPrefix = $"{account}/{db}/{collection.CollectionName}/backups/";
+            var backupPrefix = $"{rotation.ToString("D10")}/{db}.{collection.CollectionName}/backups/";
             var currentBackupPath = backupPrefix + "currentBackup.json";
 
             //  Winner of the current backup lease becomes the master process
