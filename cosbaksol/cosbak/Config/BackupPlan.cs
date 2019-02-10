@@ -1,10 +1,13 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 
 namespace Cosbak.Config
 {
     public class BackupPlan
     {
         public string[] Filters { get; set; }
+
+        public TimeSpan? StartFrom { get; set; }
 
         public BackupFrequencies Frequencies { get; set; }
 
