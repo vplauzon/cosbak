@@ -76,9 +76,21 @@ namespace Cosbak.Cosmos
                                select g;
                 var dictionary = grouping.ToImmutableSortedDictionary(
                     g => g.Key,
-                    g => g.Select(i => i.Collection).ToArray());
+                    g => AccountForNoCollections(g.Select(i => i.Collection).ToArray()));
 
                 return dictionary;
+            }
+        }
+
+        private string[] AccountForNoCollections(string[] collections)
+        {
+            if (collections.Any(c => c == null))
+            {
+                return new string[0];
+            }
+            else
+            {
+                return collections;
             }
         }
     }

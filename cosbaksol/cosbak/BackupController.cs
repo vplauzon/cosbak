@@ -20,59 +20,54 @@ namespace Cosbak
         private static readonly TimeSpan WAIT_FOR_CURRENT_BACKUP_TOTAL = TimeSpan.FromSeconds(15);
 
         private readonly TelemetryClient _telemetry;
-        private readonly IImmutableList<ICosmosDbAccountGateway> _cosmosDbGateways;
+        private readonly ICosmosDbAccountGateway _cosmosDbGateway;
         private readonly IStorageGateway _storageGateway;
 
         public BackupController(
             TelemetryClient telemetry,
-            IEnumerable<ICosmosDbAccountGateway> cosmosDbGateways,
+            ICosmosDbAccountGateway cosmosDbGateway,
             IStorageGateway storageGateway)
         {
-            if (cosmosDbGateways == null)
+            if (cosmosDbGateway == null)
             {
-                throw new ArgumentNullException(nameof(cosmosDbGateways));
+                throw new ArgumentNullException(nameof(cosmosDbGateway));
             }
             _telemetry = telemetry;
-            _cosmosDbGateways = ImmutableArray<ICosmosDbAccountGateway>.Empty.AddRange(cosmosDbGateways);
+            _cosmosDbGateway = cosmosDbGateway;
             _storageGateway = storageGateway ?? throw new ArgumentNullException(nameof(storageGateway));
         }
 
         public async Task BackupAsync()
         {
-            TrackEvent("Backup-Start");
-            foreach (var cosmosAccount in _cosmosDbGateways)
+            var accountProperties = ImmutableDictionary<string, string>
+                .Empty
+                .Add("account", _cosmosDbGateway.AccountName);
+
+            TrackEvent("Backup-Start", accountProperties);
+            Console.WriteLine($"Account:  {_cosmosDbGateway.AccountName}");
+            foreach (var db in await _cosmosDbGateway.GetDatabasesAsync())
             {
-                var accountProperties = ImmutableDictionary<string, string>
-                    .Empty
-                    .Add("account", cosmosAccount.AccountName);
+                var dbProperties = accountProperties.Add("db", db.DatabaseName);
 
-                Console.WriteLine($"Account:  {cosmosAccount.AccountName}");
-                TrackEvent("Backup-Start-Account", accountProperties);
-                foreach (var db in await cosmosAccount.GetDatabasesAsync())
+                Console.WriteLine($"Db:  {db.DatabaseName}");
+                TrackEvent("Backup-Start-Db", dbProperties);
+                foreach (var collection in await db.GetCollectionsAsync())
                 {
-                    var dbProperties = accountProperties.Add("db", db.DatabaseName);
+                    var collectionProperties =
+                        dbProperties.Add("collection", collection.CollectionName);
 
-                    Console.WriteLine($"Db:  {db.DatabaseName}");
-                    TrackEvent("Backup-Start-Db", dbProperties);
-                    foreach (var collection in await db.GetCollectionsAsync())
-                    {
-                        var collectionProperties =
-                            dbProperties.Add("collection", collection.CollectionName);
+                    Console.WriteLine($"Collection:  {collection.CollectionName}");
+                    TrackEvent("Backup-Start-Collection", collectionProperties);
 
-                        Console.WriteLine($"Collection:  {collection.CollectionName}");
-                        TrackEvent("Backup-Start-Collection", collectionProperties);
+                    var toTimeStamp = await BackupCollectionAsync(collection, collectionProperties);
 
-                        var toTimeStamp = await BackupCollectionAsync(collection, collectionProperties);
-
-                        TrackEvent(
-                            "Backup-End-Collection",
-                            collectionProperties.Add("time", toTimeStamp.ToString()));
-                    }
-                    TrackEvent("Backup-End-Db", dbProperties);
+                    TrackEvent(
+                        "Backup-End-Collection",
+                        collectionProperties.Add("time", toTimeStamp.ToString()));
                 }
-                TrackEvent("Backup-End-Account", accountProperties);
+                TrackEvent("Backup-End-Db", dbProperties);
             }
-            TrackEvent("Backup-End");
+            TrackEvent("Backup-End", accountProperties);
         }
 
         private void TrackEvent(

@@ -7,31 +7,28 @@ namespace Cosbak.Config
 {
     public class BackupDescription
     {
-        public CosmosAccountDescription[] CosmosAccounts { get; set; }
-
-        public StorageDescription Storage { get; set; }
+        public CosmosAccountDescription CosmosAccount { get; set; }
 
         public AppInsightsDescription AppInsights { get; set; }
 
+        public BackupPlan Plan { get; set; }
+
         public void Validate()
         {
-            if (CosmosAccounts == null || !CosmosAccounts.Any())
+            if (CosmosAccount == null)
             {
-                throw new BackupException("Backup Description must contain at least one Cosmos DB account");
+                throw new BackupException("Backup Description must contain Cosmos DB account");
             }
-            if (Storage == null)
-            {
-                throw new BackupException("Backup Description must contain storage description");
-            }
-            foreach (var a in CosmosAccounts)
-            {
-                a.Validate();
-            }
-            Storage.Validate();
+            CosmosAccount.Validate();
             if (AppInsights != null)
             {
                 AppInsights.Validate();
             }
+            if (Plan == null)
+            {
+                throw new BackupException("Backup Description must contain a plan");
+            }
+            Plan.Validate();
         }
     }
 }

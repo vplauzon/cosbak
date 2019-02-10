@@ -14,22 +14,37 @@ namespace Cosbak.Storage
         private readonly CloudBlobContainer _container;
         private readonly string _blobPrefix;
 
-        public StorageGateway(
-            string accountName,
+        private StorageGateway(
+            Uri baseUri,
             string container,
             string token,
-            string key,
             string blobPrefix)
         {
-            var credentials = string.IsNullOrWhiteSpace(token)
-                ? new StorageCredentials(accountName, key)
-                : new StorageCredentials(token);
-            var client = new CloudBlobClient(
-                new Uri($"https://{accountName}.blob.core.windows.net"),
-                credentials);
+            var credentials = new StorageCredentials(token);
+            var client = new CloudBlobClient(baseUri, credentials);
 
             _container = client.GetContainerReference(container);
-            _blobPrefix = (string.IsNullOrWhiteSpace(blobPrefix) ? "" : blobPrefix.Trim() + '/');
+            _blobPrefix = blobPrefix;
+        }
+
+        public static IStorageGateway Create(Uri folderUri)
+        {
+            var baseUri = new Uri("https://" + folderUri.Host);
+            var parts = folderUri.AbsolutePath.Split('/');
+
+            if (parts.Length < 2)
+            {
+                throw new BackupException("Folder Uri must at least contain the container's name:  "
+                    + folderUri.AbsolutePath);
+            }
+
+            var container = parts[1];
+            var token = folderUri.Query;
+            var blobPrefix = parts.Length == 2
+                ? string.Empty
+                : string.Join('/', parts.Skip(2)) + '/';
+
+            return new StorageGateway(baseUri, container, token, blobPrefix);
         }
 
         async Task<string> IStorageGateway.GetContentAsync(string contentPath)

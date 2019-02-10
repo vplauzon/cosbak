@@ -51,16 +51,20 @@ namespace Cosbak
         {
             Console.WriteLine("Here are the base commands:");
             Console.WriteLine();
-            Console.WriteLine("backup:\t\t\t\tTake a backup of a collection (or database or account)");
+            Console.WriteLine("backup:\t\t\t\tTake a backup of one or many collections");
+            Console.WriteLine("restore:\t\t\t\tRestore a collection (or database or account)");
+            Console.WriteLine("rotation:\t\t\t\tRotate backups");
         }
 
         private static void DisplayBackupHelp()
         {
             Console.WriteLine("usage:");
-            Console.WriteLine("\tcosbak backup -f BACKUP_DESCRIPTION_FILE");
-            Console.WriteLine("\tcosbak backup -ca COSMOS_ACCOUNT_NAME -ck COSMOS_ACCOUNT_KEY [-cf COSMOS_FILTER] "
-                + "-sa STORAGE_ACCOUNT_NAME -sc STORAGE_CONTAINER [-sp STORAGE_PREFIX] [-st STORAGE_TOKEN] [-sk STORAGE_KEY] "
-                + "[-ak APPLICATION_INSIGHTS_INSTRUMENTATION_KEY -ar APPLICATION_INSIGHTS_ROLE]");
+            Console.WriteLine("\tcosbak backup -f BACKUP_DESCRIPTION_FOLDER "
+                + "[-ck COSMOS_ACCOUNT_KEY] "
+                + "[-ak APPLICATION_INSIGHTS_INSTRUMENTATION_KEY]");
+            Console.WriteLine();
+            Console.WriteLine("BACKUP_DESCRIPTION_FOLDER must have a SAS token allowing "
+                + "read/write/list/delete on the blob container");
         }
         #endregion
 
@@ -70,7 +74,11 @@ namespace Cosbak
             {
                 case "backup":
                     await BackupAsync(args);
+                    return;
 
+                case "restore":
+                case "rotation":
+                    Console.Error.WriteLine($"Command '{command}' not supported yet");
                     return;
 
                 default:
@@ -85,37 +93,24 @@ namespace Cosbak
         {
             var switches = ImmutableSortedDictionary<string, Action<BackupContext, string>>
                 .Empty
-                .Add("f", (c, a) => c.File = a)
-                .Add("ca", (c, a) => c.CosmosAccountName = a)
+                .Add("f", (c, a) => c.FolderUri = a)
                 .Add("ck", (c, a) => c.CosmosAccountKey = a)
-                .Add("cf", (c, a) => c.CosmosFilter = a)
-                .Add("sa", (c, a) => c.StorageAccountName = a)
-                .Add("sc", (c, a) => c.StorageContainer = a)
-                .Add("sp", (c, a) => c.StoragePrefix = a)
-                .Add("st", (c, a) => c.StorageToken = a)
-                .Add("sk", (c, a) => c.StorageKey = a)
-                .Add("ak", (c, a) => c.ApplicationInsightsKey = a)
-                .Add("ar", (c, a) => c.ApplicationInsightsRole = a);
+                .Add("ak", (c, a) => c.ApplicationInsightsKey = a);
             var context = ReadContext(args, switches);
-            var description = await InferDescriptionAsync(context);
+            var storageGateway = CreateStorageGateway(context.FolderUri);
+            var description = await InferDescriptionAsync(storageGateway, context);
+            var telemetry = new TelemetryClient();
 
             InitializeAppInsights(description.AppInsights);
 
-            var telemetry = new TelemetryClient();
-            var cosmosGateways = from a in description.CosmosAccounts
-                                 select new CosmosDbAccountGateway(a.Name, a.Key, a.Filters);
-            var controller = new BackupController(
-                telemetry,
-                cosmosGateways,
-                new StorageGateway(
-                    description.Storage.Name,
-                    description.Storage.Container,
-                    description.Storage.Token,
-                    description.Storage.Key,
-                    description.Storage.Prefix));
-
             try
             {
+                var cosmosGateway = new CosmosDbAccountGateway(description.CosmosAccount.Name, description.CosmosAccount.Key, description.Plan.Filters);
+                var controller = new BackupController(
+                    telemetry,
+                    cosmosGateway,
+                    storageGateway);
+
                 await controller.BackupAsync();
             }
             catch (Exception ex)
@@ -128,14 +123,39 @@ namespace Cosbak
             }
         }
 
-        private async static Task<BackupDescription> InferDescriptionAsync(BackupContext context)
+        private static IStorageGateway CreateStorageGateway(string folderUri)
+        {
+            if (string.IsNullOrWhiteSpace(folderUri))
+            {
+                throw new BackupException("Folder Uri (-f) is required for backups");
+            }
+
+            var uri = new Uri(folderUri, UriKind.RelativeOrAbsolute);
+
+            if (!uri.IsAbsoluteUri)
+            {
+                throw new BackupException("Folder must be an Azure Storage container or container's folder");
+            }
+
+            return StorageGateway.Create(uri);
+        }
+
+        private async static Task<BackupDescription> InferDescriptionAsync(IStorageGateway storage, BackupContext context)
         {
             try
             {
-                var description = string.IsNullOrWhiteSpace(context.File)
-                    ? CreateFromContext(context)
-                    : await ReadDescriptionAsync(context.File);
+                var description = await ReadDescriptionAsync(storage);
 
+                if (!string.IsNullOrWhiteSpace(context.CosmosAccountKey)
+                    && description.CosmosAccount != null)
+                {
+                    description.CosmosAccount.Key = context.CosmosAccountKey;
+                }
+                if (!string.IsNullOrWhiteSpace(context.ApplicationInsightsKey)
+                    && description.AppInsights != null)
+                {
+                    description.AppInsights.Key = context.ApplicationInsightsKey;
+                }
                 description.Validate();
 
                 return description;
@@ -147,48 +167,6 @@ namespace Cosbak
 
                 throw;
             }
-        }
-
-        private static BackupDescription CreateFromContext(BackupContext context)
-        {
-            var description = new BackupDescription
-            {
-                CosmosAccounts = new[]
-                {
-                    new CosmosAccountDescription
-                    {
-                        Name=context.CosmosAccountName,
-                        Key=context.CosmosAccountKey
-                    }
-                },
-                Storage = new StorageDescription
-                {
-                    Name = context.StorageAccountName,
-                    Container = context.StorageContainer,
-                    Prefix = context.StoragePrefix,
-                    Token = context.StorageToken,
-                    Key = context.StorageKey
-                }
-            };
-
-            if (!string.IsNullOrWhiteSpace(context.CosmosFilter))
-            {
-                description.CosmosAccounts[0].Filters = new[]
-                {
-                    context.CosmosFilter
-                };
-            }
-            if (!string.IsNullOrWhiteSpace(context.ApplicationInsightsKey)
-                || !string.IsNullOrWhiteSpace(context.ApplicationInsightsRole))
-            {
-                description.AppInsights = new AppInsightsDescription
-                {
-                    Key = context.ApplicationInsightsKey,
-                    Role = context.ApplicationInsightsRole
-                };
-            }
-
-            return description;
         }
 
         private static CONTEXT ReadContext<CONTEXT>(
@@ -226,30 +204,15 @@ namespace Cosbak
             return context;
         }
 
-        private static async Task<BackupDescription> ReadDescriptionAsync(string path)
+        private static async Task<BackupDescription> ReadDescriptionAsync(IStorageGateway storage)
         {
-            var uri = new Uri(path, UriKind.RelativeOrAbsolute);
-            var content = uri.IsAbsoluteUri
-                ? await GetWebContent(uri)
-                : await File.ReadAllTextAsync(uri.ToString());
+            var content = await storage.GetContentAsync("cosmos-backup.yaml");
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(new CamelCaseNamingConvention())
                 .Build();
             var description = deserializer.Deserialize<BackupDescription>(content);
 
             return description;
-        }
-
-        private async static Task<string> GetWebContent(Uri filePath)
-        {
-            var request = WebRequest.Create(filePath);
-
-            using (var response = await request.GetResponseAsync())
-            using (var stream = response.GetResponseStream())
-            using (var reader = new StreamReader(stream))
-            {
-                return await reader.ReadToEndAsync();
-            }
         }
 
         private static void InitializeAppInsights(AppInsightsDescription appInsights)
