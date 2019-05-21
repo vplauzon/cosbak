@@ -26,7 +26,7 @@ namespace Cosbak
 
         static async Task MainAsync(string[] args)
         {
-            Console.WriteLine($"cosbak - Cosmos DB Backup Solution - Version {AppVersion.FullVersion}");
+            Console.WriteLine($"cosbak - Cosmos DB Backup - Version {AppVersion.FullVersion}");
             Console.WriteLine();
 
             if (args.Length == 0)
@@ -52,8 +52,9 @@ namespace Cosbak
             Console.WriteLine("Here are the base commands:");
             Console.WriteLine();
             Console.WriteLine("backup:\t\t\t\tTake a backup of one or many collections");
-            Console.WriteLine("restore:\t\t\t\tRestore a collection (or database or account)");
-            Console.WriteLine("rotation:\t\t\t\tRotate backups");
+            Console.WriteLine("index:\t\t\t\tIndex backup of one or many collections");
+            Console.WriteLine("restore:\t\t\t\tRestore a collection");
+            Console.WriteLine("rotate:\t\t\t\tRotate backups");
         }
 
         private static void DisplayBackupHelp()
