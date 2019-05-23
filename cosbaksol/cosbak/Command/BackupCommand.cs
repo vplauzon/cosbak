@@ -16,6 +16,7 @@ namespace Cosbak.Command
             if (description.CosmosAccount == null)
             {
                 description.CosmosAccount = new CosmosAccountDescription();
+                description.StorageAccount = new StorageAccountDescription();
             }
         }
 
