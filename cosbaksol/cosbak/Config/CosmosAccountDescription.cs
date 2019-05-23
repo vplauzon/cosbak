@@ -13,11 +13,11 @@ namespace Cosbak.Config
         {
             if (string.IsNullOrWhiteSpace(Name))
             {
-                throw new BackupException("Cosmos Account name is required");
+                throw new CosbakException("Cosmos Account name is required");
             }
             if (string.IsNullOrWhiteSpace(Key))
             {
-                throw new BackupException("Cosmos Account key is required");
+                throw new CosbakException("Cosmos Account key is required");
             }
         }
     }

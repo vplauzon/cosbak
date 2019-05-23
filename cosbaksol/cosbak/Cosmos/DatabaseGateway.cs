@@ -47,7 +47,7 @@ namespace Cosbak.Cosmos
                                    where !set.Contains(f)
                                    select f;
 
-                    throw new BackupException($"Collection '{notFound.First()}' not found in database '{_databaseName}'");
+                    throw new CosbakException($"Collection '{notFound.First()}' not found in database '{_databaseName}'");
                 }
 
                 return gateways;

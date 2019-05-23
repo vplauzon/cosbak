@@ -34,7 +34,7 @@ namespace Cosbak.Storage
 
             if (parts.Length < 2)
             {
-                throw new BackupException("Folder Uri must at least contain the container's name:  "
+                throw new CosbakException("Folder Uri must at least contain the container's name:  "
                     + folderUri.AbsolutePath);
             }
 

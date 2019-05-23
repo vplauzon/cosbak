@@ -211,7 +211,7 @@ namespace Cosbak
                 }
             }
 
-            throw new BackupException("Master backup process didn't materialize backup parameters");
+            throw new CosbakException("Master backup process didn't materialize backup parameters");
         }
 
         private async Task<BlobLease> GetCurrentBackupLease(string currentBackupPath)

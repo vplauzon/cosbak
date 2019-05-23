@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace Cosbak.Config
 {
@@ -9,7 +8,7 @@ namespace Cosbak.Config
     {
         public CosmosAccountDescription CosmosAccount { get; set; }
 
-        public AppInsightsDescription AppInsights { get; set; }
+        public StorageAccountDescription StorageAccount { get; set; }
 
         public BackupPlan Plan { get; set; }
 
@@ -17,16 +16,17 @@ namespace Cosbak.Config
         {
             if (CosmosAccount == null)
             {
-                throw new BackupException("Backup Description must contain Cosmos DB account");
+                throw new CosbakException("Backup Description must contain Cosmos DB account");
             }
             CosmosAccount.Validate();
-            if (AppInsights != null)
+            if (StorageAccount == null)
             {
-                AppInsights.Validate();
+                throw new CosbakException("Backup Description must contain Storage account");
             }
+            StorageAccount.Validate();
             if (Plan == null)
             {
-                throw new BackupException("Backup Description must contain a plan");
+                throw new CosbakException("Backup Description must contain a plan");
             }
             Plan.Validate();
         }

@@ -44,7 +44,7 @@ namespace Cosbak.Cosmos
                                    where !set.Contains(f.Key)
                                    select f.Key;
 
-                    throw new BackupException($"Database '{notFound.First()}' not found in account '{_accountName}'");
+                    throw new CosbakException($"Database '{notFound.First()}' not found in account '{_accountName}'");
                 }
 
                 return gateways;
