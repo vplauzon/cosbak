@@ -58,11 +58,17 @@ namespace Cosbak
         private static void DisplayBackupHelp()
         {
             Console.WriteLine("usage:");
-            Console.WriteLine("\tcosbak backup -f BACKUP_DESCRIPTION_FOLDER "
-                + "[-ck COSMOS_ACCOUNT_KEY] "
-                + "[-ak APPLICATION_INSIGHTS_INSTRUMENTATION_KEY]");
+            Console.WriteLine("\tcosbak backup -f BACKUP_CONFIG_PATH");
+            Console.WriteLine("\tcosbak backup "
+                + "-cn COSMOS_ACCOUNT_NAME "
+                + "-ck COSMOS_ACCOUNT_KEY "
+                + "-sn STORAGE_ACCOUNT_NAME "
+                + "[-sc STORAGE_ACCOUNT_CONTAINER] "
+                + "[-sf STORAGE_ACCOUNT_FOLDER] "
+                + "[-sk STORAGE_ACCOUNT_KEY] "
+                + "[-st STORAGE_ACCOUNT_TOKEN]");
             Console.WriteLine();
-            Console.WriteLine("BACKUP_DESCRIPTION_FOLDER must have a SAS token allowing "
+            Console.WriteLine("BACKUP_CONFIG_PATH must have a SAS token allowing "
                 + "read/write/list/delete on the blob container");
         }
         #endregion
@@ -92,31 +98,39 @@ namespace Cosbak
         private static async Task BackupAsync(IEnumerable<string> args)
         {
             var command = new BackupCommand();
-            var description = await command.ExtractDescriptionAsync(args);
-            //var storageGateway = CreateStorageGateway(context.FolderPath);
-            //var description = await InferDescriptionAsync(storageGateway, context);
-            //var telemetry = new TelemetryClient();
 
-            //InitializeAppInsights(description.AppInsights);
+            if (args.Any() && args.First() == "-h")
+            {
+                DisplayBackupHelp();
+            }
+            else
+            {
+                var description = await command.ExtractDescriptionAsync(args);
+                //var storageGateway = CreateStorageGateway(context.FolderPath);
+                //var description = await InferDescriptionAsync(storageGateway, context);
+                //var telemetry = new TelemetryClient();
 
-            //try
-            //{
-            //    var cosmosGateway = new CosmosDbAccountGateway(description.CosmosAccount.Name, description.CosmosAccount.Key, description.Plan.Filters);
-            //    var controller = new BackupController(
-            //        telemetry,
-            //        cosmosGateway,
-            //        storageGateway);
+                //InitializeAppInsights(description.AppInsights);
 
-            //    await controller.BackupAsync();
-            //}
-            //catch (Exception ex)
-            //{
-            //    telemetry.TrackException(ex);
-            //}
-            //finally
-            //{
-            //    telemetry.Flush();
-            //}
+                //try
+                //{
+                //    var cosmosGateway = new CosmosDbAccountGateway(description.CosmosAccount.Name, description.CosmosAccount.Key, description.Plan.Filters);
+                //    var controller = new BackupController(
+                //        telemetry,
+                //        cosmosGateway,
+                //        storageGateway);
+
+                //    await controller.BackupAsync();
+                //}
+                //catch (Exception ex)
+                //{
+                //    telemetry.TrackException(ex);
+                //}
+                //finally
+                //{
+                //    telemetry.Flush();
+                //}
+            }
         }
 
         private static IStorageGateway CreateStorageGateway(string folderUri)
