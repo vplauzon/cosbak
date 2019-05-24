@@ -16,4 +16,10 @@
     <ProjectReference Include="..\cosbak\cosbak.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Command\no-secrets.yaml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

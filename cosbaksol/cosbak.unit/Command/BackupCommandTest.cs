@@ -1,6 +1,7 @@
 ﻿using Cosbak.Command;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Xunit;
@@ -9,6 +10,7 @@ namespace cosbak.unit.Command
 {
     public class BackupCommandTest
     {
+        #region In Memory
         [Fact]
         public async Task EmptyAsync()
         {
@@ -62,5 +64,60 @@ namespace cosbak.unit.Command
             Assert.Equal(KEY, config.CosmosAccount.Key);
             Assert.Equal(CONTAINER, config.StorageAccount.Container);
         }
+        #endregion
+
+        #region With Files
+        [Fact]
+        public async Task NoSecretAsync()
+        {
+            var command = new BackupCommand();
+            var config = await command.ExtractDescriptionAsync(new string[]
+            {
+                "-f",
+                "Command/no-secrets.yaml",
+                "-ck",
+                "key",
+                "-st",
+                "?token"
+            });
+
+            Assert.NotNull(config);
+            Assert.NotNull(config.CosmosAccount);
+            Assert.NotNull(config.StorageAccount);
+            Assert.Equal("cosbak-sample", config.CosmosAccount.Name);
+            Assert.Equal("key", config.CosmosAccount.Key);
+            Assert.Equal("X", config.StorageAccount.Name);
+            Assert.Equal("Y", config.StorageAccount.Container);
+            Assert.Equal("Z", config.StorageAccount.Folder);
+            Assert.Equal("?token", config.StorageAccount.Token);
+        }
+
+        [Fact]
+        public async Task NoSecretOverrideAsync()
+        {
+            var command = new BackupCommand();
+            var config = await command.ExtractDescriptionAsync(new string[]
+            {
+                "-f",
+                "Command/no-secrets.yaml",
+                "-ck",
+                "key",
+                "-cn",
+                "mycosmos",
+                "-st",
+                "?token"
+            });
+
+            Assert.NotNull(config);
+            Assert.NotNull(config.CosmosAccount);
+            Assert.NotNull(config.StorageAccount);
+            Assert.Equal("mycosmos", config.CosmosAccount.Name);
+            Assert.Equal("key", config.CosmosAccount.Key);
+            Assert.Equal("X", config.StorageAccount.Name);
+            Assert.Equal("Y", config.StorageAccount.Container);
+            Assert.Equal("Z", config.StorageAccount.Folder);
+            Assert.Equal("?token", config.StorageAccount.Token);
+        }
+        #endregion
     }
 }

@@ -36,7 +36,10 @@ namespace Cosbak.Command
                 var switchLabel = a.Key;
                 var switchValue = a.Value;
 
-                _switchToAction[switchLabel](config, switchValue);
+                if (switchLabel != "f")
+                {
+                    _switchToAction[switchLabel](config, switchValue);
+                }
             }
 
             return config;
@@ -73,7 +76,7 @@ namespace Cosbak.Command
 
                 var switchLabel = first.Substring(1);
 
-                if (!_switchToAction.ContainsKey(switchLabel))
+                if (!_switchToAction.ContainsKey(switchLabel) && switchLabel != "f")
                 {
                     throw new CosbakException($"'{switchLabel}' isn't a valid switch label");
                 }
