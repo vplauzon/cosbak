@@ -6,22 +6,15 @@ namespace Cosbak.Logging
 {
     public class ConsoleTelemetry : TelemetryBase
     {
-        #region Constructors
-        public static ConsoleTelemetry Log(string text)
+        public ConsoleTelemetry(string text) : base("console")
         {
             if (string.IsNullOrWhiteSpace(text))
             {
                 throw new ArgumentNullException(nameof(text));
             }
 
-            return new ConsoleTelemetry(text);
-        }
-
-        private ConsoleTelemetry(string text) : base("console")
-        {
             Text = text;
         }
-        #endregion
 
         public string Text { get; }
     }
