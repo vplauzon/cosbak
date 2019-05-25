@@ -112,7 +112,7 @@ namespace Cosbak
 
                 var storageFacade = CreateStorageFacade(description.StorageAccount);
                 var logger = new Logger(storageFacade);
-                var storageGateway = new StorageBackupGateway(storageFacade);
+                var storageGateway = new StorageBackupGateway(storageFacade, logger);
 
                 //try
                 //{
