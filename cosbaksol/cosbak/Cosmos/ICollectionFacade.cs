@@ -4,15 +4,15 @@ using System.Threading.Tasks;
 
 namespace Cosbak.Cosmos
 {
-    public interface ICollectionGateway
+    public interface ICollectionFacade
     {
-        IDatabaseGateway Parent { get; }
+        IDatabaseFacade Parent { get; }
 
         string CollectionName { get; }
 
         string PartitionPath { get; }
 
-        Task<IPartitionGateway[]> GetPartitionsAsync();
+        Task<IPartitionFacade[]> GetPartitionsAsync();
 
         Task<Int64?> GetLastUpdateTimeAsync();
     }

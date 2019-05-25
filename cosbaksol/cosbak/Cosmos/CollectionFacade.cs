@@ -9,15 +9,15 @@ using Microsoft.Azure.Documents.Linq;
 
 namespace Cosbak.Cosmos
 {
-    internal class CollectionGateway : ICollectionGateway
+    internal class CollectionFacade : ICollectionFacade
     {
         private readonly DocumentClient _client;
         private readonly string _collectionName;
         private readonly string _partitionPath;
-        private readonly IDatabaseGateway _parent;
+        private readonly IDatabaseFacade _parent;
         private readonly Uri _collectionUri;
 
-        public CollectionGateway(DocumentClient client, string collectionName, string partitionPath, IDatabaseGateway parent)
+        public CollectionFacade(DocumentClient client, string collectionName, string partitionPath, IDatabaseFacade parent)
         {
             _client = client;
             _collectionName = collectionName;
@@ -26,13 +26,13 @@ namespace Cosbak.Cosmos
             _collectionUri = UriFactory.CreateDocumentCollectionUri(_parent.DatabaseName, _collectionName);
         }
 
-        IDatabaseGateway ICollectionGateway.Parent => _parent;
+        IDatabaseFacade ICollectionFacade.Parent => _parent;
 
-        string ICollectionGateway.CollectionName => _collectionName;
+        string ICollectionFacade.CollectionName => _collectionName;
 
-        string ICollectionGateway.PartitionPath => _partitionPath;
+        string ICollectionFacade.PartitionPath => _partitionPath;
 
-        async Task<long?> ICollectionGateway.GetLastUpdateTimeAsync()
+        async Task<long?> ICollectionFacade.GetLastUpdateTimeAsync()
         {
             var sql = new SqlQuerySpec("SELECT TOP 1 c._ts FROM c ORDER BY c._ts DESC");
             var query = _client.CreateDocumentQuery<IDictionary<string, long>>(_collectionUri, sql, new FeedOptions
@@ -45,11 +45,11 @@ namespace Cosbak.Cosmos
             return time;
         }
 
-        async Task<IPartitionGateway[]> ICollectionGateway.GetPartitionsAsync()
+        async Task<IPartitionFacade[]> ICollectionFacade.GetPartitionsAsync()
         {
             var keyRanges = await _client.ReadPartitionKeyRangeFeedAsync(_collectionUri);
             var gateways = from k in keyRanges
-                           select new PartitionGateway(_client, this, k.Id);
+                           select new PartitionFacade(_client, this, k.Id);
 
             return gateways.ToArray();
         }

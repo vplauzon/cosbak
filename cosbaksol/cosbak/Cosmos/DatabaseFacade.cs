@@ -8,14 +8,14 @@ using Microsoft.Azure.Documents.Linq;
 
 namespace Cosbak.Cosmos
 {
-    internal class DatabaseGateway : IDatabaseGateway
+    internal class DatabaseFacade : IDatabaseFacade
     {
         private readonly DocumentClient _client;
         private readonly string _databaseName;
-        private readonly CosmosDbAccountGateway _parent;
+        private readonly DatabaseAccountFacade _parent;
         private readonly IImmutableList<string> _filters;
 
-        public DatabaseGateway(DocumentClient client, string databaseName, CosmosDbAccountGateway parent, string[] filters)
+        public DatabaseFacade(DocumentClient client, string databaseName, DatabaseAccountFacade parent, string[] filters)
         {
             _databaseName = databaseName;
             _client = client;
@@ -23,11 +23,11 @@ namespace Cosbak.Cosmos
             _filters = ImmutableArray<string>.Empty.AddRange(filters);
         }
 
-        ICosmosDbAccountGateway IDatabaseGateway.Parent => _parent;
+        IDatabaseAccountFacade IDatabaseFacade.Parent => _parent;
 
-        string IDatabaseGateway.DatabaseName => _databaseName;
+        string IDatabaseFacade.DatabaseName => _databaseName;
 
-        async Task<IEnumerable<ICollectionGateway>> IDatabaseGateway.GetCollectionsAsync()
+        async Task<IEnumerable<ICollectionFacade>> IDatabaseFacade.GetCollectionsAsync()
         {
             var databaseUri = UriFactory.CreateDatabaseUri(_databaseName);
             var query = _client.CreateDocumentCollectionQuery(databaseUri);
@@ -37,8 +37,8 @@ namespace Cosbak.Cosmos
             {
                 var filteredCollections = from coll in collections
                                           where _filters.Contains(coll.Id)
-                                          select new CollectionGateway(_client, coll.Id, coll.PartitionKey.Paths.First(), this);
-                var gateways = filteredCollections.ToArray<ICollectionGateway>();
+                                          select new CollectionFacade(_client, coll.Id, coll.PartitionKey.Paths.First(), this);
+                var gateways = filteredCollections.ToArray<ICollectionFacade>();
 
                 if (gateways.Length != _filters.Count)
                 {
@@ -55,8 +55,8 @@ namespace Cosbak.Cosmos
             else
             {
                 var gateways = collections
-                    .Select(coll => new CollectionGateway(_client, coll.Id, coll.PartitionKey.Paths.First(), this))
-                    .ToArray<ICollectionGateway>();
+                    .Select(coll => new CollectionFacade(_client, coll.Id, coll.PartitionKey.Paths.First(), this))
+                    .ToArray<ICollectionFacade>();
 
                 return gateways;
             }

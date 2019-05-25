@@ -2,7 +2,7 @@
 
 namespace Cosbak.Cosmos
 {
-    public interface IPartitionGateway
+    public interface IPartitionFacade
     {
         string KeyRangeId { get; }
 

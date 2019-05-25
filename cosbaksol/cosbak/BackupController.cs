@@ -20,12 +20,12 @@ namespace Cosbak
         private static readonly TimeSpan WAIT_FOR_CURRENT_BACKUP_TOTAL = TimeSpan.FromSeconds(15);
 
         private readonly TelemetryClient _telemetry;
-        private readonly ICosmosDbAccountGateway _cosmosDbGateway;
+        private readonly IDatabaseAccountFacade _cosmosDbGateway;
         private readonly IStorageFacade _storageGateway;
 
         public BackupController(
             TelemetryClient telemetry,
-            ICosmosDbAccountGateway cosmosDbGateway,
+            IDatabaseAccountFacade cosmosDbGateway,
             IStorageFacade storageGateway)
         {
             _telemetry = telemetry;
@@ -79,7 +79,7 @@ namespace Cosbak
 
         private async Task<long?> BackupCollectionAsync(
             int rotation,
-            ICollectionGateway collection,
+            ICollectionFacade collection,
             IImmutableDictionary<string, string> collectionProperties)
         {
             var db = collection.Parent.DatabaseName;
@@ -156,7 +156,7 @@ namespace Cosbak
             BlobLease currentBackupLease,
             string currentBackupPath,
             string lastBackupPath,
-            ICollectionGateway collection)
+            ICollectionFacade collection)
         {
             if (currentBackupLease == null)
             {
@@ -246,7 +246,7 @@ namespace Cosbak
 
         private async Task BackupPartitionAsync(
             string blobPrefix,
-            IPartitionGateway partition,
+            IPartitionFacade partition,
             IImmutableDictionary<string, string> collectionProperties)
         {
             var partitionProperties = collectionProperties.Add("partition", partition.KeyRangeId);

@@ -8,13 +8,13 @@ using Microsoft.Azure.Documents.Linq;
 
 namespace Cosbak.Cosmos
 {
-    internal class CosmosDbAccountGateway : ICosmosDbAccountGateway
+    internal class DatabaseAccountFacade : IDatabaseAccountFacade
     {
         private readonly string _accountName;
         private readonly DocumentClient _client;
         private readonly IImmutableDictionary<string, string[]> _filters;
 
-        public CosmosDbAccountGateway(string accountName, string key, string[] filters)
+        public DatabaseAccountFacade(string accountName, string key, string[] filters)
         {
             _accountName = accountName;
             _client = new DocumentClient(
@@ -23,9 +23,9 @@ namespace Cosbak.Cosmos
             _filters = ParseFilters(filters);
         }
 
-        string ICosmosDbAccountGateway.AccountName => _accountName;
+        string IDatabaseAccountFacade.AccountName => _accountName;
 
-        async Task<IEnumerable<IDatabaseGateway>> ICosmosDbAccountGateway.GetDatabasesAsync()
+        async Task<IEnumerable<IDatabaseFacade>> IDatabaseAccountFacade.GetDatabasesAsync()
         {
             var query = _client.CreateDatabaseQuery();
             var dbs = await QueryHelper.GetAllResultsAsync(query.AsDocumentQuery());
@@ -34,8 +34,8 @@ namespace Cosbak.Cosmos
             {
                 var filteredDbs = from db in dbs
                                   where _filters.ContainsKey(db.Id)
-                                  select new DatabaseGateway(_client, db.Id, this, _filters[db.Id]);
-                var gateways = filteredDbs.ToArray<IDatabaseGateway>();
+                                  select new DatabaseFacade(_client, db.Id, this, _filters[db.Id]);
+                var gateways = filteredDbs.ToArray<IDatabaseFacade>();
 
                 if (gateways.Length != _filters.Count)
                 {
@@ -52,8 +52,8 @@ namespace Cosbak.Cosmos
             else
             {
                 var gateways = dbs
-                    .Select(db => new DatabaseGateway(_client, db.Id, this, new string[0]))
-                    .ToArray<IDatabaseGateway>();
+                    .Select(db => new DatabaseFacade(_client, db.Id, this, new string[0]))
+                    .ToArray<IDatabaseFacade>();
 
                 return gateways;
             }

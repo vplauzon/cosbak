@@ -9,7 +9,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Cosbak.Cosmos
 {
-    public class PartitionGateway : IPartitionGateway
+    public class PartitionFacade : IPartitionFacade
     {
         #region Inner Types
         private class AsyncQuery : IAsyncStream<DocumentPackage>
@@ -37,21 +37,23 @@ namespace Cosbak.Cosmos
         #endregion
 
         private readonly DocumentClient _client;
-        private readonly ICollectionGateway _parent;
+        private readonly ICollectionFacade _parent;
         private readonly string _partitionKeyRangeId;
         private readonly Uri _collectionUri;
 
-        public PartitionGateway(DocumentClient client, ICollectionGateway parent, string partitionKeyRangeId)
+        public PartitionFacade(DocumentClient client, ICollectionFacade parent, string partitionKeyRangeId)
         {
             _client = client;
             _parent = parent;
             _partitionKeyRangeId = partitionKeyRangeId;
-            _collectionUri = UriFactory.CreateDocumentCollectionUri(_parent.Parent.DatabaseName, _parent.CollectionName);
+            _collectionUri = UriFactory.CreateDocumentCollectionUri(
+                _parent.Parent.DatabaseName,
+                _parent.CollectionName);
         }
 
-        string IPartitionGateway.KeyRangeId => _partitionKeyRangeId;
+        string IPartitionFacade.KeyRangeId => _partitionKeyRangeId;
 
-        IAsyncStream<DocumentPackage> IPartitionGateway.GetChangeFeed()
+        IAsyncStream<DocumentPackage> IPartitionFacade.GetChangeFeed()
         {
             var query = _client.CreateDocumentChangeFeedQuery(_collectionUri, new ChangeFeedOptions
             {

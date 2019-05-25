@@ -3,12 +3,12 @@ using System.Threading.Tasks;
 
 namespace Cosbak.Cosmos
 {
-    public interface IDatabaseGateway
+    public interface IDatabaseFacade
     {
-        ICosmosDbAccountGateway Parent { get; }
+        IDatabaseAccountFacade Parent { get; }
 
         string DatabaseName { get; }
 
-        Task<IEnumerable<ICollectionGateway>> GetCollectionsAsync();
+        Task<IEnumerable<ICollectionFacade>> GetCollectionsAsync();
     }
 }
