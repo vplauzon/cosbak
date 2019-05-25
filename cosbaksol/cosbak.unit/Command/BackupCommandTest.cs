@@ -15,7 +15,7 @@ namespace cosbak.unit.Command
         public async Task EmptyAsync()
         {
             var command = new BackupCommand();
-            var config = await command.ExtractDescriptionAsync(new string[0]);
+            var config = await command.ReadValidDescriptionAsync(new string[0]);
 
             Assert.NotNull(config);
             Assert.NotNull(config.CosmosAccount);
@@ -27,7 +27,7 @@ namespace cosbak.unit.Command
         {
             const string NAME = "MyCosmos";
             var command = new BackupCommand();
-            var config = await command.ExtractDescriptionAsync(new[] { "-cn", NAME });
+            var config = await command.ReadValidDescriptionAsync(new[] { "-cn", NAME });
 
             Assert.NotNull(config);
             Assert.NotNull(config.CosmosAccount);
@@ -41,7 +41,7 @@ namespace cosbak.unit.Command
             const string NAME = "MyCosmos";
             const string KEY = "123456";
             var command = new BackupCommand();
-            var config = await command.ExtractDescriptionAsync(new[] { "-cn", NAME, "-ck", KEY });
+            var config = await command.ReadValidDescriptionAsync(new[] { "-cn", NAME, "-ck", KEY });
 
             Assert.NotNull(config);
             Assert.NotNull(config.CosmosAccount);
@@ -56,7 +56,7 @@ namespace cosbak.unit.Command
             const string KEY = "123456";
             const string CONTAINER = "acontainer";
             var command = new BackupCommand();
-            var config = await command.ExtractDescriptionAsync(new[] { "-ck", KEY, "-sc", CONTAINER });
+            var config = await command.ReadValidDescriptionAsync(new[] { "-ck", KEY, "-sc", CONTAINER });
 
             Assert.NotNull(config);
             Assert.NotNull(config.CosmosAccount);
@@ -71,7 +71,7 @@ namespace cosbak.unit.Command
         public async Task NoSecretAsync()
         {
             var command = new BackupCommand();
-            var config = await command.ExtractDescriptionAsync(new string[]
+            var config = await command.ReadValidDescriptionAsync(new string[]
             {
                 "-f",
                 "Command/no-secrets.yaml",
@@ -96,7 +96,7 @@ namespace cosbak.unit.Command
         public async Task NoSecretOverrideAsync()
         {
             var command = new BackupCommand();
-            var config = await command.ExtractDescriptionAsync(new string[]
+            var config = await command.ReadValidDescriptionAsync(new string[]
             {
                 "-f",
                 "Command/no-secrets.yaml",

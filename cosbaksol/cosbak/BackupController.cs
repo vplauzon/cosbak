@@ -21,12 +21,12 @@ namespace Cosbak
 
         private readonly TelemetryClient _telemetry;
         private readonly ICosmosDbAccountGateway _cosmosDbGateway;
-        private readonly IStorageGateway _storageGateway;
+        private readonly IStorageFacade _storageGateway;
 
         public BackupController(
             TelemetryClient telemetry,
             ICosmosDbAccountGateway cosmosDbGateway,
-            IStorageGateway storageGateway)
+            IStorageFacade storageGateway)
         {
             _telemetry = telemetry;
             _cosmosDbGateway = cosmosDbGateway ?? throw new ArgumentNullException(nameof(cosmosDbGateway));

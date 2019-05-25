@@ -9,45 +9,49 @@ using System.Threading.Tasks;
 
 namespace Cosbak.Storage
 {
-    internal class StorageGateway : IStorageGateway
+    internal class StorageFacade : IStorageFacade
     {
         private readonly CloudBlobContainer _container;
         private readonly string _blobPrefix;
 
-        private StorageGateway(
-            Uri baseUri,
+        #region Constructors
+        public static IStorageFacade FromKey(
+            string accountName,
             string container,
-            string token,
-            string blobPrefix)
+            string folder,
+            string key)
+        {
+            var credentials = new StorageCredentials(accountName, key);
+
+            return new StorageFacade(credentials, accountName, container, folder);
+        }
+
+        public static IStorageFacade FromToken(
+            string accountName,
+            string container,
+            string folder,
+            string token)
         {
             var credentials = new StorageCredentials(token);
-            var client = new CloudBlobClient(baseUri, credentials);
+
+            return new StorageFacade(credentials, accountName, container, folder);
+        }
+
+        private StorageFacade(
+            StorageCredentials credentials,
+            string accountName,
+            string container,
+            string folder)
+        {
+            var storageUri = new Uri($"https://{accountName}.blob.core.windows.net/");
+            var client = new CloudBlobClient(storageUri, credentials);
 
             _container = client.GetContainerReference(container);
-            _blobPrefix = blobPrefix;
+            _blobPrefix = folder;
         }
+        #endregion
 
-        public static IStorageGateway Create(Uri folderUri)
-        {
-            var baseUri = new Uri("https://" + folderUri.Host);
-            var parts = folderUri.AbsolutePath.Split('/');
-
-            if (parts.Length < 2)
-            {
-                throw new CosbakException("Folder Uri must at least contain the container's name:  "
-                    + folderUri.AbsolutePath);
-            }
-
-            var container = parts[1];
-            var token = folderUri.Query;
-            var blobPrefix = parts.Length == 2
-                ? string.Empty
-                : string.Join('/', parts.Skip(2)) + '/';
-
-            return new StorageGateway(baseUri, container, token, blobPrefix);
-        }
-
-        async Task<string> IStorageGateway.GetContentAsync(string contentPath)
+        async Task<string> IStorageFacade.GetContentAsync(string contentPath)
         {
             var blob = _container.GetBlobReference(_blobPrefix + contentPath);
 
@@ -63,21 +67,21 @@ namespace Cosbak.Storage
             }
         }
 
-        async Task<bool> IStorageGateway.DoesExistAsync(string contentPath)
+        async Task<bool> IStorageFacade.DoesExistAsync(string contentPath)
         {
             var blob = _container.GetBlobReference(_blobPrefix + contentPath);
 
             return await blob.ExistsAsync();
         }
 
-        async Task IStorageGateway.CreateAppendBlobAsync(string blobPath)
+        async Task IStorageFacade.CreateAppendBlobAsync(string blobPath)
         {
             var blob = _container.GetAppendBlobReference(_blobPrefix + blobPath);
 
             await blob.CreateOrReplaceAsync();
         }
 
-        async Task IStorageGateway.UploadBlockBlobAsync(string blobPath, string content, string leaseId)
+        async Task IStorageFacade.UploadBlockBlobAsync(string blobPath, string content, string leaseId)
         {
             var blob = _container.GetBlockBlobReference(_blobPrefix + blobPath);
 
@@ -91,21 +95,21 @@ namespace Cosbak.Storage
                 null);
         }
 
-        async Task IStorageGateway.AppendBlobAsync(string blobPath, Stream contentStream)
+        async Task IStorageFacade.AppendBlobAsync(string blobPath, Stream contentStream)
         {
             var blob = _container.GetAppendBlobReference(_blobPrefix + blobPath);
 
             await blob.AppendFromStreamAsync(contentStream);
         }
 
-        async Task<BlobLease> IStorageGateway.GetLeaseAsync(string blobPath)
+        async Task<BlobLease> IStorageFacade.GetLeaseAsync(string blobPath)
         {
             var blob = _container.GetBlobReference(_blobPrefix + blobPath);
 
             return await BlobLease.CreateLeaseAsync(blob);
         }
 
-        async Task<string[]> IStorageGateway.ListBlobsAsync(string blobPrefix)
+        async Task<string[]> IStorageFacade.ListBlobsAsync(string blobPrefix)
         {
             var prefix = _blobPrefix + blobPrefix;
             var list = new List<string>();

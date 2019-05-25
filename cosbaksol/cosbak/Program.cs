@@ -105,9 +105,11 @@ namespace Cosbak
             }
             else
             {
-                var description = await command.ExtractDescriptionAsync(args);
-                //var storageGateway = CreateStorageGateway(context.FolderPath);
-                //var description = await InferDescriptionAsync(storageGateway, context);
+                var description = await command.ReadDescriptionAsync(args);
+
+                description.Validate();
+
+                var storageFacade = CreateStorageFacade(description.StorageAccount);
                 //var telemetry = new TelemetryClient();
 
                 //InitializeAppInsights(description.AppInsights);
@@ -133,21 +135,24 @@ namespace Cosbak
             }
         }
 
-        private static IStorageGateway CreateStorageGateway(string folderUri)
+        private static IStorageFacade CreateStorageFacade(StorageAccountDescription description)
         {
-            if (string.IsNullOrWhiteSpace(folderUri))
+            if (string.IsNullOrWhiteSpace(description.Key))
             {
-                throw new CosbakException("Folder Uri (-f) is required for backups");
+                return StorageFacade.FromToken(
+                    description.Name,
+                    description.Container,
+                    description.Folder,
+                    description.Token);
             }
-
-            var uri = new Uri(folderUri, UriKind.RelativeOrAbsolute);
-
-            if (!uri.IsAbsoluteUri)
+            else
             {
-                throw new CosbakException("Folder must be an Azure Storage container or container's folder");
+                return StorageFacade.FromKey(
+                    description.Name,
+                    description.Container,
+                    description.Folder,
+                    description.Key);
             }
-
-            return StorageGateway.Create(uri);
         }
     }
 }

@@ -23,11 +23,11 @@ namespace Cosbak.Command
                 ?? throw new ArgumentNullException(nameof(switchToAction));
         }
 
-        public async Task<CONFIG> ExtractDescriptionAsync(IEnumerable<string> args)
+        public async Task<CONFIG> ReadDescriptionAsync(IEnumerable<string> args)
         {
             var switchValues = ReadValues(args);
             var config = switchValues.ContainsKey("f")
-                ? await ReadDescriptionAsync(switchValues["f"])
+                ? await ReadRawDescriptionAsync(switchValues["f"])
                 : new CONFIG();
 
             _createSubSections(config);
@@ -45,7 +45,7 @@ namespace Cosbak.Command
             return config;
         }
 
-        private async Task<CONFIG> ReadDescriptionAsync(string filePath)
+        private async Task<CONFIG> ReadRawDescriptionAsync(string filePath)
         {
             if (!File.Exists(filePath))
             {

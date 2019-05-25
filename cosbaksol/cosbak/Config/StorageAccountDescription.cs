@@ -27,7 +27,7 @@ namespace Cosbak.Config
             }
             if (string.IsNullOrWhiteSpace(Key) && string.IsNullOrWhiteSpace(Token))
             {
-                throw new CosbakException("Storage Account key or token is required");
+                throw new CosbakException("One of the two is required:  Storage Account key or token");
             }
         }
     }

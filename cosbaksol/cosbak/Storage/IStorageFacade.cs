@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace Cosbak.Storage
 {
-    public interface IStorageGateway
+    public interface IStorageFacade
     {
         Task<bool> DoesExistAsync(string contentPath);
 
