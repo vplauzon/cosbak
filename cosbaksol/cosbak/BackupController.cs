@@ -7,8 +7,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Cosbak.Config;
 using Cosbak.Cosmos;
+using Cosbak.Logging;
 using Cosbak.Storage;
-using Microsoft.ApplicationInsights;
 using Microsoft.WindowsAzure.Storage;
 using Newtonsoft.Json;
 
@@ -19,62 +19,63 @@ namespace Cosbak
         private static readonly TimeSpan WAIT_FOR_CURRENT_BACKUP_PERIOD = TimeSpan.FromSeconds(2);
         private static readonly TimeSpan WAIT_FOR_CURRENT_BACKUP_TOTAL = TimeSpan.FromSeconds(15);
 
-        private readonly TelemetryClient _telemetry;
-        private readonly IDatabaseAccountFacade _cosmosDbGateway;
-        private readonly IStorageFacade _storageGateway;
+        private readonly ILogger _logger;
+        private readonly IDatabaseAccountFacade _databaseAccount;
+        private readonly IStorageFacade _storage;
 
         public BackupController(
-            TelemetryClient telemetry,
-            IDatabaseAccountFacade cosmosDbGateway,
-            IStorageFacade storageGateway)
+            ILogger logger,
+            IDatabaseAccountFacade databaseAccount,
+            IStorageFacade storage)
         {
-            _telemetry = telemetry;
-            _cosmosDbGateway = cosmosDbGateway ?? throw new ArgumentNullException(nameof(cosmosDbGateway));
-            _storageGateway = storageGateway ?? throw new ArgumentNullException(nameof(storageGateway));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _databaseAccount = databaseAccount ?? throw new ArgumentNullException(nameof(databaseAccount));
+            _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         }
 
         public async Task BackupAsync()
         {
             var accountProperties = ImmutableDictionary<string, string>
                 .Empty
-                .Add("account", _cosmosDbGateway.AccountName);
+                .Add("account", _databaseAccount.AccountName);
 
-            TrackEvent("Backup-Start", accountProperties);
-            Console.WriteLine($"Account:  {_cosmosDbGateway.AccountName}");
-            foreach (var db in await _cosmosDbGateway.GetDatabasesAsync())
+            await _logger.WriteAsync(new EventTelemetry("Backup-Start", accountProperties));
+            Console.WriteLine($"Account:  {_databaseAccount.AccountName}");
+            foreach (var db in await _databaseAccount.GetDatabasesAsync())
             {
                 var dbProperties = accountProperties.Add("db", db.DatabaseName);
 
                 Console.WriteLine($"Db:  {db.DatabaseName}");
-                TrackEvent("Backup-Start-Db", dbProperties);
+                await _logger.WriteAsync(new EventTelemetry("Backup-Start-Db", dbProperties));
                 foreach (var collection in await db.GetCollectionsAsync())
                 {
                     var collectionProperties =
                         dbProperties.Add("collection", collection.CollectionName);
 
                     Console.WriteLine($"Collection:  {collection.CollectionName}");
-                    TrackEvent("Backup-Start-Collection", collectionProperties);
+                    await _logger.WriteAsync(
+                        new EventTelemetry("Backup-Start-Collection", collectionProperties));
 
                     var toTimeStamp = await BackupCollectionAsync(1, collection, collectionProperties);
 
-                    TrackEvent(
-                        "Backup-End-Collection",
-                        collectionProperties.Add("time", toTimeStamp.ToString()));
+                    if (toTimeStamp != null)
+                    {
+                        await _logger.WriteAsync(new EventTelemetry(
+                            "Backup-End-Collection",
+                            toTimeStamp.Value,
+                            collectionProperties));
+                    }
+                    else
+                    {
+                        await _logger.WriteAsync(
+                            new EventTelemetry("Backup-End-Collection", collectionProperties));
+                    }
                 }
-                TrackEvent("Backup-End-Db", dbProperties);
+                await _logger.WriteAsync(
+                    new EventTelemetry("Backup-End-Db", dbProperties));
             }
-            TrackEvent("Backup-End", accountProperties);
-        }
-
-        private void TrackEvent(
-            string eventName,
-            IImmutableDictionary<string, string> properties = null,
-            IImmutableDictionary<string, double> metrics = null)
-        {
-            _telemetry.TrackEvent(
-                eventName,
-                properties == null ? null : properties.ToDictionary(p => p.Key, p => p.Value),
-                metrics == null ? null : metrics.ToDictionary(p => p.Key, p => p.Value));
+            await _logger.WriteAsync(
+                new EventTelemetry("Backup-End", accountProperties));
         }
 
         private async Task<long?> BackupCollectionAsync(
@@ -102,7 +103,7 @@ namespace Cosbak
                     var blobPrefix =
                         await PickContentFolderAsync($"{backupPrefix}{currentBackup.ToTimeStamp.ToString("D19")}") + '/';
                     //  Ensures a folder is created as fast as possible to avoid clashes
-                    var startedMarkerTask = _storageGateway.UploadBlockBlobAsync(blobPrefix + "started", string.Empty);
+                    var startedMarkerTask = _storage.UploadBlockBlobAsync(blobPrefix + "started", string.Empty);
                     var partitionList = await collection.GetPartitionsAsync();
 
                     Console.WriteLine($"{partitionList.Length} partitions");
@@ -110,16 +111,16 @@ namespace Cosbak
                     await Task.WhenAll(from partition in partitionList
                                        select BackupPartitionAsync(blobPrefix, partition, collectionProperties));
 
-                    var doneMarkerTask = _storageGateway.UploadBlockBlobAsync(blobPrefix + "done", string.Empty);
+                    var doneMarkerTask = _storage.UploadBlockBlobAsync(blobPrefix + "done", string.Empty);
                     if (currentBackupLease != null)
                     {   //  Marker blob stating the backup was fully completed
-                        await _storageGateway.UploadBlockBlobAsync(lastBackupPath, currentBackup.ToTimeStamp.ToString("D19"));
+                        await _storage.UploadBlockBlobAsync(lastBackupPath, currentBackup.ToTimeStamp.ToString("D19"));
                     }
                     await Task.WhenAll(startedMarkerTask, doneMarkerTask);
                 }
                 else
                 {
-                    TrackEvent("Backup-No Backup required", collectionProperties);
+                    await _logger.WriteAsync(new EventTelemetry("Backup-No Backup required", collectionProperties));
                 }
                 if (currentBackupLease != null)
                 {
@@ -138,7 +139,7 @@ namespace Cosbak
             while (true)
             {
                 var path = blobPrefix + suffix;
-                var blobs = await _storageGateway.ListBlobsAsync(path);
+                var blobs = await _storage.ListBlobsAsync(path);
 
                 if (blobs.Any())
                 {
@@ -180,7 +181,7 @@ namespace Cosbak
                     };
                     var currentBackupContent = JsonConvert.SerializeObject(currentBackup);
 
-                    await _storageGateway.UploadBlockBlobAsync(currentBackupPath, currentBackupContent, currentBackupLease.LeaseId);
+                    await _storage.UploadBlockBlobAsync(currentBackupPath, currentBackupContent, currentBackupLease.LeaseId);
 
                     return currentBackup;
                 }
@@ -197,7 +198,7 @@ namespace Cosbak
 
             while (start.Add(WAIT_FOR_CURRENT_BACKUP_TOTAL) < DateTime.Now)
             {
-                var content = await _storageGateway.GetContentAsync(currentBackupPath);
+                var content = await _storage.GetContentAsync(currentBackupPath);
 
                 if (string.IsNullOrWhiteSpace(content))
                 {
@@ -219,21 +220,21 @@ namespace Cosbak
             try
             {
                 //  Clean record if no lease ; so we never read stale data
-                await _storageGateway.UploadBlockBlobAsync(currentBackupPath, string.Empty);
+                await _storage.UploadBlockBlobAsync(currentBackupPath, string.Empty);
             }
             catch (StorageException)
             {
                 return null;
             }
 
-            return await _storageGateway.GetLeaseAsync(currentBackupPath);
+            return await _storage.GetLeaseAsync(currentBackupPath);
         }
 
         private async Task<long?> GetLastBackupTimeAsync(string lastBackupPath)
         {
-            if (await _storageGateway.DoesExistAsync(lastBackupPath))
+            if (await _storage.DoesExistAsync(lastBackupPath))
             {
-                var text = await _storageGateway.GetContentAsync(lastBackupPath);
+                var text = await _storage.GetContentAsync(lastBackupPath);
                 var lastUpdateTime = int.Parse(text);
 
                 return lastUpdateTime;
@@ -251,14 +252,14 @@ namespace Cosbak
         {
             var partitionProperties = collectionProperties.Add("partition", partition.KeyRangeId);
 
-            TrackEvent("Backup-Start-Partition", partitionProperties);
+            await _logger.WriteAsync(new EventTelemetry("Backup-Start-Partition", partitionProperties));
 
             var feed = partition.GetChangeFeed();
             var indexPath = blobPrefix + partition.KeyRangeId + ".index";
             var contentPath = blobPrefix + partition.KeyRangeId + ".content";
             var pendingStorageTask = Task.WhenAll(
-                _storageGateway.CreateAppendBlobAsync(indexPath),
-                _storageGateway.CreateAppendBlobAsync(contentPath));
+                _storage.CreateAppendBlobAsync(indexPath),
+                _storage.CreateAppendBlobAsync(contentPath));
             long totalIndex = 0, totalContent = 0, totalDocuments = 0;
 
             while (feed.HasMoreResults)
@@ -287,18 +288,19 @@ namespace Cosbak
                 await pendingStorageTask;
                 //  Push more work to storage
                 pendingStorageTask = Task.WhenAll(
-                    _storageGateway.AppendBlobAsync(indexPath, indexStream),
-                    _storageGateway.AppendBlobAsync(contentPath, contentStream));
+                    _storage.AppendBlobAsync(indexPath, indexStream),
+                    _storage.AppendBlobAsync(contentPath, contentStream));
             }
             //  Make sure storage work is done
             await pendingStorageTask;
 
-            var metrics = ImmutableDictionary<string, double>.Empty
-                .Add("totalIndex", totalIndex)
-                .Add("totalContent", totalContent)
-                .Add("totalDocuments", totalDocuments);
-
-            TrackEvent("Backup-End-Partition", partitionProperties, metrics);
+            await _logger.WriteAsync(new EventTelemetry(
+                "Backup-Partition-totalIndex", totalIndex, partitionProperties));
+            await _logger.WriteAsync(new EventTelemetry(
+                "Backup-Partition-totalContent", totalContent, partitionProperties));
+            await _logger.WriteAsync(new EventTelemetry(
+                "Backup-Partition-totalDocuments", totalDocuments, partitionProperties));
+            await _logger.WriteAsync(new EventTelemetry("Backup-End-Partition", partitionProperties));
         }
     }
 }

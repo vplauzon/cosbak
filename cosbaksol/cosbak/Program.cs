@@ -1,11 +1,8 @@
-﻿using AppInsights.TelemetryInitializers;
-using Cosbak.Command;
+﻿using Cosbak.Command;
 using Cosbak.Config;
 using Cosbak.Cosmos;
 using Cosbak.Logging;
 using Cosbak.Storage;
-using Microsoft.ApplicationInsights;
-using Microsoft.ApplicationInsights.Extensibility;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -120,12 +117,12 @@ namespace Cosbak
                         description.CosmosAccount.Name,
                         description.CosmosAccount.Key,
                         description.Plan.Filters);
-                    //var controller = new BackupController(
-                    //    telemetry,
-                    //    cosmosGateway,
-                    //    storageGateway);
+                    var controller = new BackupController(
+                        logger,
+                        cosmosGateway,
+                        storageFacade);
 
-                    //await controller.BackupAsync();
+                    await controller.BackupAsync();
                 }
                 catch (Exception ex)
                 {
