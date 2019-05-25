@@ -2,6 +2,7 @@
 using Cosbak.Command;
 using Cosbak.Config;
 using Cosbak.Cosmos;
+using Cosbak.Logging;
 using Cosbak.Storage;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
@@ -110,9 +111,8 @@ namespace Cosbak
                 description.Validate();
 
                 var storageFacade = CreateStorageFacade(description.StorageAccount);
-                //var telemetry = new TelemetryClient();
-
-                //InitializeAppInsights(description.AppInsights);
+                var logger = new Logger(storageFacade);
+                var storageGateway = new StorageBackupGateway(storageFacade);
 
                 //try
                 //{
