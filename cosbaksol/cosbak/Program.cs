@@ -111,27 +111,30 @@ namespace Cosbak
                 description.Validate();
 
                 var storageFacade = CreateStorageFacade(description.StorageAccount);
-                var logger = new Logger(storageFacade);
-                var storageGateway = new StorageBackupGateway(storageFacade, logger);
+                ILogger logger = new Logger(storageFacade);
 
-                //try
-                //{
-                //    var cosmosGateway = new CosmosDbAccountGateway(description.CosmosAccount.Name, description.CosmosAccount.Key, description.Plan.Filters);
-                //    var controller = new BackupController(
-                //        telemetry,
-                //        cosmosGateway,
-                //        storageGateway);
+                try
+                {
+                    var storageGateway = new StorageBackupGateway(storageFacade, logger);
+                    var cosmosGateway = new CosmosDbAccountGateway(
+                        description.CosmosAccount.Name,
+                        description.CosmosAccount.Key,
+                        description.Plan.Filters);
+                    //var controller = new BackupController(
+                    //    telemetry,
+                    //    cosmosGateway,
+                    //    storageGateway);
 
-                //    await controller.BackupAsync();
-                //}
-                //catch (Exception ex)
-                //{
-                //    telemetry.TrackException(ex);
-                //}
-                //finally
-                //{
-                //    telemetry.Flush();
-                //}
+                    //await controller.BackupAsync();
+                }
+                catch (Exception ex)
+                {
+                    await logger.WriteAsync(new ExceptionTelemetry(ex));
+                }
+                finally
+                {
+                    await logger.FlushAsync();
+                }
             }
         }
 
