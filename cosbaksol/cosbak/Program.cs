@@ -114,10 +114,12 @@ namespace Cosbak
                 {
                     var cosmosFacade = new DatabaseAccountFacade(
                         description.CosmosAccount.Name,
-                        description.CosmosAccount.Key,
-                        description.Plan.Filters);
+                        description.CosmosAccount.Key);
                     var storageController = new BackupStorageController(storageFacade, logger);
-                    var cosmosController = new BackupCosmosController(cosmosFacade, logger);
+                    var cosmosController = new BackupCosmosController(
+                        cosmosFacade,
+                        logger,
+                        description.Plan.Filters);
                     var controller = new BackupController(
                         logger,
                         cosmosFacade,
