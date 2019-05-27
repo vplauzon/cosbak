@@ -22,15 +22,21 @@ namespace Cosbak.Controllers.Backup
         private readonly ILogger _logger;
         private readonly IDatabaseAccountFacade _databaseAccount;
         private readonly IStorageFacade _storage;
+        private readonly IBackupStorageController _storageController;
+        private readonly IBackupCosmosController _cosmosController;
 
         public BackupController(
             ILogger logger,
             IDatabaseAccountFacade databaseAccount,
-            IStorageFacade storage)
+            IStorageFacade storage,
+            IBackupCosmosController cosmosController,
+            IBackupStorageController storageController)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _databaseAccount = databaseAccount ?? throw new ArgumentNullException(nameof(databaseAccount));
             _storage = storage ?? throw new ArgumentNullException(nameof(storage));
+            _storageController = storageController ?? throw new ArgumentNullException(nameof(storageController));
+            _cosmosController = cosmosController ?? throw new ArgumentNullException(nameof(cosmosController));
         }
 
         public async Task BackupAsync()
