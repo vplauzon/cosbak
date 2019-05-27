@@ -40,47 +40,38 @@ namespace Cosbak.Controllers.Backup
 
         public async Task BackupAsync()
         {
-            var accountProperties = ImmutableDictionary<string, string>
-                .Empty
-                .Add("account", _databaseAccount.AccountName);
+            _logger.Write(new ConsoleTelemetry("Backup..."));
+            _logger.Write(new EventTelemetry("Backup-Start"));
+            foreach (var collection2 in await _cosmosController.GetCollectionsAsync())
+            {
+                var properties = ImmutableDictionary<string, string>
+                    .Empty
+                    .Add("account", collection2.Account)
+                    .Add("db", collection2.Database)
+                    .Add("collection", collection2.Collection);
 
-            _logger.Write(new EventTelemetry("Backup-Start", accountProperties));
-            Console.WriteLine($"Account:  {_databaseAccount.AccountName}");
+                _logger.Write(new EventTelemetry("Backup-Start-Collection", properties));
+                _logger.Write(new ConsoleTelemetry(
+                    $"Collection {collection2.Account}.{collection2.Database}.{collection2.Collection}"));
+                _logger.Write(new EventTelemetry("Backup-End-Collection", properties));
+            }
+            _logger.Write(new EventTelemetry("Backup-End"));
+
             foreach (var db in await _databaseAccount.GetDatabasesAsync())
             {
-                var dbProperties = accountProperties.Add("db", db.DatabaseName);
-
-                Console.WriteLine($"Db:  {db.DatabaseName}");
-                _logger.Write(new EventTelemetry("Backup-Start-Db", dbProperties));
                 foreach (var collection in await db.GetCollectionsAsync())
                 {
-                    var collectionProperties =
-                        dbProperties.Add("collection", collection.CollectionName);
-
-                    Console.WriteLine($"Collection:  {collection.CollectionName}");
-                    _logger.Write(
-                        new EventTelemetry("Backup-Start-Collection", collectionProperties));
-
-                    var toTimeStamp = await BackupCollectionAsync(1, collection, collectionProperties);
+                    var toTimeStamp = await BackupCollectionAsync(1, collection, null);
 
                     if (toTimeStamp != null)
                     {
                         _logger.Write(new EventTelemetry(
                             "Backup-End-Collection",
                             toTimeStamp.Value,
-                            collectionProperties));
-                    }
-                    else
-                    {
-                        _logger.Write(
-                            new EventTelemetry("Backup-End-Collection", collectionProperties));
+                            null));
                     }
                 }
-                _logger.Write(
-                    new EventTelemetry("Backup-End-Db", dbProperties));
             }
-            _logger.Write(
-                new EventTelemetry("Backup-End", accountProperties));
         }
 
         private async Task<long?> BackupCollectionAsync(

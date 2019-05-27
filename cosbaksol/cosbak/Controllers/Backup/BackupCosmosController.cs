@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Cosbak.Controllers.Backup
 {
@@ -13,6 +14,7 @@ namespace Cosbak.Controllers.Backup
         private readonly ILogger _logger;
         private readonly IImmutableList<string> _filters;
 
+        #region Constructors
         public BackupCosmosController(
             IDatabaseAccountFacade accountFacade,
             ILogger logger,
@@ -31,6 +33,12 @@ namespace Cosbak.Controllers.Backup
                           select f.Trim();
 
             return trimmed.ToImmutableArray();
+        }
+        #endregion
+
+        Task<IEnumerable<ICosmosCollectionController>> IBackupCosmosController.GetCollectionsAsync()
+        {
+            throw new NotImplementedException();
         }
     }
 }
