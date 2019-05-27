@@ -129,7 +129,7 @@ namespace Cosbak
                 }
                 catch (Exception ex)
                 {
-                    await logger.WriteAsync(new ExceptionTelemetry(ex));
+                    logger.Write(new ExceptionTelemetry(ex));
                 }
                 finally
                 {

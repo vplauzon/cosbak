@@ -45,42 +45,42 @@ namespace Cosbak.Controllers.Backup
                 .Empty
                 .Add("account", _databaseAccount.AccountName);
 
-            await _logger.WriteAsync(new EventTelemetry("Backup-Start", accountProperties));
+            _logger.Write(new EventTelemetry("Backup-Start", accountProperties));
             Console.WriteLine($"Account:  {_databaseAccount.AccountName}");
             foreach (var db in await _databaseAccount.GetDatabasesAsync())
             {
                 var dbProperties = accountProperties.Add("db", db.DatabaseName);
 
                 Console.WriteLine($"Db:  {db.DatabaseName}");
-                await _logger.WriteAsync(new EventTelemetry("Backup-Start-Db", dbProperties));
+                _logger.Write(new EventTelemetry("Backup-Start-Db", dbProperties));
                 foreach (var collection in await db.GetCollectionsAsync())
                 {
                     var collectionProperties =
                         dbProperties.Add("collection", collection.CollectionName);
 
                     Console.WriteLine($"Collection:  {collection.CollectionName}");
-                    await _logger.WriteAsync(
+                    _logger.Write(
                         new EventTelemetry("Backup-Start-Collection", collectionProperties));
 
                     var toTimeStamp = await BackupCollectionAsync(1, collection, collectionProperties);
 
                     if (toTimeStamp != null)
                     {
-                        await _logger.WriteAsync(new EventTelemetry(
+                        _logger.Write(new EventTelemetry(
                             "Backup-End-Collection",
                             toTimeStamp.Value,
                             collectionProperties));
                     }
                     else
                     {
-                        await _logger.WriteAsync(
+                        _logger.Write(
                             new EventTelemetry("Backup-End-Collection", collectionProperties));
                     }
                 }
-                await _logger.WriteAsync(
+                _logger.Write(
                     new EventTelemetry("Backup-End-Db", dbProperties));
             }
-            await _logger.WriteAsync(
+            _logger.Write(
                 new EventTelemetry("Backup-End", accountProperties));
         }
 
@@ -126,7 +126,7 @@ namespace Cosbak.Controllers.Backup
                 }
                 else
                 {
-                    await _logger.WriteAsync(new EventTelemetry("Backup-No Backup required", collectionProperties));
+                    _logger.Write(new EventTelemetry("Backup-No Backup required", collectionProperties));
                 }
                 if (currentBackupLease != null)
                 {
@@ -258,7 +258,7 @@ namespace Cosbak.Controllers.Backup
         {
             var partitionProperties = collectionProperties.Add("partition", partition.KeyRangeId);
 
-            await _logger.WriteAsync(new EventTelemetry("Backup-Start-Partition", partitionProperties));
+            _logger.Write(new EventTelemetry("Backup-Start-Partition", partitionProperties));
 
             var feed = partition.GetChangeFeed();
             var indexPath = blobPrefix + partition.KeyRangeId + ".index";
@@ -300,13 +300,13 @@ namespace Cosbak.Controllers.Backup
             //  Make sure storage work is done
             await pendingStorageTask;
 
-            await _logger.WriteAsync(new EventTelemetry(
+            _logger.Write(new EventTelemetry(
                 "Backup-Partition-totalIndex", totalIndex, partitionProperties));
-            await _logger.WriteAsync(new EventTelemetry(
+            _logger.Write(new EventTelemetry(
                 "Backup-Partition-totalContent", totalContent, partitionProperties));
-            await _logger.WriteAsync(new EventTelemetry(
+            _logger.Write(new EventTelemetry(
                 "Backup-Partition-totalDocuments", totalDocuments, partitionProperties));
-            await _logger.WriteAsync(new EventTelemetry("Backup-End-Partition", partitionProperties));
+            _logger.Write(new EventTelemetry("Backup-End-Partition", partitionProperties));
         }
     }
 }

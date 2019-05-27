@@ -6,7 +6,7 @@ namespace Cosbak.Logging
 {
     public interface ILogger
     {
-        Task WriteAsync(TelemetryBase telemetry);
+        void Write(TelemetryBase telemetry);
 
         Task FlushAsync();
     }

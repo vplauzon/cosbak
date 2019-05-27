@@ -14,7 +14,7 @@ namespace Cosbak.Logging
             _storageFacade = storageFacade;
         }
 
-        Task ILogger.WriteAsync(TelemetryBase telemetry)
+        void ILogger.Write(TelemetryBase telemetry)
         {
             if (telemetry == null)
             {
