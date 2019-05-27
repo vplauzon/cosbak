@@ -1,9 +1,10 @@
 ﻿using Cosbak.Config;
+using Cosbak.Controllers.Backup;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 
-namespace Cosbak.Command
+namespace Cosbak.Controllers.Backup
 {
     public class BackupCommand : CommandBase<BackupDescription>
     {

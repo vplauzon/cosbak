@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
-namespace Cosbak.Command
+namespace Cosbak.Controllers.Backup
 {
     public abstract class CommandBase<CONFIG> where CONFIG : new()
     {
