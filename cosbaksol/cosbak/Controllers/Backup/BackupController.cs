@@ -12,7 +12,7 @@ using Cosbak.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Newtonsoft.Json;
 
-namespace Cosbak
+namespace Cosbak.Controllers.Backup
 {
     public class BackupController
     {

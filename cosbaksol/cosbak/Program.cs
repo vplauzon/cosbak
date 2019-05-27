@@ -112,7 +112,7 @@ namespace Cosbak
 
                 try
                 {
-                    var storageGateway = new StorageBackupGateway(storageFacade, logger);
+                    var storageGateway = new StorageBackupController(storageFacade, logger);
                     var cosmosGateway = new DatabaseAccountFacade(
                         description.CosmosAccount.Name,
                         description.CosmosAccount.Key,
