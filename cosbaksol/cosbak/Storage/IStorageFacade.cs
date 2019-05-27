@@ -5,6 +5,8 @@ namespace Cosbak.Storage
 {
     public interface IStorageFacade
     {
+        IStorageFacade ChangeFolder(string subFolder);
+
         Task<bool> DoesExistAsync(string contentPath);
 
         Task<string> GetContentAsync(string contentPath);

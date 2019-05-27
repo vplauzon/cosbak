@@ -41,15 +41,52 @@ namespace Cosbak.Storage
             StorageCredentials credentials,
             string accountName,
             string container,
-            string folder)
+            string folder) : this(CreateContainerReference(credentials, accountName, container), folder)
+        {
+        }
+
+        private StorageFacade(CloudBlobContainer container, string blobPrefix)
+        {
+            _container = container;
+            _blobPrefix = blobPrefix.Trim();
+        }
+
+        private static CloudBlobContainer CreateContainerReference(
+            StorageCredentials credentials,
+            string accountName,
+            string container)
         {
             var storageUri = new Uri($"https://{accountName}.blob.core.windows.net/");
             var client = new CloudBlobClient(storageUri, credentials);
 
-            _container = client.GetContainerReference(container);
-            _blobPrefix = folder;
+            return client.GetContainerReference(container);
         }
         #endregion
+
+        IStorageFacade IStorageFacade.ChangeFolder(string subFolder)
+        {
+            if (string.IsNullOrWhiteSpace(subFolder))
+            {
+                throw new ArgumentNullException(nameof(subFolder));
+            }
+
+            subFolder = subFolder.Trim();
+
+            if (subFolder.StartsWith('/'))
+            {
+                throw new ArgumentException("Can't start with a '/'", nameof(subFolder));
+            }
+            if (subFolder.EndsWith('/'))
+            {
+                throw new ArgumentException("Can't end with a '/'", nameof(subFolder));
+            }
+
+            var newPrefix = _blobPrefix.Length != 0
+                ? new StorageFacade(_container, _blobPrefix + '/' + subFolder)
+                : new StorageFacade(_container, subFolder);
+
+            return newPrefix;
+        }
 
         async Task<string> IStorageFacade.GetContentAsync(string contentPath)
         {
