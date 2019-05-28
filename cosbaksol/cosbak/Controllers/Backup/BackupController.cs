@@ -40,8 +40,8 @@ namespace Cosbak.Controllers.Backup
 
         public async Task BackupAsync()
         {
-            _logger.Write(new ConsoleTelemetry("Backup..."));
-            _logger.Write(new EventTelemetry("Backup-Start"));
+            _logger.Display("Backup...");
+            _logger.WriteEvent("Backup-Start");
             foreach (var collection2 in await _cosmosController.GetCollectionsAsync())
             {
                 var properties = ImmutableDictionary<string, string>
@@ -50,12 +50,12 @@ namespace Cosbak.Controllers.Backup
                     .Add("db", collection2.Database)
                     .Add("collection", collection2.Collection);
 
-                _logger.Write(new EventTelemetry("Backup-Start-Collection", properties));
-                _logger.Write(new ConsoleTelemetry(
-                    $"Collection {collection2.Account}.{collection2.Database}.{collection2.Collection}"));
-                _logger.Write(new EventTelemetry("Backup-End-Collection", properties));
+                _logger.WriteEvent("Backup-Start-Collection", properties);
+                _logger.Display(
+                    $"Collection {collection2.Account}.{collection2.Database}.{collection2.Collection}");
+                _logger.WriteEvent("Backup-End-Collection", properties);
             }
-            _logger.Write(new EventTelemetry("Backup-End"));
+            _logger.WriteEvent("Backup-End");
 
             foreach (var db in await _databaseAccount.GetDatabasesAsync())
             {
@@ -65,10 +65,7 @@ namespace Cosbak.Controllers.Backup
 
                     if (toTimeStamp != null)
                     {
-                        _logger.Write(new EventTelemetry(
-                            "Backup-End-Collection",
-                            toTimeStamp.Value,
-                            null));
+                        _logger.WriteEvent("Backup-End-Collection", count: toTimeStamp.Value);
                     }
                 }
             }
@@ -116,7 +113,7 @@ namespace Cosbak.Controllers.Backup
                 }
                 else
                 {
-                    _logger.Write(new EventTelemetry("Backup-No Backup required", collectionProperties));
+                    _logger.WriteEvent("Backup-No Backup required", collectionProperties);
                 }
                 if (currentBackupLease != null)
                 {
@@ -248,7 +245,7 @@ namespace Cosbak.Controllers.Backup
         {
             var partitionProperties = collectionProperties.Add("partition", partition.KeyRangeId);
 
-            _logger.Write(new EventTelemetry("Backup-Start-Partition", partitionProperties));
+            _logger.WriteEvent("Backup-Start-Partition", partitionProperties);
 
             var feed = partition.GetChangeFeed();
             var indexPath = blobPrefix + partition.KeyRangeId + ".index";
@@ -290,13 +287,13 @@ namespace Cosbak.Controllers.Backup
             //  Make sure storage work is done
             await pendingStorageTask;
 
-            _logger.Write(new EventTelemetry(
-                "Backup-Partition-totalIndex", totalIndex, partitionProperties));
-            _logger.Write(new EventTelemetry(
-                "Backup-Partition-totalContent", totalContent, partitionProperties));
-            _logger.Write(new EventTelemetry(
-                "Backup-Partition-totalDocuments", totalDocuments, partitionProperties));
-            _logger.Write(new EventTelemetry("Backup-End-Partition", partitionProperties));
+            _logger.WriteEvent(
+                "Backup-Partition-totalIndex", partitionProperties, count: totalIndex);
+            _logger.WriteEvent(
+                "Backup-Partition-totalContent", partitionProperties, count: totalContent);
+            _logger.WriteEvent(
+                "Backup-Partition-totalDocuments", partitionProperties, count: totalDocuments);
+            _logger.WriteEvent("Backup-End-Partition", partitionProperties);
         }
     }
 }

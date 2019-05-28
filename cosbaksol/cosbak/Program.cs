@@ -131,7 +131,7 @@ namespace Cosbak
                 }
                 catch (Exception ex)
                 {
-                    logger.Write(new ExceptionTelemetry(ex));
+                    logger.DisplayError(ex);
                 }
                 finally
                 {

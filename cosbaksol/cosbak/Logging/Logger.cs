@@ -1,6 +1,7 @@
 ﻿using Cosbak.Storage;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Threading.Tasks;
 
 namespace Cosbak.Logging
@@ -14,20 +15,29 @@ namespace Cosbak.Logging
             _storageFacade = storageFacade;
         }
 
-        void ILogger.Write(TelemetryBase telemetry)
+        void ILogger.Display(string text)
         {
-            if (telemetry == null)
-            {
-                throw new ArgumentNullException(nameof(telemetry));
-            }
+            Console.WriteLine(text);
 
-            var consoleTelemetry = telemetry as ConsoleTelemetry;
+            throw new NotImplementedException();
+        }
 
-            if (consoleTelemetry != null)
-            {
-                Console.WriteLine(consoleTelemetry.Text);
-            }
+        void ILogger.DisplayError(Exception exception)
+        {
+            Console.Error.WriteLine($"Exception:  '{exception.GetType().Name}'");
+            Console.Error.WriteLine($"Full Name:  '{exception.GetType().FullName}'");
+            Console.Error.WriteLine($"Stack Trace:  '{exception.StackTrace}'");
 
+            throw new NotImplementedException();
+        }
+
+        void ILogger.WriteEvent(
+            string eventName,
+            IImmutableDictionary<string, string> properties,
+            double? metric,
+            long? count,
+            TimeSpan? duration)
+        {
             throw new NotImplementedException();
         }
 
