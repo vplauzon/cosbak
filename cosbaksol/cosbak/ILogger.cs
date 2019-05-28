@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 
-namespace Cosbak.Logging
+namespace Cosbak
 {
     public interface ILogger
     {

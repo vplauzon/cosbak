@@ -1,8 +1,6 @@
-﻿using Cosbak.Logging;
-using Cosbak.Storage;
+﻿using Cosbak.Storage;
 using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace Cosbak.Controllers.Backup
 {

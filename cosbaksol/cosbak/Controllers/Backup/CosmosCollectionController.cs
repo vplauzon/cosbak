@@ -1,5 +1,4 @@
 ﻿using Cosbak.Cosmos;
-using Cosbak.Logging;
 
 namespace Cosbak.Controllers.Backup
 {

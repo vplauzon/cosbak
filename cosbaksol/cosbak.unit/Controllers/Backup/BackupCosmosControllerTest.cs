@@ -1,6 +1,6 @@
-﻿using Cosbak.Controllers.Backup;
+﻿using Cosbak;
+using Cosbak.Controllers.Backup;
 using Cosbak.Cosmos;
-using Cosbak.Logging;
 using Moq;
 using System;
 using System.Collections.Generic;

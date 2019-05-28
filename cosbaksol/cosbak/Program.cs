@@ -1,14 +1,11 @@
 ﻿using Cosbak.Config;
 using Cosbak.Controllers.Backup;
 using Cosbak.Cosmos;
-using Cosbak.Logging;
 using Cosbak.Storage;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.IO;
 using System.Linq;
-using System.Net;
 using System.Threading.Tasks;
 
 namespace Cosbak

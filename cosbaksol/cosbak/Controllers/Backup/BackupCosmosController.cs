@@ -1,5 +1,4 @@
-﻿using Cosbak.Logging;
-using Cosbak.Cosmos;
+﻿using Cosbak.Cosmos;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;

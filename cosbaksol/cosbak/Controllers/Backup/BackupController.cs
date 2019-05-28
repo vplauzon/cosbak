@@ -6,7 +6,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Cosbak.Cosmos;
-using Cosbak.Logging;
 using Cosbak.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Newtonsoft.Json;
