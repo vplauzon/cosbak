@@ -12,7 +12,7 @@ namespace Cosbak.Controllers.Backup
     {
         private readonly IDatabaseAccountFacade _accountFacade;
         private readonly ILogger _logger;
-        private readonly IImmutableList<string> _filters;
+        private readonly IImmutableDictionary<string, IImmutableSet<string>> _filterMap;
 
         #region Constructors
         public BackupCosmosController(
@@ -22,23 +22,71 @@ namespace Cosbak.Controllers.Backup
         {
             _accountFacade = accountFacade ?? throw new ArgumentNullException(nameof(accountFacade));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _filters = filters == null
-                ? ImmutableArray<string>.Empty
-                : CleanFilters(filters);
+            _filterMap = CreateFilterMap(filters);
         }
 
-        private ImmutableArray<string> CleanFilters(IEnumerable<string> filters)
+        private static IImmutableDictionary<string, IImmutableSet<string>> CreateFilterMap(
+            IEnumerable<string> filters)
         {
-            var trimmed = from f in filters
-                          select f.Trim();
+            if (filters == null)
+            {
+                return ImmutableDictionary<string, IImmutableSet<string>>.Empty;
+            }
+            else
+            {
+                var list = from f in filters
+                           let parts = f.Split(".")
+                           let db = parts[0]
+                           let collection = parts[1].Trim()
+                           group collection by db;
+                var dbMap = list.ToImmutableDictionary(
+                    g => g.Key,
+                    g => g.ToImmutableHashSet() as IImmutableSet<string>);
 
-            return trimmed.ToImmutableArray();
+                return dbMap;
+            }
         }
         #endregion
 
-        Task<IEnumerable<ICosmosCollectionController>> IBackupCosmosController.GetCollectionsAsync()
+        async Task<IImmutableList<ICosmosCollectionController>> IBackupCosmosController.GetCollectionsAsync()
         {
-            throw new NotImplementedException();
+            var builder = ImmutableList<ICosmosCollectionController>.Empty.ToBuilder();
+
+            foreach (var db in await _accountFacade.GetDatabasesAsync())
+            {
+                foreach (var collection in await db.GetCollectionsAsync())
+                {
+                    if (IsIncluded(collection))
+                    {
+                        var controller = new CosmosCollectionController(collection, _logger);
+
+                        builder.Add(controller);
+                    }
+                }
+            }
+
+            return builder.ToImmutableArray();
+        }
+
+        private bool IsIncluded(ICollectionFacade collection)
+        {
+            var db = collection.Parent.DatabaseName;
+
+            if (!_filterMap.Any())
+            {
+                return true;
+            }
+            else if (!_filterMap.ContainsKey(db))
+            {
+                return false;
+            }
+            else
+            {
+                var collectionFilter = _filterMap[db];
+
+                return collectionFilter.Contains("*")
+                    || collectionFilter.Contains(collection.CollectionName);
+            }
         }
     }
 }

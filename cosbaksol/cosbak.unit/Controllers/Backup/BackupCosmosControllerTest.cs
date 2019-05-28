@@ -88,18 +88,33 @@ namespace cosbak.unit.Controllers.Backup
             collectionA
                 .Setup(c => c.CollectionName)
                 .Returns("a");
+            collectionA
+                .Setup(c => c.Parent)
+                .Returns(db1.Object);
             collectionB
                 .Setup(c => c.CollectionName)
                 .Returns("b");
+            collectionB
+                .Setup(c => c.Parent)
+                .Returns(db1.Object);
             collectionX
                 .Setup(c => c.CollectionName)
                 .Returns("x");
+            collectionX
+                .Setup(c => c.Parent)
+                .Returns(db2.Object);
             collectionY
                 .Setup(c => c.CollectionName)
                 .Returns("y");
+            collectionY
+                .Setup(c => c.Parent)
+                .Returns(db2.Object);
             collectionZ
                 .Setup(c => c.CollectionName)
                 .Returns("z");
+            collectionZ
+                .Setup(c => c.Parent)
+                .Returns(db2.Object);
 
             db1
                 .Setup(db => db.DatabaseName)
