@@ -7,13 +7,17 @@ namespace Cosbak
 {
     public interface ILogger
     {
-        void Display(string text);
+        void Display(
+            string text,
+            IImmutableDictionary<string, string> context = null);
 
-        void DisplayError(Exception exception);
+        void DisplayError(
+            Exception exception,
+            IImmutableDictionary<string, string> context = null);
 
         void WriteEvent(
             string eventName,
-            IImmutableDictionary<string, string> properties = null,
+            IImmutableDictionary<string, string> context = null,
             double? metric = null,
             long? count = null,
             TimeSpan? duration = null);

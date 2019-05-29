@@ -15,14 +15,18 @@ namespace Cosbak
             _storageFacade = storageFacade;
         }
 
-        void ILogger.Display(string text)
+        void ILogger.Display(
+            string text,
+            IImmutableDictionary<string, string> context)
         {
             Console.WriteLine(text);
 
             throw new NotImplementedException();
         }
 
-        void ILogger.DisplayError(Exception exception)
+        void ILogger.DisplayError(
+            Exception exception,
+            IImmutableDictionary<string, string> context)
         {
             Console.Error.WriteLine($"Exception:  '{exception.GetType().Name}'");
             Console.Error.WriteLine($"Full Name:  '{exception.GetType().FullName}'");
@@ -33,7 +37,7 @@ namespace Cosbak
 
         void ILogger.WriteEvent(
             string eventName,
-            IImmutableDictionary<string, string> properties,
+            IImmutableDictionary<string, string> context,
             double? metric,
             long? count,
             TimeSpan? duration)

@@ -43,16 +43,16 @@ namespace Cosbak.Controllers.Backup
             _logger.WriteEvent("Backup-Start");
             foreach (var collection2 in await _cosmosController.GetCollectionsAsync())
             {
-                var properties = ImmutableDictionary<string, string>
+                var context = ImmutableDictionary<string, string>
                     .Empty
                     .Add("account", collection2.Account)
                     .Add("db", collection2.Database)
                     .Add("collection", collection2.Collection);
 
-                _logger.WriteEvent("Backup-Start-Collection", properties);
+                _logger.WriteEvent("Backup-Start-Collection", context);
                 _logger.Display(
                     $"Collection {collection2.Account}.{collection2.Database}.{collection2.Collection}");
-                _logger.WriteEvent("Backup-End-Collection", properties);
+                _logger.WriteEvent("Backup-End-Collection", context);
             }
             _logger.WriteEvent("Backup-End");
 
