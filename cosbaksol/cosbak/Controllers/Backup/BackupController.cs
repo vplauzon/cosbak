@@ -85,6 +85,8 @@ namespace Cosbak.Controllers.Backup
             }
             else
             {
+                var partitions = await cosmosCollection.GetPartitionsAsync();
+
                 storageCollection.UpdateContent(destinationTimeStamp.Value, 42);
 
                 throw new NotImplementedException();

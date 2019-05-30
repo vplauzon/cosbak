@@ -11,5 +11,7 @@ namespace Cosbak.Controllers.Backup
         string Collection { get; }
 
         Task<long?> GetLastRecordTimeStampAsync();
+
+        Task<ICosmosPartitionController[]> GetPartitionsAsync();
     }
 }

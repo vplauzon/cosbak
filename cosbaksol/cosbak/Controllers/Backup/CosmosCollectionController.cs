@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Linq;
+using System.Threading.Tasks;
 using Cosbak.Cosmos;
 
 namespace Cosbak.Controllers.Backup
@@ -23,6 +24,15 @@ namespace Cosbak.Controllers.Backup
         Task<long?> ICosmosCollectionController.GetLastRecordTimeStampAsync()
         {
             return _collection.GetLastUpdateTimeAsync();
+        }
+
+        async Task<ICosmosPartitionController[]> ICosmosCollectionController.GetPartitionsAsync()
+        {
+            var partitions = await _collection.GetPartitionsAsync();
+            var controllers = from p in partitions
+                              select new CosmosPartitionController(p, _logger);
+
+            return controllers.ToArray();
         }
     }
 }
