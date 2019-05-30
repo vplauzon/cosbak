@@ -85,9 +85,7 @@ namespace Cosbak.Controllers.Backup
             }
             else
             {
-                storageCollection.MasterData.LastContentTimeStamp = destinationTimeStamp;
-
-                await storageCollection.UpdateMasterAsync();
+                storageCollection.UpdateContent(destinationTimeStamp.Value, 42);
 
                 throw new NotImplementedException();
             }
@@ -100,7 +98,7 @@ namespace Cosbak.Controllers.Backup
             var lastRecordTimeStamp = await cosmosCollection.GetLastRecordTimeStampAsync();
 
             if (lastRecordTimeStamp == null
-                || lastRecordTimeStamp == storageCollection.MasterData.LastContentTimeStamp)
+                || lastRecordTimeStamp == storageCollection.LastContentTimeStamp)
             {
                 return null;
             }

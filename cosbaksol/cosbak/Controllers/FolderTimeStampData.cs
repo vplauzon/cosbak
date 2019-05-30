@@ -6,7 +6,7 @@ namespace Cosbak.Controllers
 {
     public class FolderTimeStampData
     {
-        public int Folder { get; set; }
+        public int FolderId { get; set; }
 
         public long TimeStamp { get; set; }
     }

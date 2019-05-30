@@ -4,9 +4,9 @@ namespace Cosbak.Controllers.Backup
 {
     public interface IStorageCollectionController
     {
-        MasterBackupData MasterData { get; }
+        long? LastContentTimeStamp { get; }
 
-        Task UpdateMasterAsync();
+        void UpdateContent(long lastContentTimeStamp, int folderId);
 
         Task ReleaseAsync();
     }

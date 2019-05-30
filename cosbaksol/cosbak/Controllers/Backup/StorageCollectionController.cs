@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Cosbak.Storage;
@@ -12,6 +13,7 @@ namespace Cosbak.Controllers.Backup
         private readonly ILogger _logger;
         private BlobLease _lease;
         private MasterBackupData _master;
+        private bool _isMasterDirty = false;
 
         public StorageCollectionController(IStorageFacade storageFacade, ILogger logger)
         {
@@ -45,9 +47,35 @@ namespace Cosbak.Controllers.Backup
             }
         }
 
-        MasterBackupData IStorageCollectionController.MasterData => _master;
+        long? IStorageCollectionController.LastContentTimeStamp => _master.LastContentTimeStamp;
 
-        async Task IStorageCollectionController.UpdateMasterAsync()
+        void IStorageCollectionController.UpdateContent(long lastContentTimeStamp, int folderId)
+        {
+            _isMasterDirty = true;
+
+            _master.LastContentTimeStamp = lastContentTimeStamp;
+            if (_master.ContentFolders == null)
+            {
+                _master.ContentFolders = new List<FolderTimeStampData>();
+            }
+            _master.ContentFolders.Add(new FolderTimeStampData
+            {
+                FolderId = folderId,
+                TimeStamp = lastContentTimeStamp
+            });
+        }
+
+        async Task IStorageCollectionController.ReleaseAsync()
+        {
+            if (_isMasterDirty)
+            {
+                await UpdateMasterAsync();
+            }
+
+            await _lease.ReleaseLeaseAsync();
+        }
+
+        private async Task UpdateMasterAsync()
         {
             var serializer = new JsonSerializer();
 
@@ -63,11 +91,6 @@ namespace Cosbak.Controllers.Backup
                     masterContent,
                     _lease.LeaseId);
             }
-        }
-
-        Task IStorageCollectionController.ReleaseAsync()
-        {
-            return _lease.ReleaseLeaseAsync();
         }
     }
 }
