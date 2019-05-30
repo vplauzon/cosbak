@@ -48,47 +48,29 @@ namespace Cosbak
 
         private void WritePartitionKey(BinaryWriter writer)
         {
-            var type = GetPartitionKeyType();
-
-            writer.Write((byte)type);
-            switch (type)
-            {
-                case PartitionKeyType.Boolean:
-                    writer.Write((bool)PartitionKey);
-                    return;
-                case PartitionKeyType.Double:
-                    writer.Write((double)PartitionKey);
-                    return;
-                case PartitionKeyType.Int64:
-                    writer.Write((Int64)PartitionKey);
-                    return;
-                case PartitionKeyType.String:
-                    writer.Write((string)PartitionKey);
-                    return;
-            }
-        }
-
-        private PartitionKeyType GetPartitionKeyType()
-        {
             if (PartitionKey == null)
             {
-                return PartitionKeyType.Null;
+                writer.Write((byte)PartitionKeyType.Null);
             }
             else if (PartitionKey is string)
             {
-                return PartitionKeyType.String;
+                writer.Write((byte)PartitionKeyType.String);
+                writer.Write((string)PartitionKey);
             }
             else if (PartitionKey is Int64)
             {
-                return PartitionKeyType.Int64;
+                writer.Write((byte)PartitionKeyType.Int64);
+                writer.Write((Int64)PartitionKey);
             }
             else if (PartitionKey is double)
             {
-                return PartitionKeyType.Double;
+                writer.Write((byte)PartitionKeyType.Double);
+                writer.Write((double)PartitionKey);
             }
             else if (PartitionKey is bool)
             {
-                return PartitionKeyType.Boolean;
+                writer.Write((byte)PartitionKeyType.Boolean);
+                writer.Write((bool)PartitionKey);
             }
             else
             {
