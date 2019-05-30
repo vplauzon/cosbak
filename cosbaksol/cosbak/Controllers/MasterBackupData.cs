@@ -7,8 +7,8 @@ namespace Cosbak.Controllers
     {
         public long? LastContentTimeStamp { get; set; }
 
-        public List<FolderTimeStampData> ContentFolders { get; set; }
+        public List<FolderTimeStampData> ContentFolders { get; set; } = new List<FolderTimeStampData>();
 
-        public DateTime LastClean { get; set; } = DateTime.Now;
+        public DateTime LastIndexSync { get; set; } = DateTime.Now;
     }
 }

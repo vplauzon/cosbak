@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Cosbak.Storage;
 using Newtonsoft.Json;
@@ -9,26 +10,28 @@ namespace Cosbak.Controllers.Backup
 {
     public class StorageCollectionController : IStorageCollectionController
     {
-        private readonly IStorageFacade _storageFacade;
+        private readonly IStorageFacade _rootStorage;
         private readonly ILogger _logger;
         private BlobLease _lease;
         private MasterBackupData _master;
         private bool _isMasterDirty = false;
+        private int _contentFolderId;
+        private IStorageFacade _contentStorage;
 
         public StorageCollectionController(IStorageFacade storageFacade, ILogger logger)
         {
-            _storageFacade = storageFacade;
+            _rootStorage = storageFacade;
             _logger = logger;
         }
 
         public async Task InitializeAsync()
         {
-            if (!await _storageFacade.DoesExistAsync(Constants.BACKUP_MASTER))
+            if (!await _rootStorage.DoesExistAsync(Constants.BACKUP_MASTER))
             {   //  Create empty master
-                await _storageFacade.UploadBlockBlobAsync(Constants.BACKUP_MASTER, string.Empty);
+                await _rootStorage.UploadBlockBlobAsync(Constants.BACKUP_MASTER, string.Empty);
             }
 
-            _lease = await _storageFacade.GetLeaseAsync(Constants.BACKUP_MASTER);
+            _lease = await _rootStorage.GetLeaseAsync(Constants.BACKUP_MASTER);
 
             if (_lease == null)
             {
@@ -36,7 +39,7 @@ namespace Cosbak.Controllers.Backup
             }
             else
             {
-                var masterContent = await _storageFacade.GetContentAsync(Constants.BACKUP_MASTER);
+                var masterContent = await _rootStorage.GetContentAsync(Constants.BACKUP_MASTER);
                 var serializer = new JsonSerializer();
 
                 using (var stringReader = new StringReader(masterContent))
@@ -44,25 +47,33 @@ namespace Cosbak.Controllers.Backup
                 {
                     _master = serializer.Deserialize<MasterBackupData>(reader);
                 }
+
+                var maxFolderId = _master.ContentFolders.Select(f => f.FolderId).Max();
+
+                _contentFolderId = maxFolderId + 1;
+                _contentStorage = _rootStorage.ChangeFolder(_contentFolderId.ToString());
+
+                await CleanFolderAsync();
             }
         }
 
         long? IStorageCollectionController.LastContentTimeStamp => _master.LastContentTimeStamp;
 
-        void IStorageCollectionController.UpdateContent(long lastContentTimeStamp, int folderId)
+        void IStorageCollectionController.UpdateContent(long lastContentTimeStamp)
         {
             _isMasterDirty = true;
 
             _master.LastContentTimeStamp = lastContentTimeStamp;
-            if (_master.ContentFolders == null)
-            {
-                _master.ContentFolders = new List<FolderTimeStampData>();
-            }
             _master.ContentFolders.Add(new FolderTimeStampData
             {
-                FolderId = folderId,
+                FolderId = _contentFolderId,
                 TimeStamp = lastContentTimeStamp
             });
+        }
+
+        IStoragePartitionController IStorageCollectionController.GetPartition(string id)
+        {
+            throw new NotImplementedException();
         }
 
         async Task IStorageCollectionController.ReleaseAsync()
@@ -73,6 +84,11 @@ namespace Cosbak.Controllers.Backup
             }
 
             await _lease.ReleaseLeaseAsync();
+        }
+
+        private Task CleanFolderAsync()
+        {
+            throw new NotImplementedException();
         }
 
         private async Task UpdateMasterAsync()
@@ -86,7 +102,7 @@ namespace Cosbak.Controllers.Backup
 
                 var masterContent = stringWriter.ToString();
 
-                await _storageFacade.UploadBlockBlobAsync(
+                await _rootStorage.UploadBlockBlobAsync(
                     Constants.BACKUP_MASTER,
                     masterContent,
                     _lease.LeaseId);

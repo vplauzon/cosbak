@@ -15,5 +15,7 @@ namespace Cosbak.Controllers.Backup
             _partition = partition;
             _logger = logger;
         }
+
+        string ICosmosPartitionController.Id => _partition.KeyRangeId;
     }
 }

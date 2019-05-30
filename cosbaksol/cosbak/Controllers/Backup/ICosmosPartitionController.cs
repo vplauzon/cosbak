@@ -2,5 +2,6 @@
 {
     public interface ICosmosPartitionController
     {
+        string Id { get; }
     }
 }

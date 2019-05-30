@@ -86,11 +86,26 @@ namespace Cosbak.Controllers.Backup
             else
             {
                 var partitions = await cosmosCollection.GetPartitionsAsync();
+                var tasks = (from p in partitions
+                             select BackupPartitionContentAsync(
+                                 p,
+                                 storageCollection.GetPartition(p.Id),
+                                 context.Add("partition", p.Id))).ToArray();
 
-                storageCollection.UpdateContent(destinationTimeStamp.Value, 42);
+                storageCollection.UpdateContent(destinationTimeStamp.Value);
 
                 throw new NotImplementedException();
             }
+        }
+
+        private async Task BackupPartitionContentAsync(
+            ICosmosPartitionController cosmosPartition,
+            IStoragePartitionController storagePartitionController,
+            IImmutableDictionary<string, string> context)
+        {
+            await Task.CompletedTask;
+
+            throw new NotImplementedException();
         }
 
         private async Task<long?> GetDestinationTimeStampAsync(

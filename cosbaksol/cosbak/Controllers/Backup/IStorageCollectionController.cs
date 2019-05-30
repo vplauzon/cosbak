@@ -6,7 +6,9 @@ namespace Cosbak.Controllers.Backup
     {
         long? LastContentTimeStamp { get; }
 
-        void UpdateContent(long lastContentTimeStamp, int folderId);
+        IStoragePartitionController GetPartition(string id);
+
+        void UpdateContent(long lastContentTimeStamp);
 
         Task ReleaseAsync();
     }
