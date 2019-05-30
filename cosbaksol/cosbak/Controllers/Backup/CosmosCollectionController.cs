@@ -1,4 +1,5 @@
-﻿using Cosbak.Cosmos;
+﻿using System.Threading.Tasks;
+using Cosbak.Cosmos;
 
 namespace Cosbak.Controllers.Backup
 {
@@ -18,5 +19,10 @@ namespace Cosbak.Controllers.Backup
         string ICosmosCollectionController.Database => _collection.Parent.DatabaseName;
 
         string ICosmosCollectionController.Collection => _collection.CollectionName;
+
+        Task<long?> ICosmosCollectionController.GetLastRecordTimeStampAsync()
+        {
+            return _collection.GetLastUpdateTimeAsync();
+        }
     }
 }

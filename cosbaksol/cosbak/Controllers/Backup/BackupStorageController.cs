@@ -1,6 +1,7 @@
 ﻿using Cosbak.Storage;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Cosbak.Controllers.Backup
 {
@@ -13,6 +14,20 @@ namespace Cosbak.Controllers.Backup
         {
             _storageFacade = storageFacade;
             _logger = logger;
+        }
+
+        async Task<IStorageCollectionController> IBackupStorageController.LockMasterAsync(
+            string account,
+            string database,
+            string collection)
+        {
+            var backupFolder =
+                _storageFacade.ChangeFolder($"{account}/{database}/{collection}/backup");
+            var collectionController = new StorageCollectionController(backupFolder, _logger);
+
+            await collectionController.InitializeAsync();
+
+            return collectionController;
         }
     }
 }

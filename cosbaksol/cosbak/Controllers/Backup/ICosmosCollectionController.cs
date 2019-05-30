@@ -1,4 +1,6 @@
-﻿namespace Cosbak.Controllers.Backup
+﻿using System.Threading.Tasks;
+
+namespace Cosbak.Controllers.Backup
 {
     public interface ICosmosCollectionController
     {
@@ -7,5 +9,7 @@
         string Database { get; }
 
         string Collection { get; }
+
+        Task<long?> GetLastRecordTimeStampAsync();
     }
 }

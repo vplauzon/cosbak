@@ -41,42 +41,82 @@ namespace Cosbak.Controllers.Backup
         {
             _logger.Display("Backup...");
             _logger.WriteEvent("Backup-Start");
-            foreach (var collection2 in await _cosmosController.GetCollectionsAsync())
+            foreach (var cosmosCollection in await _cosmosController.GetCollectionsAsync())
             {
                 var context = ImmutableDictionary<string, string>
                     .Empty
-                    .Add("account", collection2.Account)
-                    .Add("db", collection2.Database)
-                    .Add("collection", collection2.Collection);
+                    .Add("account", cosmosCollection.Account)
+                    .Add("db", cosmosCollection.Database)
+                    .Add("collection", cosmosCollection.Collection);
 
                 _logger.WriteEvent("Backup-Start-Collection", context);
-                _logger.Display(
-                    $"Collection {collection2.Account}.{collection2.Database}.{collection2.Collection}");
-                _logger.WriteEvent("Backup-End-Collection", context);
+                _logger.Display($"Collection {cosmosCollection.Account}"
+                    + $".{cosmosCollection.Database}.{cosmosCollection.Collection}");
+
+                var storageCollection = await _storageController.LockMasterAsync(
+                    cosmosCollection.Account,
+                    cosmosCollection.Database,
+                    cosmosCollection.Collection);
+
+                try
+                {
+                    await BackupCollectionContentAsync(cosmosCollection, storageCollection, context);
+                    _logger.WriteEvent("Backup-End-Collection", context);
+                }
+                finally
+                {
+                    await storageCollection.ReleaseAsync();
+                }
             }
             _logger.WriteEvent("Backup-End");
+        }
 
-            foreach (var db in await _databaseAccount.GetDatabasesAsync())
+        private async Task BackupCollectionContentAsync(
+            ICosmosCollectionController cosmosCollection,
+            IStorageCollectionController storageCollection,
+            IImmutableDictionary<string, string> context)
+        {
+            var destinationTimeStamp =
+                await GetDestinationTimeStampAsync(cosmosCollection, storageCollection);
+
+            if (destinationTimeStamp == null)
             {
-                foreach (var collection in await db.GetCollectionsAsync())
-                {
-                    var toTimeStamp = await BackupCollectionAsync(1, collection, null);
+                _logger.WriteEvent("Backup-Collection-NoNewContent", context);
+            }
+            else
+            {
+                storageCollection.MasterData.LastContentTimeStamp = destinationTimeStamp;
 
-                    if (toTimeStamp != null)
-                    {
-                        _logger.WriteEvent("Backup-End-Collection", count: toTimeStamp.Value);
-                    }
-                }
+                await storageCollection.UpdateMasterAsync();
+
+                throw new NotImplementedException();
             }
         }
 
+        private async Task<long?> GetDestinationTimeStampAsync(
+            ICosmosCollectionController cosmosCollection,
+            IStorageCollectionController storageCollection)
+        {
+            var lastRecordTimeStamp = await cosmosCollection.GetLastRecordTimeStampAsync();
+
+            if (lastRecordTimeStamp == null
+                || lastRecordTimeStamp == storageCollection.MasterData.LastContentTimeStamp)
+            {
+                return null;
+            }
+            else
+            {
+                return lastRecordTimeStamp;
+            }
+        }
+
+        #region Legacy
         private async Task<long?> BackupCollectionAsync(
-            int rotation,
             ICollectionFacade collection,
             IImmutableDictionary<string, string> collectionProperties)
         {
             var db = collection.Parent.DatabaseName;
-            var backupPrefix = $"{rotation.ToString("D10")}/{db}.{collection.CollectionName}/backups/";
+            var backupPrefix = $"{db}.{collection.CollectionName}/backups/";
             var currentBackupPath = backupPrefix + "currentBackup.json";
 
             //  Winner of the current backup lease becomes the master process
@@ -294,5 +334,6 @@ namespace Cosbak.Controllers.Backup
                 "Backup-Partition-totalDocuments", partitionProperties, count: totalDocuments);
             _logger.WriteEvent("Backup-End-Partition", partitionProperties);
         }
+        #endregion
     }
 }
