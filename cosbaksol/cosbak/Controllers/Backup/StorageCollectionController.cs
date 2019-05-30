@@ -73,7 +73,7 @@ namespace Cosbak.Controllers.Backup
 
         IStoragePartitionController IStorageCollectionController.GetPartition(string id)
         {
-            throw new NotImplementedException();
+            return new StoragePartitionController(id, _contentStorage, _logger);
         }
 
         async Task IStorageCollectionController.ReleaseAsync()
