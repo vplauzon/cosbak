@@ -1,14 +1,18 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Azure.Documents;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Bson;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
-namespace Cosbak.Cosmos
+namespace Cosbak
 {
-    public class DocumentPackage
+    public static class DocumentSpliter
     {
         #region Inner Types
         private struct BasicMetaData
@@ -21,23 +25,73 @@ namespace Cosbak.Cosmos
         }
         #endregion
 
-        public DocumentPackage(JObject document, IEnumerable<string> partitionPathParts)
+        public static DocumentMetaData Write(
+            JObject document,
+            IEnumerable<string> partitionPathParts,
+            Stream stream)
         {
+            //  Copy so we can manipulate it without side effect
+            document = (JObject)document.DeepClone();
+
             var basics = ExtractMetaData(document, partitionPathParts);
+            var positionBefore = stream.Position;
 
-            Clean(document, partitionPathParts);
+            CleanMetaData(document);
 
-            Content = Serialize(document);
-            MetaData = new DocumentMetaData(basics.Id, basics.PartitionKey, basics.TimeStamp, Content.Length);
+            using (var jsonWriter = new BsonDataWriter(stream))
+            {
+                document.WriteTo(jsonWriter);
+                jsonWriter.Flush();
+
+                var positionAfter = stream.Position;
+                var size = positionAfter - positionBefore;
+
+                if (size > int.MaxValue)
+                {
+                    throw new ArgumentOutOfRangeException(
+                        nameof(document),
+                        $"Document is too big ; size of {size}");
+                }
+
+                var metaData = new DocumentMetaData(
+                    basics.Id,
+                    basics.PartitionKey,
+                    basics.TimeStamp,
+                    (int)size);
+
+                return metaData;
+            }
         }
 
-        public DocumentMetaData MetaData { get; }
-
-        public byte[] Content { get; }
-
-        private BasicMetaData ExtractMetaData(JObject document, IEnumerable<string> partitionPathParts)
+        public static JObject Read(
+            DocumentMetaData metaData,
+            IEnumerable<string> partitionPathParts,
+            Stream stream)
         {
-            var partition = ExtractPartition(document, partitionPathParts);
+            var positionBefore = stream.Position;
+
+            using (var jsonReader = new BsonDataReader(stream))
+            {
+                var document = JObject.Load(jsonReader);
+                var positionAfter = stream.Position;
+                var size = positionAfter - positionBefore;
+
+                if (size != metaData.Size)
+                {
+                    throw new ArgumentOutOfRangeException(
+                        nameof(metaData),
+                        "Mismatch between the meta size and the buffer size read in BSON:"
+                        + $"{size} vs {metaData.Size}");
+                }
+                IntegrateMetaData(document, metaData);
+
+                return document;
+            }
+        }
+
+        private static BasicMetaData ExtractMetaData(JObject document, IEnumerable<string> partitionPathParts)
+        {
+            var partition = GetPartitionValue(document, partitionPathParts);
 
             return new BasicMetaData
             {
@@ -47,7 +101,7 @@ namespace Cosbak.Cosmos
             };
         }
 
-        private object ExtractPartition(JObject document, IEnumerable<string> partitionPathParts)
+        private static object GetPartitionValue(JObject document, IEnumerable<string> partitionPathParts)
         {
             var field = partitionPathParts.First();
 
@@ -59,7 +113,7 @@ namespace Cosbak.Cosmos
                 {
                     var fieldValue = fieldObject.Value<JObject>();
 
-                    return ExtractPartition(fieldValue, trailingFields);
+                    return GetPartitionValue(fieldValue, trailingFields);
                 }
                 else
                 {
@@ -74,56 +128,21 @@ namespace Cosbak.Cosmos
             }
         }
 
-        private void Clean(JObject content, IEnumerable<string> partitionPathParts)
+        private static void CleanMetaData(JObject document)
         {
-            RemovePartition(content, partitionPathParts);
-            content.Remove("id");
-            content.Remove("_ts");
-            content.Remove("_rid");
-            content.Remove("_self");
-            content.Remove("_etag");
-            content.Remove("_attachments");
-            content.Remove("_lsn");
-            content.Remove("_metadata");
+            document.Remove("id");
+            document.Remove("_ts");
+            document.Remove("_rid");
+            document.Remove("_self");
+            document.Remove("_etag");
+            document.Remove("_attachments");
+            document.Remove("_lsn");
+            document.Remove("_metadata");
         }
 
-        private void RemovePartition(JObject document, IEnumerable<string> partitionPathParts)
+        private static void IntegrateMetaData(JObject document, DocumentMetaData metaData)
         {
-            var field = partitionPathParts.First();
-
-            if (document.TryGetValue(field, out var fieldValue))
-            {
-                var trailingFields = partitionPathParts.Skip(1);
-
-                if (trailingFields.Any())
-                {
-                    RemovePartition(fieldValue.Value<JObject>(), trailingFields);
-                }
-                else
-                {
-                    document.Remove(field);
-                }
-            }
-            else
-            {
-                //  Partition key isn't defined
-            }
-        }
-
-        private static byte[] Serialize(JObject document)
-        {
-            //  Replace by BsonWriter to serialize in BSON
-            using (var stream = new MemoryStream())
-            using (var writer = new StreamWriter(stream))
-            using (var jsonWriter = new JsonTextWriter(writer))
-            {
-                document.WriteTo(jsonWriter);
-                jsonWriter.Flush();
-                writer.Flush();
-                stream.Flush();
-
-                return stream.ToArray();
-            }
+            document.Add("id", metaData.Id);
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
 
 namespace Cosbak.Cosmos
 {
@@ -6,6 +7,6 @@ namespace Cosbak.Cosmos
     {
         string KeyRangeId { get; }
 
-        IAsyncStream<DocumentPackage> GetChangeFeed();
+        IAsyncStream<JObject> GetChangeFeed();
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
@@ -12,26 +13,22 @@ namespace Cosbak.Cosmos
     public class PartitionFacade : IPartitionFacade
     {
         #region Inner Types
-        private class AsyncQuery : IAsyncStream<DocumentPackage>
+        private class AsyncQuery : IAsyncStream<JObject>
         {
             private readonly IDocumentQuery<Document> _query;
-            private readonly IEnumerable<string> _partitionPathParts;
 
-            public AsyncQuery(IDocumentQuery<Document> query, IEnumerable<string> partitionPathParts)
+            public AsyncQuery(IDocumentQuery<Document> query)
             {
                 _query = query;
-                _partitionPathParts = partitionPathParts;
             }
 
-            bool IAsyncStream<DocumentPackage>.HasMoreResults => _query.HasMoreResults;
+            bool IAsyncStream<JObject>.HasMoreResults => _query.HasMoreResults;
 
-            async Task<DocumentPackage[]> IAsyncStream<DocumentPackage>.GetBatchAsync()
+            async Task<IImmutableList<JObject>> IAsyncStream<JObject>.GetBatchAsync()
             {
                 var batch = await _query.ExecuteNextAsync<JObject>();
-                var documents = from d in batch
-                                select new DocumentPackage(d, _partitionPathParts);
 
-                return documents.ToArray();
+                return batch.ToImmutableArray();
             }
         }
         #endregion
@@ -53,7 +50,7 @@ namespace Cosbak.Cosmos
 
         string IPartitionFacade.KeyRangeId => _partitionKeyRangeId;
 
-        IAsyncStream<DocumentPackage> IPartitionFacade.GetChangeFeed()
+        IAsyncStream<JObject> IPartitionFacade.GetChangeFeed()
         {
             var query = _client.CreateDocumentChangeFeedQuery(_collectionUri, new ChangeFeedOptions
             {
@@ -61,7 +58,7 @@ namespace Cosbak.Cosmos
                 StartFromBeginning = true
             });
 
-            return new AsyncQuery(query, _parent.PartitionPath.Split('/').Skip(1));
+            return new AsyncQuery(query);
         }
     }
 }

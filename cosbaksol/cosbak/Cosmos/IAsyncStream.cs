@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Immutable;
+using System.Threading.Tasks;
 
 namespace Cosbak.Cosmos
 {
@@ -6,6 +7,6 @@ namespace Cosbak.Cosmos
     {
         bool HasMoreResults { get; }
 
-        Task<T[]> GetBatchAsync();
+        Task<IImmutableList<T>> GetBatchAsync();
     }
 }

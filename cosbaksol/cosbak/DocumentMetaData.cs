@@ -4,79 +4,48 @@ using System.IO;
 
 namespace Cosbak
 {
-    public class DocumentMetaData
+    public struct DocumentMetaData
     {
-        #region Inner Types
-        private enum PartitionKeyType
-        {
-            String,
-            Int64,
-            Double,
-            Boolean,
-            Null
-        }
-        #endregion
-
-        public DocumentMetaData(string id, object partitionKey, Int64 timeStamp, int size)
+        public DocumentMetaData(string id, object partitionKey, long timeStamp, int size)
         {
             Id = id;
-            PartitionKey = partitionKey;
+            Hash = new DocumentHash(id, partitionKey);
+            TimeStamp = timeStamp;
+            Size = size;
+        }
+
+        private DocumentMetaData(string id, DocumentHash hash, long timeStamp, int size)
+        {
+            Id = id;
+            Hash = hash;
             TimeStamp = timeStamp;
             Size = size;
         }
 
         public string Id { get; }
 
-        public object PartitionKey { get; }
+        public DocumentHash Hash { get; }
 
-        public Int64 TimeStamp { get; }
+        public long TimeStamp { get; }
 
         public int Size { get; }
 
         public static DocumentMetaData Read(BinaryReader reader)
         {
-            throw new NotImplementedException();
+            var id = reader.ReadString();
+            var hash = DocumentHash.Read(reader);
+            var timeStamp = reader.ReadInt64();
+            var size = reader.ReadInt32();
+
+            return new DocumentMetaData(id, hash, timeStamp, size);
         }
 
-        public virtual void Write(BinaryWriter writer)
+        public void Write(BinaryWriter writer)
         {
             writer.Write(Id);
-            WritePartitionKey(writer);
+            Hash.Write(writer);
             writer.Write(TimeStamp);
             writer.Write(Size);
-        }
-
-        private void WritePartitionKey(BinaryWriter writer)
-        {
-            if (PartitionKey == null)
-            {
-                writer.Write((byte)PartitionKeyType.Null);
-            }
-            else if (PartitionKey is string)
-            {
-                writer.Write((byte)PartitionKeyType.String);
-                writer.Write((string)PartitionKey);
-            }
-            else if (PartitionKey is Int64)
-            {
-                writer.Write((byte)PartitionKeyType.Int64);
-                writer.Write((Int64)PartitionKey);
-            }
-            else if (PartitionKey is double)
-            {
-                writer.Write((byte)PartitionKeyType.Double);
-                writer.Write((double)PartitionKey);
-            }
-            else if (PartitionKey is bool)
-            {
-                writer.Write((byte)PartitionKeyType.Boolean);
-                writer.Write((bool)PartitionKey);
-            }
-            else
-            {
-                throw new NotSupportedException(
-                    $"Partition key of type '{PartitionKey.GetType().Name}' isn't supported");
-            }
         }
     }
 }
