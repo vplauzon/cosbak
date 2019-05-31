@@ -117,6 +117,24 @@ namespace cosbak.unit.Command
             Assert.Equal("Z", config.StorageAccount.Folder);
             Assert.Equal("?token", config.StorageAccount.Token);
         }
+
+        [Fact]
+        public async Task WithFiltersAsync()
+        {
+            var command = new BackupCommand();
+            var config = await command.ReadDescriptionAsync(new string[]
+            {
+                "-f",
+                "Controllers/Backup/with-filters.yaml"
+            });
+
+            Assert.NotNull(config);
+            Assert.NotNull(config.CosmosAccount);
+            Assert.NotNull(config.StorageAccount);
+            Assert.NotNull(config.Plan);
+            Assert.True(1 == config.Plan.Filters.Length);
+            Assert.Equal("mydb.mycoll", config.Plan.Filters[0]);
+        }
         #endregion
     }
 }

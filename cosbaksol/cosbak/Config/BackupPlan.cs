@@ -6,7 +6,7 @@ namespace Cosbak.Config
 {
     public class BackupPlan
     {
-        public IImmutableList<string> Filters { get; set; }
+        public string[] Filters { get; set; }
 
         public TimeSpan? StartFrom { get; set; }
 
