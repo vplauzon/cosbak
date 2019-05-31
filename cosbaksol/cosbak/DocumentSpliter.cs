@@ -28,22 +28,22 @@ namespace Cosbak
         public static DocumentMetaData Write(
             JObject document,
             IEnumerable<string> partitionPathParts,
-            Stream stream)
+            BinaryWriter writer)
         {
             //  Copy so we can manipulate it without side effect
             document = (JObject)document.DeepClone();
 
             var basics = ExtractMetaData(document, partitionPathParts);
-            var positionBefore = stream.Position;
+            var positionBefore = writer.BaseStream.Position;
 
             CleanMetaData(document);
 
-            using (var jsonWriter = new BsonDataWriter(stream))
+            using (var jsonWriter = new BsonDataWriter(writer))
             {
                 document.WriteTo(jsonWriter);
                 jsonWriter.Flush();
 
-                var positionAfter = stream.Position;
+                var positionAfter = writer.BaseStream.Position;
                 var size = positionAfter - positionBefore;
 
                 if (size > int.MaxValue)
@@ -66,14 +66,14 @@ namespace Cosbak
         public static JObject Read(
             DocumentMetaData metaData,
             IEnumerable<string> partitionPathParts,
-            Stream stream)
+            BinaryReader reader)
         {
-            var positionBefore = stream.Position;
+            var positionBefore = reader.BaseStream.Position;
 
-            using (var jsonReader = new BsonDataReader(stream))
+            using (var jsonReader = new BsonDataReader(reader))
             {
                 var document = JObject.Load(jsonReader);
-                var positionAfter = stream.Position;
+                var positionAfter = reader.BaseStream.Position;
                 var size = positionAfter - positionBefore;
 
                 if (size != metaData.Size)

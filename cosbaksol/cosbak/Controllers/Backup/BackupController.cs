@@ -125,7 +125,7 @@ namespace Cosbak.Controllers.Backup
                     foreach (var doc in batch)
                     {
                         var metaData =
-                            DocumentSpliter.Write(doc, partitionPathParts, contentStream);
+                            DocumentSpliter.Write(doc, partitionPathParts, writer);
 
                         metaData.Write(writer);
                     }
