@@ -48,7 +48,14 @@ namespace Cosbak.Storage
         private StorageFacade(CloudBlobContainer container, string blobPrefix)
         {
             _container = container;
-            _blobPrefix = blobPrefix.Trim();
+            blobPrefix = blobPrefix.Trim();
+            if (blobPrefix.EndsWith('/'))
+            {
+                throw new ArgumentException(
+                    $"Can't end with a '/':  '{blobPrefix}'",
+                    nameof(blobPrefix));
+            }
+            _blobPrefix = blobPrefix + '/';
         }
 
         private static CloudBlobContainer CreateContainerReference(
@@ -82,8 +89,8 @@ namespace Cosbak.Storage
             }
 
             var newPrefix = _blobPrefix.Length != 0
-                ? new StorageFacade(_container, _blobPrefix + '/' + subFolder + '/')
-                : new StorageFacade(_container, subFolder + '/');
+                ? new StorageFacade(_container, _blobPrefix + subFolder)
+                : new StorageFacade(_container, subFolder);
 
             return newPrefix;
         }
