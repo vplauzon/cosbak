@@ -47,8 +47,11 @@ namespace Cosbak.Controllers.Backup
                 {
                     _master = serializer.Deserialize<MasterBackupData>(reader);
                 }
+                _master.ApplyDefaults();
 
-                var maxFolderId = _master.ContentFolders.Select(f => f.FolderId).Max();
+                var maxFolderId = _master.ContentFolders.Any()
+                    ? _master.ContentFolders.Select(f => f.FolderId).Max()
+                    : 0;
 
                 _contentFolderId = maxFolderId + 1;
                 _contentStorage = _rootStorage.ChangeFolder(_contentFolderId.ToString());
