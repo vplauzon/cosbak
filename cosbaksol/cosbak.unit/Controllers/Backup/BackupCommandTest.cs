@@ -73,7 +73,7 @@ namespace cosbak.unit.Command
             var config = await command.ReadDescriptionAsync(new string[]
             {
                 "-f",
-                "Command/no-secrets.yaml",
+                "Controllers/Backup/no-secrets.yaml",
                 "-ck",
                 "key",
                 "-st",
@@ -98,7 +98,7 @@ namespace cosbak.unit.Command
             var config = await command.ReadDescriptionAsync(new string[]
             {
                 "-f",
-                "Command/no-secrets.yaml",
+                "Controllers/Backup/no-secrets.yaml",
                 "-ck",
                 "key",
                 "-cn",
