@@ -48,6 +48,8 @@ namespace Cosbak.Cosmos
                 _parent.CollectionName);
         }
 
+        ICollectionFacade IPartitionFacade.Parent => _parent;
+
         string IPartitionFacade.KeyRangeId => _partitionKeyRangeId;
 
         IAsyncStream<JObject> IPartitionFacade.GetChangeFeed()

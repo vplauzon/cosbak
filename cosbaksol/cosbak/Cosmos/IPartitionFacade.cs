@@ -5,6 +5,8 @@ namespace Cosbak.Cosmos
 {
     public interface IPartitionFacade
     {
+        ICollectionFacade Parent { get; }
+
         string KeyRangeId { get; }
 
         IAsyncStream<JObject> GetChangeFeed();

@@ -1,4 +1,5 @@
-﻿using Cosbak.Storage;
+﻿using System.Threading.Tasks;
+using Cosbak.Storage;
 
 namespace Cosbak.Controllers.Backup
 {
@@ -16,6 +17,11 @@ namespace Cosbak.Controllers.Backup
             _partitionId = partitionId;
             _contentStorage = contentStorage;
             _logger = logger;
+        }
+
+        Task IStoragePartitionController.WriteBatchAsync(byte[] metaBuffer, byte[] contentBuffer)
+        {
+            throw new System.NotImplementedException();
         }
     }
 }

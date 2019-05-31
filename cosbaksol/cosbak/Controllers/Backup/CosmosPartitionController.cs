@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using Cosbak.Cosmos;
+using Newtonsoft.Json.Linq;
 
 namespace Cosbak.Controllers.Backup
 {
@@ -17,5 +18,9 @@ namespace Cosbak.Controllers.Backup
         }
 
         string ICosmosPartitionController.Id => _partition.KeyRangeId;
+
+        string ICosmosPartitionController.PartitionPath => _partition.Parent.PartitionPath;
+
+        IAsyncStream<JObject> ICosmosPartitionController.GetChangeFeed() => _partition.GetChangeFeed();
     }
 }

@@ -104,10 +104,58 @@ namespace Cosbak.Controllers.Backup
             IImmutableDictionary<string, string> context)
         {
             _logger.WriteEvent("Backup-Start-Partition", context);
-            _logger.WriteEvent("Backup-End-Partition", context);
-            await Task.CompletedTask;
 
-            throw new NotImplementedException();
+            var partitionPathParts = cosmosPartition.PartitionPath.Split('/').Skip(1);
+            var feed = cosmosPartition.GetChangeFeed();
+            var metaStream = new MemoryStream();
+            var contentStream = new MemoryStream();
+            var pendingStorageTask = Task.CompletedTask;
+            var batchId = 0;
+
+            while (feed.HasMoreResults)
+            {
+                var batch = await feed.GetBatchAsync();
+                var batchContext = context.Add("batch", batchId.ToString());
+
+                ++batchId;
+                metaStream.SetLength(0);
+                contentStream.SetLength(0);
+                using (var writer = new BinaryWriter(metaStream, Encoding.UTF8, true))
+                {
+                    foreach (var doc in batch)
+                    {
+                        var metaData =
+                            DocumentSpliter.Write(doc, partitionPathParts, contentStream);
+
+                        metaData.Write(writer);
+                    }
+                    writer.Flush();
+                }
+                metaStream.Flush();
+                contentStream.Flush();
+
+                var metaBuffer = metaStream.ToArray();
+                var contentBuffer = contentStream.ToArray();
+
+                _logger.WriteEvent(
+                    "Backup-End-Partition-Batch-Count",
+                    batchContext,
+                    count: batch.Count);
+                _logger.WriteEvent(
+                    "Backup-End-Partition-Batch-MetaSize",
+                    batchContext,
+                    count: metaBuffer.LongLength);
+                _logger.WriteEvent(
+                    "Backup-End-Partition-Batch-ContentSize",
+                    batchContext,
+                    count: contentBuffer.LongLength);
+                await pendingStorageTask;
+                pendingStorageTask = storagePartitionController.WriteBatchAsync(
+                    metaBuffer,
+                    contentBuffer);
+            }
+            await pendingStorageTask;
+            _logger.WriteEvent("Backup-End-Partition", context);
         }
 
         private async Task<long?> GetDestinationTimeStampAsync(
