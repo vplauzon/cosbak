@@ -45,9 +45,9 @@ namespace Cosbak.Controllers.Backup
                 using (var stringReader = new StringReader(masterContent))
                 using (var reader = new JsonTextReader(stringReader))
                 {
-                    _master = serializer.Deserialize<MasterBackupData>(reader);
+                    _master = serializer.Deserialize<MasterBackupData>(reader)
+                        ?? new MasterBackupData();
                 }
-                _master.ApplyDefaults();
 
                 var maxFolderId = _master.ContentFolders.Any()
                     ? _master.ContentFolders.Select(f => f.FolderId).Max()

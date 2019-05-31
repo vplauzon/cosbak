@@ -8,15 +8,8 @@ namespace Cosbak.Controllers
         public long? LastContentTimeStamp { get; set; }
 
         public List<FolderTimeStampData> ContentFolders { get; set; }
+            = new List<FolderTimeStampData>();
 
-        public DateTime? LastIndexSync { get; set; }
-
-        public void ApplyDefaults()
-        {
-            if (ContentFolders == null)
-            {
-                ContentFolders = new List<FolderTimeStampData>();
-            }
-        }
+        public DateTime LastIndexSync { get; set; } = DateTime.Now;
     }
 }
