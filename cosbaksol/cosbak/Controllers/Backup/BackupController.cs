@@ -133,9 +133,6 @@ namespace Cosbak.Controllers.Backup
                 metaStream.Flush();
                 contentStream.Flush();
 
-                var metaBuffer = metaStream.ToArray();
-                var contentBuffer = contentStream.ToArray();
-
                 _logger.WriteEvent(
                     "Backup-End-Partition-Batch-Count",
                     batchContext,
@@ -143,15 +140,15 @@ namespace Cosbak.Controllers.Backup
                 _logger.WriteEvent(
                     "Backup-End-Partition-Batch-MetaSize",
                     batchContext,
-                    count: metaBuffer.LongLength);
+                    count: metaStream.Length);
                 _logger.WriteEvent(
                     "Backup-End-Partition-Batch-ContentSize",
                     batchContext,
-                    count: contentBuffer.LongLength);
+                    count: contentStream.Length);
                 await pendingStorageTask;
                 pendingStorageTask = storagePartitionController.WriteBatchAsync(
-                    metaBuffer,
-                    contentBuffer);
+                    metaStream,
+                    contentStream);
             }
             await pendingStorageTask;
             _logger.WriteEvent("Backup-End-Partition", context);
