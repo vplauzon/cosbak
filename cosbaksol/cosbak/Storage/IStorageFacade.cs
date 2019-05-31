@@ -19,6 +19,8 @@ namespace Cosbak.Storage
 
         Task<BlobLease> GetLeaseAsync(string contentPath);
 
-        Task<string[]> ListBlobsAsync(string blobPrefix);
+        Task<string[]> ListBlobsAsync();
+
+        Task DeleteBlobAsync(string path);
     }
 }

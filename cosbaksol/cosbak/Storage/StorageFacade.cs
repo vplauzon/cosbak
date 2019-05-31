@@ -146,16 +146,16 @@ namespace Cosbak.Storage
             return await BlobLease.CreateLeaseAsync(blob);
         }
 
-        async Task<string[]> IStorageFacade.ListBlobsAsync(string blobPrefix)
+        async Task<string[]> IStorageFacade.ListBlobsAsync()
         {
-            var prefix = _blobPrefix + blobPrefix;
+            var prefix = _blobPrefix;
             var list = new List<string>();
             BlobContinuationToken token = null;
 
             do
             {
                 var segment = await _container.ListBlobsSegmentedAsync(
-                    blobPrefix,
+                    prefix,
                     true,
                     BlobListingDetails.None,
                     null,
@@ -173,6 +173,13 @@ namespace Cosbak.Storage
             while (token != null);
 
             return list.ToArray();
+        }
+
+        async Task IStorageFacade.DeleteBlobAsync(string path)
+        {
+            var blob = _container.GetBlobReference(_blobPrefix + path);
+
+            await blob.DeleteAsync();
         }
     }
 }

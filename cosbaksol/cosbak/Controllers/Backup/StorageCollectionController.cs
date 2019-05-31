@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection.Metadata;
 using System.Threading.Tasks;
 using Cosbak.Storage;
 using Newtonsoft.Json;
@@ -89,9 +90,21 @@ namespace Cosbak.Controllers.Backup
             await _lease.ReleaseLeaseAsync();
         }
 
-        private Task CleanFolderAsync()
+        private async Task CleanFolderAsync()
         {
-            throw new NotImplementedException();
+            var blobPathList = (await _rootStorage.ListBlobsAsync()).ToHashSet();
+            var contentFolders = from cf in _master.ContentFolders
+                                 select cf.FolderId.ToString();
+
+            //  Remove master
+            blobPathList.Remove(Constants.BACKUP_MASTER);
+            //  Remove all blobs under content folders
+            blobPathList.RemoveWhere(p => contentFolders.Any(f => p.StartsWith(p + '/')));
+
+            var tasks = from path in blobPathList
+                        select _rootStorage.DeleteBlobAsync(path);
+
+            await Task.WhenAll(tasks);
         }
 
         private async Task UpdateMasterAsync()
