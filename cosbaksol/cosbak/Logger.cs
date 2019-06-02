@@ -81,7 +81,8 @@ namespace Cosbak
                 SessionId = _sessionId,
                 eventType,
                 content,
-                context
+                context,
+                TimeStamp = DateTime.Now.ToUniversalTime()
             };
             var serializer = new JsonSerializer();
 
