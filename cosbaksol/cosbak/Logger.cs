@@ -10,15 +10,27 @@ namespace Cosbak
 {
     public class Logger : ILogger
     {
+        private static readonly int MAX_BUFFER_SIZE = 1 * 1024 * 1024;
+        private static readonly int MAX_BLOCKS = 50000;
+        private static readonly TimeSpan MAX_TIME = TimeSpan.FromSeconds(3);
+
         private readonly Guid _sessionId = Guid.NewGuid();
         private readonly IStorageFacade _storageFacade;
-        //private string _blobName = null;
+        private readonly JsonSerializer _serializer;
+        private string _blobName = null;
+        private int _blocks = 0;
         private Stream _stream;
         private TextWriter _writer;
+        private Task _lastWriteTask = null;
+        private DateTime? _lastWriteTime = null;
 
         public Logger(IStorageFacade storageFacade)
         {
             _storageFacade = storageFacade;
+            _serializer = JsonSerializer.Create(new JsonSerializerSettings
+            {
+                NullValueHandling = NullValueHandling.Ignore
+            });
             _stream = new MemoryStream();
             _writer = new StreamWriter(_stream);
         }
@@ -66,9 +78,9 @@ namespace Cosbak
                 context);
         }
 
-        Task ILogger.FlushAsync()
+        async Task ILogger.FlushAsync()
         {
-            throw new NotImplementedException();
+            await FlushAsync();
         }
 
         private void PushLog(
@@ -84,11 +96,62 @@ namespace Cosbak
                 context,
                 TimeStamp = DateTime.Now.ToUniversalTime()
             };
-            var serializer = new JsonSerializer();
+            var now = DateTime.Now;
 
             lock (_stream)
             {
-                serializer.Serialize(_writer, telemetry);
+                _serializer.Serialize(_writer, telemetry);
+                _writer.Flush();
+                if (_stream.Length > MAX_BUFFER_SIZE
+                    || (_lastWriteTime != null && now.Subtract(_lastWriteTime.Value) > MAX_TIME))
+                {
+                    _lastWriteTask = FlushAsync();
+                }
+            }
+        }
+
+        private async Task FlushAsync()
+        {
+            //  Buffer the last write task
+            var lastWriteTask = _lastWriteTask;
+            //  Buffer the stream
+            var stream = _stream;
+
+            //  Flip the streams and companions
+            lock (_stream)
+            {
+                if (_stream.Length == 0)
+                {
+                    return;
+                }
+                else
+                {
+                    _stream = new MemoryStream();
+                    _writer = new StreamWriter(_stream);
+                    _lastWriteTime = null;
+                }
+            }
+            if (lastWriteTask != null)
+            {   //  First wait for the last write
+                await lastWriteTask;
+            }
+            stream.Position = 0;
+            if (_blobName == null)
+            {
+                _blobName = DateTime
+                    .Now
+                    .ToString()
+                    .Replace(' ', '_')
+                    .Replace(':', '-')
+                    .Replace('/', '-')
+                    + ".json";
+                await _storageFacade.CreateAppendBlobAsync(_blobName);
+            }
+            await _storageFacade.AppendBlobAsync(_blobName, stream);
+            ++_blocks;
+            if (_blocks == MAX_BLOCKS)
+            {
+                _blobName = null;
             }
         }
     }
