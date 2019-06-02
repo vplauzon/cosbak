@@ -132,6 +132,8 @@ namespace Cosbak.Controllers.Backup
                 }
                 metaStream.Flush();
                 contentStream.Flush();
+                metaStream.Position = 0;
+                contentStream.Position = 0;
 
                 _logger.WriteEvent(
                     "Backup-End-Partition-Batch-Count",
