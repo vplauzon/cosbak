@@ -60,7 +60,11 @@ namespace Cosbak.Controllers.Backup
 
                 try
                 {
-                    await BackupCollectionContentAsync(cosmosCollection, storageCollection, context);
+                    var recordCount = await BackupCollectionContentAsync(
+                        cosmosCollection, storageCollection, context);
+
+                    _logger.Display($"{recordCount} records backed up", context);
+                    _logger.WriteEvent("Backup-End-Records", context, count: recordCount);
                     _logger.WriteEvent("Backup-End-Collection", context);
                 }
                 finally
@@ -71,7 +75,7 @@ namespace Cosbak.Controllers.Backup
             _logger.WriteEvent("Backup-End");
         }
 
-        private async Task BackupCollectionContentAsync(
+        private async Task<long> BackupCollectionContentAsync(
             ICosmosCollectionController cosmosCollection,
             IStorageCollectionController storageCollection,
             IImmutableDictionary<string, string> context)
@@ -82,6 +86,8 @@ namespace Cosbak.Controllers.Backup
             if (destinationTimeStamp == null)
             {
                 _logger.WriteEvent("Backup-Collection-NoNewContent", context);
+
+                return 0;
             }
             else
             {
@@ -91,13 +97,15 @@ namespace Cosbak.Controllers.Backup
                                 p,
                                 storageCollection.GetPartition(p.Id),
                                 context.Add("partition", p.Id));
+                var recordCounts = await Task.WhenAll(tasks);
 
-                await Task.WhenAll(tasks);
                 storageCollection.UpdateContent(destinationTimeStamp.Value);
+
+                return recordCounts.Sum();
             }
         }
 
-        private async Task BackupPartitionContentAsync(
+        private async Task<long> BackupPartitionContentAsync(
             ICosmosPartitionController cosmosPartition,
             IStoragePartitionController storagePartitionController,
             IImmutableDictionary<string, string> context)
@@ -110,6 +118,7 @@ namespace Cosbak.Controllers.Backup
             var contentStream = new MemoryStream();
             var pendingStorageTask = Task.CompletedTask;
             var batchId = 0;
+            var recordCount = (long)0;
 
             while (feed.HasMoreResults)
             {
@@ -127,6 +136,7 @@ namespace Cosbak.Controllers.Backup
                             DocumentSpliter.Write(doc, partitionPathParts, writer);
 
                         metaData.Write(writer);
+                        ++recordCount;
                     }
                     writer.Flush();
                 }
@@ -154,6 +164,8 @@ namespace Cosbak.Controllers.Backup
             }
             await pendingStorageTask;
             _logger.WriteEvent("Backup-End-Partition", context);
+
+            return recordCount;
         }
 
         private async Task<long?> GetDestinationTimeStampAsync(
