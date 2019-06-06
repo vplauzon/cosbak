@@ -99,7 +99,7 @@ namespace Cosbak.Controllers.Backup
             //  Remove master
             blobPathList.Remove(Constants.BACKUP_MASTER);
             //  Remove all blobs under content folders
-            blobPathList.RemoveWhere(p => contentFolders.Any(f => p.StartsWith(p + '/')));
+            blobPathList.RemoveWhere(p => contentFolders.Any(f => p.StartsWith(f + '/')));
 
             var tasks = from path in blobPathList
                         select _rootStorage.DeleteBlobAsync(path);
