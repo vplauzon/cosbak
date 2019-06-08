@@ -21,10 +21,11 @@ namespace Cosbak.Controllers.Index
         {
             _logger.Display("Indexing...");
             _logger.WriteEvent("Indexing-Start");
+            foreach (var collection in await _indexStorageController.GetCollectionsAsync())
+            {
+                throw new NotImplementedException();
+            }
             _logger.WriteEvent("Indexing-End");
-            await Task.CompletedTask;
-
-            throw new NotImplementedException();
         }
     }
 }
