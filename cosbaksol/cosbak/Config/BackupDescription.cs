@@ -27,7 +27,7 @@ namespace Cosbak.Config
             }
             StorageAccount.Validate();
             FilterHelper.ValidateFilters(Filters);
-            if (Plan != null)
+            if (Plan == null)
             {
                 throw new CosbakException("Backup Description must contain a plan");
             }
