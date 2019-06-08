@@ -55,6 +55,7 @@ namespace Cosbak.Controllers.Backup
             var content = await File.ReadAllTextAsync(filePath);
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(new CamelCaseNamingConvention())
+                .IgnoreUnmatchedProperties()
                 .Build();
             var description = deserializer.Deserialize<CONFIG>(content);
 
