@@ -17,7 +17,14 @@ namespace Cosbak.Controllers.Backup
             if (description.CosmosAccount == null)
             {
                 description.CosmosAccount = new CosmosAccountDescription();
+            }
+            if (description.StorageAccount == null)
+            {
                 description.StorageAccount = new StorageAccountDescription();
+            }
+            if (description.Plan == null)
+            {
+                description.Plan = new BackupPlan();
             }
         }
 

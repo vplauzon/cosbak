@@ -1,5 +1,6 @@
 ﻿using Cosbak.Config;
 using Cosbak.Controllers.Backup;
+using Cosbak.Controllers.Index;
 using Cosbak.Cosmos;
 using Cosbak.Storage;
 using System;
@@ -53,7 +54,7 @@ namespace Cosbak
         private static void DisplayBackupHelp()
         {
             Console.WriteLine("usage:");
-            Console.WriteLine("\tcosbak backup -f BACKUP_CONFIG_PATH");
+            Console.WriteLine("\tcosbak backup -f COSBAK_CONFIG_PATH");
             Console.WriteLine("\tcosbak backup "
                 + "-cn COSMOS_ACCOUNT_NAME "
                 + "-ck COSMOS_ACCOUNT_KEY "
@@ -63,8 +64,19 @@ namespace Cosbak
                 + "[-sk STORAGE_ACCOUNT_KEY] "
                 + "[-st STORAGE_ACCOUNT_TOKEN]");
             Console.WriteLine();
-            Console.WriteLine("BACKUP_CONFIG_PATH must have a SAS token allowing "
-                + "read/write/list/delete on the blob container");
+        }
+
+        private static void DisplayIndexHelp()
+        {
+            Console.WriteLine("usage:");
+            Console.WriteLine("\tcosbak index -f COSBAK_CONFIG_PATH");
+            Console.WriteLine("\tcosbak index "
+                + "-sn STORAGE_ACCOUNT_NAME "
+                + "[-sc STORAGE_ACCOUNT_CONTAINER] "
+                + "[-sf STORAGE_ACCOUNT_FOLDER] "
+                + "[-sk STORAGE_ACCOUNT_KEY] "
+                + "[-st STORAGE_ACCOUNT_TOKEN]");
+            Console.WriteLine();
         }
         #endregion
 
@@ -77,6 +89,9 @@ namespace Cosbak
                     return;
 
                 case "index":
+                    await IndexAsync(args);
+                    return;
+
                 case "restore":
                 case "rotate":
                     Console.Error.WriteLine($"Command '{command}' not supported yet");
@@ -125,6 +140,42 @@ namespace Cosbak
                         storageController);
 
                     await controller.BackupAsync();
+                }
+                catch (Exception ex)
+                {
+                    logger.DisplayError(ex);
+                }
+                finally
+                {
+                    await logger.FlushAsync();
+                }
+            }
+        }
+
+        private static async Task IndexAsync(IEnumerable<string> args)
+        {
+            var command = new IndexCommand();
+
+            if (args.Any() && args.First() == "-h")
+            {
+                DisplayIndexHelp();
+            }
+            else
+            {
+                var description = await command.ReadDescriptionAsync(args);
+
+                description.Validate();
+
+                var storageFacade = CreateStorageFacade(description.StorageAccount);
+                ILogger logger = new Logger(storageFacade.ChangeFolder("logs"));
+
+                try
+                {
+                    var storageController = new BackupStorageController(storageFacade, logger);
+                    var controller = new IndexController(
+                        logger);
+
+                    await controller.IndexAsync();
                 }
                 catch (Exception ex)
                 {
