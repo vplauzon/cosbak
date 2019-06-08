@@ -16,6 +16,9 @@ namespace Cosbak.Controllers.Index
 
         public async Task IndexAsync()
         {
+            _logger.Display("Indexing...");
+            _logger.WriteEvent("Indexing-Start");
+            _logger.WriteEvent("Indexing-End");
             await Task.CompletedTask;
 
             throw new NotImplementedException();
