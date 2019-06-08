@@ -12,8 +12,8 @@ namespace Cosbak.Controllers.Backup
 
         public BackupStorageController(IStorageFacade storageFacade, ILogger logger)
         {
-            _storageFacade = storageFacade;
-            _logger = logger;
+            _storageFacade = storageFacade ?? throw new ArgumentNullException(nameof(storageFacade));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         async Task<IStorageCollectionController> IBackupStorageController.LockMasterAsync(

@@ -169,9 +169,8 @@ namespace Cosbak
 
                 try
                 {
-                    var storageController = new BackupStorageController(storageFacade, logger);
-                    var controller = new IndexController(
-                        logger);
+                    var indexStorageController = new IndexStorageController(storageFacade, logger);
+                    var controller = new IndexController(logger, indexStorageController);
 
                     await controller.IndexAsync();
                 }
