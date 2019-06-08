@@ -5,10 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Cosbak.Cosmos;
-using Cosbak.Storage;
-using Microsoft.WindowsAzure.Storage;
-using Newtonsoft.Json;
 
 namespace Cosbak.Controllers.Backup
 {
@@ -18,21 +14,15 @@ namespace Cosbak.Controllers.Backup
         private static readonly TimeSpan WAIT_FOR_CURRENT_BACKUP_TOTAL = TimeSpan.FromSeconds(15);
 
         private readonly ILogger _logger;
-        private readonly IDatabaseAccountFacade _databaseAccount;
-        private readonly IStorageFacade _storage;
         private readonly IBackupStorageController _storageController;
         private readonly IBackupCosmosController _cosmosController;
 
         public BackupController(
             ILogger logger,
-            IDatabaseAccountFacade databaseAccount,
-            IStorageFacade storage,
             IBackupCosmosController cosmosController,
             IBackupStorageController storageController)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _databaseAccount = databaseAccount ?? throw new ArgumentNullException(nameof(databaseAccount));
-            _storage = storage ?? throw new ArgumentNullException(nameof(storage));
             _storageController = storageController ?? throw new ArgumentNullException(nameof(storageController));
             _cosmosController = cosmosController ?? throw new ArgumentNullException(nameof(cosmosController));
         }

@@ -134,8 +134,6 @@ namespace Cosbak
                         description.Filters);
                     var controller = new BackupController(
                         logger,
-                        cosmosFacade,
-                        storageFacade,
                         cosmosController,
                         storageController);
 
