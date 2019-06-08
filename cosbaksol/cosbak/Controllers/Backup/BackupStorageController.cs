@@ -22,7 +22,7 @@ namespace Cosbak.Controllers.Backup
             string collection)
         {
             var backupFolder = _storageFacade.ChangeFolder(
-                $"{account}/{database}/{collection}/{Constants.BACKUP_FOLDER}");
+                $"{Constants.ACCOUNTS_FOLDER}/{account}/{database}/{collection}/{Constants.BACKUP_FOLDER}");
             var collectionController = new StorageCollectionController(backupFolder, _logger);
 
             await collectionController.InitializeAsync();
