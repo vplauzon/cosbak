@@ -18,8 +18,12 @@ namespace Cosbak.Controllers.Index
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        Task<IImmutableList<IIndexCollectionBackupController>> IIndexStorageController.GetCollectionsAsync()
+        async Task<IImmutableList<IIndexCollectionBackupController>> IIndexStorageController.GetCollectionsAsync()
         {
+            var accounts = _storageFacade.ChangeFolder(Constants.ACCOUNTS_FOLDER);
+
+            await accounts.ListBlobsAsync();
+
             throw new NotImplementedException();
         }
     }
