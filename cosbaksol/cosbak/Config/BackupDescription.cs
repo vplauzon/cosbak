@@ -10,6 +10,8 @@ namespace Cosbak.Config
 
         public StorageAccountDescription StorageAccount { get; set; }
 
+        public string[] Filters { get; set; }
+
         public BackupPlan Plan { get; set; }
 
         public void Validate()
@@ -24,7 +26,8 @@ namespace Cosbak.Config
                 throw new CosbakException("Backup Description must contain Storage account");
             }
             StorageAccount.Validate();
-            if (Plan == null)
+            FilterHelper.ValidateFilters(Filters);
+            if (Plan != null)
             {
                 throw new CosbakException("Backup Description must contain a plan");
             }

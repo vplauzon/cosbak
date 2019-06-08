@@ -131,9 +131,8 @@ namespace cosbak.unit.Command
             Assert.NotNull(config);
             Assert.NotNull(config.CosmosAccount);
             Assert.NotNull(config.StorageAccount);
-            Assert.NotNull(config.Plan);
-            Assert.True(1 == config.Plan.Filters.Length);
-            Assert.Equal("mydb.mycoll", config.Plan.Filters[0]);
+            Assert.True(1 == config.Filters.Length);
+            Assert.Equal("mydb.mycoll", config.Filters[0]);
         }
         #endregion
     }

@@ -116,7 +116,7 @@ namespace Cosbak
                     var cosmosController = new BackupCosmosController(
                         cosmosFacade,
                         logger,
-                        description.Plan.Filters);
+                        description.Filters);
                     var controller = new BackupController(
                         logger,
                         cosmosFacade,
