@@ -21,6 +21,7 @@ namespace Cosbak.Controllers.Backup
 
         string ICosmosPartitionController.PartitionPath => _partition.Parent.PartitionPath;
 
-        IAsyncStream<JObject> ICosmosPartitionController.GetChangeFeed() => _partition.GetChangeFeed();
+        IAsyncStream<JObject> ICosmosPartitionController.GetChangeFeed(long? lastContentTimeStamp)
+            => _partition.GetChangeFeed(lastContentTimeStamp);
     }
 }

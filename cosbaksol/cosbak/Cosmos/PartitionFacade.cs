@@ -52,15 +52,29 @@ namespace Cosbak.Cosmos
 
         string IPartitionFacade.KeyRangeId => _partitionKeyRangeId;
 
-        IAsyncStream<JObject> IPartitionFacade.GetChangeFeed()
+        IAsyncStream<JObject> IPartitionFacade.GetChangeFeed(long? lastContentTimeStamp)
         {
+            var startTime = (lastContentTimeStamp == null)
+                ? (DateTime?)null
+                : GetDateTime(lastContentTimeStamp.Value);
             var query = _client.CreateDocumentChangeFeedQuery(_collectionUri, new ChangeFeedOptions
             {
                 PartitionKeyRangeId = _partitionKeyRangeId,
-                StartFromBeginning = true
+                StartFromBeginning = (startTime == null),
+                StartTime = startTime
             });
 
             return new AsyncQuery(query);
+        }
+
+        private DateTime GetDateTime(long unixTimeStamp)
+        {
+            var dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);
+
+            dateTime = dateTime.AddSeconds(unixTimeStamp);
+            //.ToLocalTime();
+
+            return dateTime;
         }
     }
 }

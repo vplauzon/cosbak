@@ -9,6 +9,6 @@ namespace Cosbak.Controllers.Backup
 
         string PartitionPath { get; }
 
-        IAsyncStream<JObject> GetChangeFeed();
+        IAsyncStream<JObject> GetChangeFeed(long? lastContentTimeStamp);
     }
 }

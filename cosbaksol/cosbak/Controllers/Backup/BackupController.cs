@@ -86,6 +86,7 @@ namespace Cosbak.Controllers.Backup
                             select BackupPartitionContentAsync(
                                 p,
                                 storageCollection.GetPartition(p.Id),
+                                storageCollection.LastContentTimeStamp,
                                 context.Add("partition", p.Id));
                 var recordCounts = await Task.WhenAll(tasks);
 
@@ -98,12 +99,13 @@ namespace Cosbak.Controllers.Backup
         private async Task<long> BackupPartitionContentAsync(
             ICosmosPartitionController cosmosPartition,
             IStoragePartitionController storagePartitionController,
+            long? lastContentTimeStamp,
             IImmutableDictionary<string, string> context)
         {
             _logger.WriteEvent("Backup-Start-Partition", context);
 
             var partitionPathParts = cosmosPartition.PartitionPath.Split('/').Skip(1);
-            var feed = cosmosPartition.GetChangeFeed();
+            var feed = cosmosPartition.GetChangeFeed(lastContentTimeStamp);
             var metaStream = new MemoryStream();
             var contentStream = new MemoryStream();
             var pendingStorageTask = Task.CompletedTask;

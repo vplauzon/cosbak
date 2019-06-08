@@ -9,6 +9,6 @@ namespace Cosbak.Cosmos
 
         string KeyRangeId { get; }
 
-        IAsyncStream<JObject> GetChangeFeed();
+        IAsyncStream<JObject> GetChangeFeed(long? lastContentTimeStamp);
     }
 }
