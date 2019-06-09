@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -21,11 +22,31 @@ namespace Cosbak.Controllers.Index
         {
             _logger.Display("Indexing...");
             _logger.WriteEvent("Indexing-Start");
-            foreach (var collection in await _indexStorageController.GetCollectionsAsync())
+            foreach (var collectionController in
+                await _indexStorageController.GetCollectionsAsync())
             {
-                throw new NotImplementedException();
+                var context = ImmutableDictionary<string, string>
+                    .Empty
+                    .Add("account", collectionController.Account)
+                    .Add("db", collectionController.Database)
+                    .Add("collection", collectionController.Collection);
+
+                _logger.WriteEvent("Indexing-Start-Collection", context);
+                _logger.Display($"Collection {collectionController.Account}"
+                    + $".{collectionController.Database}.{collectionController.Collection}");
+
+                await IndexCollectionAsync(collectionController, context);
+
+                _logger.WriteEvent("Indexing-End-Collection", context);
             }
             _logger.WriteEvent("Indexing-End");
+        }
+
+        private Task IndexCollectionAsync(
+            IIndexCollectionBackupController collectionController,
+            IImmutableDictionary<string, string> context)
+        {
+            throw new NotImplementedException();
         }
     }
 }

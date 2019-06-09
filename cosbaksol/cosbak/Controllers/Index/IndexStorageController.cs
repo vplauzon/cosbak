@@ -31,18 +31,27 @@ namespace Cosbak.Controllers.Index
         {
             var accounts = _storageFacade.ChangeFolder(Constants.ACCOUNTS_FOLDER);
             var masterPaths = await accounts.ListBlobsAsync(path => path.EndsWith(Constants.BACKUP_MASTER));
-            var q = from i in from path in masterPaths
-                              let parts = path.Split('/')
-                              where parts.Length == 5
-                              select new { Path = path, Parts = parts }
-                    let account = i.Parts[0]
-                    let db = i.Parts[1]
-                    let collection = i.Parts[2]
-                    where account == _cosmosAccountName
-                    && _collectionFilter.IsIncluded(db, collection)
-                    select new { Account = account, Db = db, Collection = collection, i.Path };
+            var controllers = from i in from path in masterPaths
+                                        let parts = path.Split('/')
+                                        where parts.Length == 5
+                                        select new { Path = path, Parts = parts }
+                              let account = i.Parts[0]
+                              let db = i.Parts[1]
+                              let collection = i.Parts[2]
+                              where account == _cosmosAccountName
+                              && _collectionFilter.IsIncluded(db, collection)
+                              let controllerFacade = accounts
+                              .ChangeFolder(account)
+                              .ChangeFolder(db)
+                              .ChangeFolder(collection)
+                              .ChangeFolder(Constants.BACKUP_FOLDER)
+                              select new IndexCollectionBackupController(
+                                  account,
+                                  db,
+                                  collection,
+                                  controllerFacade);
 
-            throw new NotImplementedException();
+            return controllers.Cast<IIndexCollectionBackupController>().ToImmutableArray();
         }
     }
 }
