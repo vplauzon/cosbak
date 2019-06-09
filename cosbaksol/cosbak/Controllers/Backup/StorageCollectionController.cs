@@ -92,15 +92,14 @@ namespace Cosbak.Controllers.Backup
 
         private async Task CleanFolderAsync()
         {
-            var blobPathList = (await _rootStorage.ListBlobsAsync()).ToHashSet();
-            var contentFolders = from cf in _master.ContentFolders
-                                 select cf.FolderId.ToString();
-
+            var contentFolders = (from cf in _master.ContentFolders
+                                  select cf.FolderId.ToString()).ToArray();
+            Func<string, bool> filter = (path) =>
             //  Remove master
-            blobPathList.Remove(Constants.BACKUP_MASTER);
+            path != Constants.BACKUP_MASTER
             //  Remove all blobs under content folders
-            blobPathList.RemoveWhere(p => contentFolders.Any(f => p.StartsWith(f + '/')));
-
+            && contentFolders.Any(f => path.StartsWith(f + '/'));
+            var blobPathList = await _rootStorage.ListBlobsAsync(filter);
             var tasks = from path in blobPathList
                         select _rootStorage.DeleteBlobAsync(path);
 

@@ -9,12 +9,17 @@ namespace Cosbak.Config
 
         public string Key { get; set; }
 
-        public void Validate()
+        public void ValidateNameOnly()
         {
             if (string.IsNullOrWhiteSpace(Name))
             {
                 throw new CosbakException("Cosmos Account name is required");
             }
+        }
+
+        public void ValidateFull()
+        {
+            ValidateNameOnly();
             if (string.IsNullOrWhiteSpace(Key))
             {
                 throw new CosbakException("Cosmos Account key is required");

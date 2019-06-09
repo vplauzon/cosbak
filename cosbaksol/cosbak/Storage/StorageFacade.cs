@@ -153,7 +153,7 @@ namespace Cosbak.Storage
             return await BlobLease.CreateLeaseAsync(blob);
         }
 
-        async Task<string[]> IStorageFacade.ListBlobsAsync()
+        async Task<string[]> IStorageFacade.ListBlobsAsync(Func<string, bool> filter)
         {
             var prefix = _blobPrefix;
             var list = new List<string>();
@@ -172,6 +172,7 @@ namespace Cosbak.Storage
                 var paths = from i in segment.Results
                             let cloudBlob = (CloudBlob)i
                             let fullPath = cloudBlob.Name.Substring(_blobPrefix.Length)
+                            where filter == null || filter(fullPath)
                             select fullPath;
 
                 list.AddRange(paths);

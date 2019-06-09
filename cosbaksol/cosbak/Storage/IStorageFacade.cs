@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace Cosbak.Storage
@@ -19,7 +20,7 @@ namespace Cosbak.Storage
 
         Task<BlobLease> GetLeaseAsync(string contentPath);
 
-        Task<string[]> ListBlobsAsync();
+        Task<string[]> ListBlobsAsync(Func<string, bool> filter = null);
 
         Task DeleteBlobAsync(string path);
     }

@@ -20,7 +20,7 @@ namespace Cosbak.Config
             {
                 throw new CosbakException("Backup Description must contain Cosmos DB account");
             }
-            CosmosAccount.Validate();
+            CosmosAccount.ValidateFull();
             if (StorageAccount == null)
             {
                 throw new CosbakException("Backup Description must contain Storage account");

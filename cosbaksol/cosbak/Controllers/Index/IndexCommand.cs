@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 
-namespace Cosbak.Controllers.Backup
+namespace Cosbak.Controllers.Index
 {
     public class IndexCommand : CommandBase<IndexDescription>
     {
@@ -14,6 +14,10 @@ namespace Cosbak.Controllers.Backup
 
         private static void CreateSubSections(IndexDescription description)
         {
+            if (description.CosmosAccount == null)
+            {
+                description.CosmosAccount = new CosmosAccountDescription();
+            }
             if (description.StorageAccount == null)
             {
                 description.StorageAccount = new StorageAccountDescription();
@@ -24,6 +28,7 @@ namespace Cosbak.Controllers.Backup
         {
             var switchToAction = ImmutableSortedDictionary<string, Action<IndexDescription, string>>
                 .Empty
+                .Add("cn", (c, a) => c.CosmosAccount.Name = a)
                 .Add("sn", (c, a) => c.StorageAccount.Name = a)
                 .Add("sc", (c, a) => c.StorageAccount.Container = a)
                 .Add("sf", (c, a) => c.StorageAccount.Folder = a)

@@ -169,8 +169,14 @@ namespace Cosbak
 
                 try
                 {
-                    var indexStorageController = new IndexStorageController(storageFacade, logger);
-                    var controller = new IndexController(logger, indexStorageController);
+                    var indexStorageController = new IndexStorageController(
+                        storageFacade,
+                        logger,
+                        description.CosmosAccount.Name,
+                        description.Filters);
+                    var controller = new IndexController(
+                        logger,
+                        indexStorageController);
 
                     await controller.IndexAsync();
                 }

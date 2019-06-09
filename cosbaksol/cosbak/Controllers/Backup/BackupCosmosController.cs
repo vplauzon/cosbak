@@ -11,7 +11,7 @@ namespace Cosbak.Controllers.Backup
     {
         private readonly IDatabaseAccountFacade _accountFacade;
         private readonly ILogger _logger;
-        private readonly IImmutableDictionary<string, IImmutableSet<string>> _filterMap;
+        private readonly CollectionFilter _collectionFilter;
 
         #region Constructors
         public BackupCosmosController(
@@ -21,29 +21,7 @@ namespace Cosbak.Controllers.Backup
         {
             _accountFacade = accountFacade ?? throw new ArgumentNullException(nameof(accountFacade));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _filterMap = CreateFilterMap(filters);
-        }
-
-        private static IImmutableDictionary<string, IImmutableSet<string>> CreateFilterMap(
-            IEnumerable<string> filters)
-        {
-            if (filters == null)
-            {
-                return ImmutableDictionary<string, IImmutableSet<string>>.Empty;
-            }
-            else
-            {
-                var list = from f in filters
-                           let parts = f.Split(".")
-                           let db = parts[0]
-                           let collection = parts[1].Trim()
-                           group collection by db;
-                var dbMap = list.ToImmutableDictionary(
-                    g => g.Key,
-                    g => g.ToImmutableHashSet() as IImmutableSet<string>);
-
-                return dbMap;
-            }
+            _collectionFilter = new CollectionFilter(filters);
         }
         #endregion
 
@@ -55,7 +33,7 @@ namespace Cosbak.Controllers.Backup
             {
                 foreach (var collection in await db.GetCollectionsAsync())
                 {
-                    if (IsIncluded(collection))
+                    if (_collectionFilter.IsIncluded(db.DatabaseName, collection.CollectionName))
                     {
                         var controller = new CosmosCollectionController(collection, _logger);
 
@@ -65,27 +43,6 @@ namespace Cosbak.Controllers.Backup
             }
 
             return builder.ToImmutableArray();
-        }
-
-        private bool IsIncluded(ICollectionFacade collection)
-        {
-            var db = collection.Parent.DatabaseName;
-
-            if (!_filterMap.Any())
-            {
-                return true;
-            }
-            else if (!_filterMap.ContainsKey(db))
-            {
-                return false;
-            }
-            else
-            {
-                var collectionFilter = _filterMap[db];
-
-                return collectionFilter.Contains("*")
-                    || collectionFilter.Contains(collection.CollectionName);
-            }
         }
     }
 }
