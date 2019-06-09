@@ -5,6 +5,6 @@ namespace Cosbak.Controllers.Index
 {
     public interface IIndexStorageController
     {
-        Task<IImmutableList<IIndexCollectionBackupController>> GetCollectionsAsync();
+        Task<IImmutableList<ICollectionBackupController>> GetCollectionsAsync();
     }
 }

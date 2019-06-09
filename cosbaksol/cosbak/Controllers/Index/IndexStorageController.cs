@@ -27,7 +27,7 @@ namespace Cosbak.Controllers.Index
             _collectionFilter = new CollectionFilter(filters);
         }
 
-        async Task<IImmutableList<IIndexCollectionBackupController>> IIndexStorageController.GetCollectionsAsync()
+        async Task<IImmutableList<ICollectionBackupController>> IIndexStorageController.GetCollectionsAsync()
         {
             var accounts = _storageFacade.ChangeFolder(Constants.ACCOUNTS_FOLDER);
             var masterPaths = await accounts.ListBlobsAsync(path => path.EndsWith(Constants.BACKUP_MASTER));
@@ -45,13 +45,13 @@ namespace Cosbak.Controllers.Index
                               .ChangeFolder(db)
                               .ChangeFolder(collection)
                               .ChangeFolder(Constants.BACKUP_FOLDER)
-                              select new IndexCollectionBackupController(
+                              select new CollectionBackupController(
                                   account,
                                   db,
                                   collection,
                                   controllerFacade);
 
-            return controllers.Cast<IIndexCollectionBackupController>().ToImmutableArray();
+            return controllers.Cast<ICollectionBackupController>().ToImmutableArray();
         }
     }
 }

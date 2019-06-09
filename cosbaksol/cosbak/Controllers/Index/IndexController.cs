@@ -42,11 +42,14 @@ namespace Cosbak.Controllers.Index
             _logger.WriteEvent("Indexing-End");
         }
 
-        private Task IndexCollectionAsync(
-            IIndexCollectionBackupController collectionController,
+        private async Task IndexCollectionAsync(
+            ICollectionBackupController collectionController,
             IImmutableDictionary<string, string> context)
         {
-            throw new NotImplementedException();
+            foreach (var batch in await collectionController.GetBatchesAsync())
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 }
