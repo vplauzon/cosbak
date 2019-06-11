@@ -49,7 +49,7 @@ namespace Cosbak.Controllers.Index
                 }
                 else
                 {
-                    var q = from folder in master.ContentFolders
+                    var q = from folder in master.Batches
                             select folder;
 
                     throw new System.NotImplementedException();

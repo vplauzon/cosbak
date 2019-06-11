@@ -68,7 +68,7 @@ namespace Cosbak.Controllers.Backup
             _isMasterDirty = true;
 
             _master.LastContentTimeStamp = lastContentTimeStamp;
-            _master.ContentFolders.Add(new FolderTimeStampData
+            _master.ContentFolders.Add(new BackupBatchData
             {
                 FolderId = _contentFolderId,
                 TimeStamp = lastContentTimeStamp

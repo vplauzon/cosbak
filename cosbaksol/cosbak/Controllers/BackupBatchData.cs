@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Cosbak.Controllers
 {
-    public class FolderTimeStampData
+    public class BackupBatchData
     {
         public int FolderId { get; set; }
 
