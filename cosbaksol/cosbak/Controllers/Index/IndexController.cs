@@ -22,8 +22,10 @@ namespace Cosbak.Controllers.Index
         {
             _logger.Display("Indexing...");
             _logger.WriteEvent("Indexing-Start");
-            foreach (var collectionController in
-                await _indexStorageController.GetCollectionsAsync())
+
+            var collections = await _indexStorageController.GetCollectionsAsync();
+
+            foreach (var collectionController in collections)
             {
                 var context = ImmutableDictionary<string, string>
                     .Empty
@@ -46,7 +48,9 @@ namespace Cosbak.Controllers.Index
             ICollectionBackupController collectionController,
             IImmutableDictionary<string, string> context)
         {
-            foreach (var batch in await collectionController.GetUnprocessedBatchesAsync())
+            var batches = await collectionController.GetUnprocessedBatchesAsync();
+
+            foreach (var batch in batches)
             {
                 throw new NotImplementedException();
             }

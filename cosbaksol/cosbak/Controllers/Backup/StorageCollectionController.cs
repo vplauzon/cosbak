@@ -50,8 +50,8 @@ namespace Cosbak.Controllers.Backup
                         ?? new MasterBackupData();
                 }
 
-                var maxFolderId = _master.ContentFolders.Any()
-                    ? _master.ContentFolders.Select(f => f.FolderId).Max()
+                var maxFolderId = _master.Batches.Any()
+                    ? _master.Batches.Select(f => f.FolderId).Max()
                     : 0;
 
                 _contentFolderId = maxFolderId + 1;
@@ -68,7 +68,7 @@ namespace Cosbak.Controllers.Backup
             _isMasterDirty = true;
 
             _master.LastContentTimeStamp = lastContentTimeStamp;
-            _master.ContentFolders.Add(new BackupBatchData
+            _master.Batches.Add(new BackupBatchData
             {
                 FolderId = _contentFolderId,
                 TimeStamp = lastContentTimeStamp
@@ -92,7 +92,7 @@ namespace Cosbak.Controllers.Backup
 
         private async Task CleanFolderAsync()
         {
-            var contentFolders = (from cf in _master.ContentFolders
+            var contentFolders = (from cf in _master.Batches
                                   select cf.FolderId.ToString()).ToArray();
             Func<string, bool> filter = (path) =>
             //  Remove master

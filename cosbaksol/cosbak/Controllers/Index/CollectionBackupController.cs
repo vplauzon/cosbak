@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -49,10 +50,13 @@ namespace Cosbak.Controllers.Index
                 }
                 else
                 {
-                    var q = from folder in master.Batches
-                            select folder;
+                    var controllers =
+                        from batch in master.Batches
+                        let folderId = batch.FolderId.ToString()
+                        let folderFacade = _storageFacade.ChangeFolder(folderId)
+                        select new BatchBackupController(folderFacade, batch.TimeStamp);
 
-                    throw new System.NotImplementedException();
+                    return controllers.ToImmutableArray();
                 }
             }
         }
