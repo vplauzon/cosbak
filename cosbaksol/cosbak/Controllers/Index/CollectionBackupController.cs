@@ -32,7 +32,8 @@ namespace Cosbak.Controllers.Index
 
         string ICollectionBackupController.Collection => _collection;
 
-        async Task<IEnumerable<IBatchBackupController>> ICollectionBackupController.GetBatchesAsync()
+        async Task<IEnumerable<IBatchBackupController>>
+            ICollectionBackupController.GetUnprocessedBatchesAsync()
         {
             var masterContent = await _storageFacade.GetContentAsync(Constants.BACKUP_MASTER);
             var serializer = new JsonSerializer();

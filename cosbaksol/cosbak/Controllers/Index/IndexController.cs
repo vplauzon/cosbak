@@ -46,7 +46,7 @@ namespace Cosbak.Controllers.Index
             ICollectionBackupController collectionController,
             IImmutableDictionary<string, string> context)
         {
-            foreach (var batch in await collectionController.GetBatchesAsync())
+            foreach (var batch in await collectionController.GetUnprocessedBatchesAsync())
             {
                 throw new NotImplementedException();
             }

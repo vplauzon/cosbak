@@ -11,6 +11,6 @@ namespace Cosbak.Controllers.Index
 
         string Collection { get; }
 
-        Task<IEnumerable<IBatchBackupController>> GetBatchesAsync();
+        Task<IEnumerable<IBatchBackupController>> GetUnprocessedBatchesAsync();
     }
 }
