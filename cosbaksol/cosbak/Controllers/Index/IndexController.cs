@@ -52,6 +52,7 @@ namespace Cosbak.Controllers.Index
 
             foreach (var batch in batches)
             {
+                _logger.Display($"Processing batch {batch.FolderId} at timestamp {batch.TimeStamp}");
                 throw new NotImplementedException();
             }
         }

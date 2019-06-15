@@ -54,7 +54,10 @@ namespace Cosbak.Controllers.Index
                         from batch in master.Batches
                         let folderId = batch.FolderId.ToString()
                         let folderFacade = _storageFacade.ChangeFolder(folderId)
-                        select new BatchBackupController(folderFacade, batch.TimeStamp);
+                        select new BatchBackupController(
+                            folderFacade,
+                            batch.FolderId,
+                            batch.TimeStamp);
 
                     return controllers.ToImmutableArray();
                 }
