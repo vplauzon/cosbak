@@ -10,6 +10,7 @@ namespace Cosbak.Controllers.Index
     {
         private readonly ILogger _logger;
         private readonly IIndexStorageController _indexStorageController;
+        private readonly byte[] _indexBuffer = new byte[Constants.MAX_INDEX_LENGTH];
 
         public IndexController(ILogger logger, IIndexStorageController indexStorageController)
         {
@@ -78,10 +79,13 @@ namespace Cosbak.Controllers.Index
             }
         }
 
-        private Task IndexPartitionAsync(
+        private async Task IndexPartitionAsync(
             IPartitionBackupController partition,
             IImmutableDictionary<string, string> context)
         {
+            var length = await partition.LoadIndexAsync(_indexBuffer);
+            var index = new Memory<byte>(_indexBuffer, 0, length);
+
             throw new NotImplementedException();
         }
     }

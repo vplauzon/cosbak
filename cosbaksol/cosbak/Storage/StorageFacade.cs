@@ -192,5 +192,16 @@ namespace Cosbak.Storage
 
             await blob.DeleteAsync();
         }
+
+        async Task<int> IStorageFacade.DownloadRangeAsync(
+            string path,
+            byte[] buffer,
+            long? blobOffset,
+            long? length)
+        {
+            var blob = _container.GetBlobReference(_blobPrefix + path);
+
+            return await blob.DownloadRangeToByteArrayAsync(buffer, 0, blobOffset, length);
+        }
     }
 }

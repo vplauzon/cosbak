@@ -1,4 +1,5 @@
-﻿using Cosbak.Storage;
+﻿using System.Threading.Tasks;
+using Cosbak.Storage;
 
 namespace Cosbak.Controllers.Index
 {
@@ -14,5 +15,12 @@ namespace Cosbak.Controllers.Index
         }
 
         string IPartitionBackupController.PartitionId => _partitionId;
+
+        public async Task<int> LoadIndexAsync(byte[] indexBuffer)
+        {
+            var path = _partitionId + ".meta";
+
+            return await _storageFacade.DownloadRangeAsync(path, indexBuffer);
+        }
     }
 }

@@ -13,5 +13,9 @@ namespace Cosbak.Controllers
         public const string BACKUP_MASTER = "master.json";
 
         public const string INDEX_FOLDER = "indexed-backup";
+
+        public const int MAX_INDEX_LENGTH = 2048;
+
+        public const int MAX_CONTENT_LENGTH = 2048;
     }
 }
