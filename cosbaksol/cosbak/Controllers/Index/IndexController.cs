@@ -52,9 +52,23 @@ namespace Cosbak.Controllers.Index
 
             foreach (var batch in batches)
             {
-                _logger.Display($"Processing batch {batch.FolderId} at timestamp {batch.TimeStamp}");
-                throw new NotImplementedException();
+                _logger.Display(
+                    $"Processing batch {batch.FolderId} at timestamp {batch.TimeStamp}");
+                await IndexBatchAsync(
+                    batch,
+                    context.Add("batch", batch.TimeStamp.ToString()));
             }
+        }
+
+        private async Task IndexBatchAsync(
+            IBatchBackupController batch,
+            IImmutableDictionary<string, string> context)
+        {
+            var partitions = await batch.GetPartitionsAsync();
+
+            _logger.Display($"{partitions.Count} partitions");
+
+            throw new NotImplementedException();
         }
     }
 }
