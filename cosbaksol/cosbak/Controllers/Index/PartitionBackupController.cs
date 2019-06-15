@@ -12,5 +12,7 @@ namespace Cosbak.Controllers.Index
             _storageFacade = storageFacade;
             _partitionId = partitionId;
         }
+
+        string IPartitionBackupController.PartitionId => _partitionId;
     }
 }

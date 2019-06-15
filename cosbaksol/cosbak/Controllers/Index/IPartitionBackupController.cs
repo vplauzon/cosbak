@@ -2,5 +2,6 @@
 {
     public interface IPartitionBackupController
     {
+        string PartitionId { get; }
     }
 }

@@ -68,6 +68,20 @@ namespace Cosbak.Controllers.Index
 
             _logger.Display($"{partitions.Count} partitions");
 
+            foreach (var partition in partitions)
+            {
+                _logger.Display($"Partition {partition.PartitionId}");
+
+                await IndexPartitionAsync(
+                    partition,
+                    context.Add("partition", partition.PartitionId));
+            }
+        }
+
+        private Task IndexPartitionAsync(
+            IPartitionBackupController partition,
+            IImmutableDictionary<string, string> context)
+        {
             throw new NotImplementedException();
         }
     }
