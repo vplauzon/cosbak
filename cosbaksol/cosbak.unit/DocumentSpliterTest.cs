@@ -26,7 +26,7 @@ namespace cosbak.unit
             using (var stream = new MemoryStream())
             using (var writer = new BinaryWriter(stream, Encoding.UTF8, true))
             {
-                var meta = DocumentSpliter.Write(original, partitionPathParts, writer);
+                var meta = DocumentSpliter.WriteContent(original, partitionPathParts, writer);
 
                 stream.Flush();
                 stream.Position = 0;
@@ -69,7 +69,7 @@ namespace cosbak.unit
             using (var stream = new MemoryStream())
             using (var writer = new BinaryWriter(stream, Encoding.UTF8, true))
             {
-                var meta = DocumentSpliter.Write(original, partitionPathParts, writer);
+                var meta = DocumentSpliter.WriteContent(original, partitionPathParts, writer);
 
                 stream.Flush();
                 stream.Position = 0;

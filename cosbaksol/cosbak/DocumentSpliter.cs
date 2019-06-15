@@ -25,7 +25,7 @@ namespace Cosbak
         }
         #endregion
 
-        public static DocumentMetaData Write(
+        public static DocumentMetaData WriteContent(
             JObject document,
             IEnumerable<string> partitionPathParts,
             BinaryWriter writer)

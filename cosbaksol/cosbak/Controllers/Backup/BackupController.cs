@@ -118,19 +118,22 @@ namespace Cosbak.Controllers.Backup
                 var batchContext = context.Add("batch", batchId.ToString());
 
                 ++batchId;
+                await pendingStorageTask;
                 metaStream.SetLength(0);
                 contentStream.SetLength(0);
-                using (var writer = new BinaryWriter(metaStream, Encoding.UTF8, true))
+                using (var metaWriter = new BinaryWriter(metaStream, Encoding.UTF8, true))
+                using (var contentWriter = new BinaryWriter(contentStream, Encoding.UTF8, true))
                 {
                     foreach (var doc in batch)
                     {
                         var metaData =
-                            DocumentSpliter.Write(doc, partitionPathParts, writer);
+                            DocumentSpliter.WriteContent(doc, partitionPathParts, contentWriter);
 
-                        metaData.Write(writer);
+                        metaData.Write(metaWriter);
                         ++recordCount;
                     }
-                    writer.Flush();
+                    metaWriter.Flush();
+                    contentWriter.Flush();
                 }
                 metaStream.Flush();
                 contentStream.Flush();
@@ -149,7 +152,6 @@ namespace Cosbak.Controllers.Backup
                     "Backup-End-Partition-Batch-ContentSize",
                     batchContext,
                     count: contentStream.Length);
-                await pendingStorageTask;
                 pendingStorageTask = storagePartitionController.WriteBatchAsync(
                     metaStream,
                     contentStream);
