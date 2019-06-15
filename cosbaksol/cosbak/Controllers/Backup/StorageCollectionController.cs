@@ -94,12 +94,13 @@ namespace Cosbak.Controllers.Backup
         {
             var contentFolders = (from cf in _master.Batches
                                   select cf.FolderId.ToString()).ToArray();
-            Func<string, bool> filter = (path) =>
-            //  Remove master
-            path != Constants.BACKUP_MASTER
-            //  Remove all blobs under content folders
-            && contentFolders.Any(f => path.StartsWith(f + '/'));
-            var blobPathList = await _rootStorage.ListBlobsAsync(filter);
+            Func<string, bool> keepFilter = (path) =>
+            //  Keep master
+            path == Constants.BACKUP_MASTER
+            //  Keep all blobs under content folders
+            || contentFolders.Any(f => path.StartsWith(f + '/'));
+            Func<string, bool> toDeleteFilter = (path) => !keepFilter(path);
+            var blobPathList = await _rootStorage.ListBlobsAsync(toDeleteFilter);
             var tasks = from path in blobPathList
                         select _rootStorage.DeleteBlobAsync(path);
 

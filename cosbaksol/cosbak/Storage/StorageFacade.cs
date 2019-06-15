@@ -169,13 +169,16 @@ namespace Cosbak.Storage
                     token,
                     null,
                     null);
-                var paths = from i in segment.Results
-                            let cloudBlob = (CloudBlob)i
-                            let fullPath = cloudBlob.Name.Substring(_blobPrefix.Length)
-                            where filter == null || filter(fullPath)
-                            select fullPath;
+                var suffixPaths = from i in segment.Results
+                                  let cloudBlob = (CloudBlob)i
+                                  let suffixPath = cloudBlob.Name.Substring(_blobPrefix.Length)
+                                  where filter == null || filter(suffixPath)
+                                  select suffixPath;
+                var filteredPaths = from i in suffixPaths
+                                    where filter == null || filter(i)
+                                    select i;
 
-                list.AddRange(paths);
+                list.AddRange(filteredPaths);
                 token = segment.ContinuationToken;
             }
             while (token != null);
