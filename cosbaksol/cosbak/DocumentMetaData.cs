@@ -9,41 +9,53 @@ namespace Cosbak
         public DocumentMetaData(string id, object partitionKey, long timeStamp, int size)
         {
             Id = id;
-            Hash = new DocumentHash(id, partitionKey);
+            PartitionHash = partitionKey == null
+                ? 0
+                : partitionKey.GetHashCode();
             TimeStamp = timeStamp;
             Size = size;
         }
 
-        private DocumentMetaData(string id, DocumentHash hash, long timeStamp, int size)
+        private DocumentMetaData(string id, int partitionHash, long timeStamp, int size)
         {
             Id = id;
-            Hash = hash;
+            PartitionHash = partitionHash;
             TimeStamp = timeStamp;
             Size = size;
         }
 
         public string Id { get; }
 
-        public DocumentHash Hash { get; }
+        public int PartitionHash { get; }
 
         public long TimeStamp { get; }
 
         public int Size { get; }
 
+        public long GetCompoundHash()
+        {
+            long longId = Id.GetHashCode();
+            long longPartition = PartitionHash;
+            long pushedPartition = longPartition << 32;
+            long compoundHash = pushedPartition | longId;
+
+            return compoundHash;
+        }
+
         public static DocumentMetaData Read(BinaryReader reader)
         {
             var id = reader.ReadString();
-            var hash = DocumentHash.Read(reader);
+            var partitionHash = reader.ReadInt32();
             var timeStamp = reader.ReadInt64();
             var size = reader.ReadInt32();
 
-            return new DocumentMetaData(id, hash, timeStamp, size);
+            return new DocumentMetaData(id, partitionHash, timeStamp, size);
         }
 
         public void Write(BinaryWriter writer)
         {
             writer.Write(Id);
-            Hash.Write(writer);
+            writer.Write(PartitionHash);
             writer.Write(TimeStamp);
             writer.Write(Size);
         }
