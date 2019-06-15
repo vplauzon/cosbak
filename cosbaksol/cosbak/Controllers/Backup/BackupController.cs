@@ -82,6 +82,9 @@ namespace Cosbak.Controllers.Backup
             else
             {
                 var partitions = await cosmosCollection.GetPartitionsAsync();
+
+                _logger.Display($"{partitions.Length} partitions");
+
                 var tasks = from p in partitions
                             select BackupPartitionContentAsync(
                                 p,
