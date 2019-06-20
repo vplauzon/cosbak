@@ -33,7 +33,7 @@ namespace Cosbak.Controllers.Index
 
         string ICollectionBackupController.Collection => _collection;
 
-        async Task<IEnumerable<IBatchBackupController>>
+        async Task<IImmutableList<IBatchBackupController>>
             ICollectionBackupController.GetUnprocessedBatchesAsync()
         {
             var masterContent = await _storageFacade.GetContentAsync(Constants.BACKUP_MASTER);
@@ -46,7 +46,7 @@ namespace Cosbak.Controllers.Index
 
                 if (master == null)
                 {
-                    return new IBatchBackupController[0];
+                    return ImmutableArray<IBatchBackupController>.Empty;
                 }
                 else
                 {
@@ -59,9 +59,17 @@ namespace Cosbak.Controllers.Index
                             batch.FolderId,
                             batch.TimeStamp);
 
-                    return controllers.ToImmutableArray();
+                    return controllers.Cast<IBatchBackupController>().ToImmutableArray();
                 }
             }
+        }
+
+        async Task<IBlobIndexController>
+            ICollectionBackupController.GetCurrentBlobIndexControllerAsync(long firstTimeStamp)
+        {
+            return await BlobIndexController.GetCurrentOrNewAsync(
+                _storageFacade.ChangeFolder(Constants.INDEX_FOLDER),
+                firstTimeStamp);
         }
     }
 }

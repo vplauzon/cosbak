@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Threading.Tasks;
 
 namespace Cosbak.Controllers.Index
@@ -11,6 +12,8 @@ namespace Cosbak.Controllers.Index
 
         string Collection { get; }
 
-        Task<IEnumerable<IBatchBackupController>> GetUnprocessedBatchesAsync();
+        Task<IImmutableList<IBatchBackupController>> GetUnprocessedBatchesAsync();
+
+        Task<IBlobIndexController> GetCurrentBlobIndexControllerAsync(long firstTimeStamp);
     }
 }

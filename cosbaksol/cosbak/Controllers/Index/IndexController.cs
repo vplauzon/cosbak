@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -51,18 +52,29 @@ namespace Cosbak.Controllers.Index
         {
             var batches = await collectionController.GetUnprocessedBatchesAsync();
 
-            foreach (var batch in batches)
+            _logger.Display($"{batches.Count} batches");
+
+            if(batches.Any())
             {
-                _logger.Display(
-                    $"Processing batch {batch.FolderId} at timestamp {batch.TimeStamp}");
-                await IndexBatchAsync(
-                    batch,
-                    context.Add("batch", batch.TimeStamp.ToString()));
+                var firstTimeStamp = batches.First().TimeStamp;
+                var blobIndex =
+                    await collectionController.GetCurrentBlobIndexControllerAsync(firstTimeStamp);
+
+                foreach (var batch in batches)
+                {
+                    _logger.Display(
+                        $"Processing batch {batch.FolderId} at timestamp {batch.TimeStamp}");
+                    await IndexBatchAsync(
+                        batch,
+                        blobIndex,
+                        context.Add("batch", batch.TimeStamp.ToString()));
+                }
             }
         }
 
         private async Task IndexBatchAsync(
             IBatchBackupController batch,
+            IBlobIndexController blobIndex,
             IImmutableDictionary<string, string> context)
         {
             var partitions = await batch.GetPartitionsAsync();
@@ -75,18 +87,20 @@ namespace Cosbak.Controllers.Index
 
                 await IndexPartitionAsync(
                     partition,
+                    blobIndex,
                     context.Add("partition", partition.PartitionId));
             }
         }
 
         private async Task IndexPartitionAsync(
             IPartitionBackupController partition,
+            IBlobIndexController blobIndex,
             IImmutableDictionary<string, string> context)
         {
             var length = await partition.LoadIndexAsync(_indexBuffer);
             var index = new Memory<byte>(_indexBuffer, 0, length);
 
-            throw new NotImplementedException();
+            await blobIndex.AppendAsync(index);
         }
     }
 }
