@@ -13,12 +13,7 @@ namespace Cosbak
 {
     class Program
     {
-        static void Main(string[] args)
-        {
-            MainAsync(args).Wait();
-        }
-
-        static async Task MainAsync(string[] args)
+        static async Task Main(string[] args)
         {
             Console.WriteLine($"cosbak - Cosmos DB Backup - Version {AppVersion.FullVersion}");
             Console.WriteLine();
@@ -65,19 +60,6 @@ namespace Cosbak
                 + "[-st STORAGE_ACCOUNT_TOKEN]");
             Console.WriteLine();
         }
-
-        private static void DisplayIndexHelp()
-        {
-            Console.WriteLine("usage:");
-            Console.WriteLine("\tcosbak index -f COSBAK_CONFIG_PATH");
-            Console.WriteLine("\tcosbak index "
-                + "-sn STORAGE_ACCOUNT_NAME "
-                + "[-sc STORAGE_ACCOUNT_CONTAINER] "
-                + "[-sf STORAGE_ACCOUNT_FOLDER] "
-                + "[-sk STORAGE_ACCOUNT_KEY] "
-                + "[-st STORAGE_ACCOUNT_TOKEN]");
-            Console.WriteLine();
-        }
         #endregion
 
         private static async Task BranchCommandAsync(string command, IEnumerable<string> args)
@@ -88,12 +70,8 @@ namespace Cosbak
                     await BackupAsync(args);
                     return;
 
-                case "index":
-                    await IndexAsync(args);
-                    return;
-
                 case "restore":
-                case "rotate":
+                case "info":
                     Console.Error.WriteLine($"Command '{command}' not supported yet");
                     return;
 
@@ -138,47 +116,6 @@ namespace Cosbak
                         storageController);
 
                     await controller.BackupAsync();
-                }
-                catch (Exception ex)
-                {
-                    logger.DisplayError(ex);
-                }
-                finally
-                {
-                    await logger.FlushAsync();
-                }
-            }
-        }
-
-        private static async Task IndexAsync(IEnumerable<string> args)
-        {
-            var command = new IndexCommand();
-
-            if (args.Any() && args.First() == "-h")
-            {
-                DisplayIndexHelp();
-            }
-            else
-            {
-                var description = await command.ReadDescriptionAsync(args);
-
-                description.Validate();
-
-                var storageFacade = CreateStorageFacade(description.StorageAccount);
-                ILogger logger = new Logger(storageFacade.ChangeFolder("logs"));
-
-                try
-                {
-                    var indexStorageController = new IndexStorageController(
-                        storageFacade,
-                        logger,
-                        description.CosmosAccount.Name,
-                        description.Filters);
-                    var controller = new IndexController(
-                        logger,
-                        indexStorageController);
-
-                    await controller.IndexAsync();
                 }
                 catch (Exception ex)
                 {
