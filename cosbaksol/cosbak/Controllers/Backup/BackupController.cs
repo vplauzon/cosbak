@@ -22,9 +22,9 @@ namespace Cosbak.Controllers.Backup
             IBackupCosmosController cosmosController,
             IBackupStorageController storageController)
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _storageController = storageController ?? throw new ArgumentNullException(nameof(storageController));
-            _cosmosController = cosmosController ?? throw new ArgumentNullException(nameof(cosmosController));
+            _logger = logger;
+            _storageController = storageController;
+            _cosmosController = cosmosController;
         }
 
         public async Task BackupAsync()
