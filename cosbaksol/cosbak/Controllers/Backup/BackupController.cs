@@ -44,6 +44,7 @@ namespace Cosbak.Controllers.Backup
                     .Add("collection", cosmosCollection.Collection);
 
                 _logger.WriteEvent("Backup-Start-Collection", context);
+                await _logger.FlushAsync();
                 _logger.Display($"Collection {cosmosCollection.Account}"
                     + $".{cosmosCollection.Database}.{cosmosCollection.Collection}");
 
