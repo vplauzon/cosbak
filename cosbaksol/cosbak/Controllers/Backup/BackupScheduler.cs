@@ -86,22 +86,21 @@ namespace Cosbak.Controllers.Backup
                     .AddContext("account", plan.Collection.Parent.Parent.AccountName)
                     .AddContext("db", plan.Collection.Parent.DatabaseName)
                     .AddContext("collection", plan.Collection.CollectionName);
-                var cosmosCollection = new CosmosCollectionController(plan.Collection, logger)
-                    as ICosmosCollectionController;
+                var collection = plan.Collection;
 
                 logger.WriteEvent("Backup-Start-Collection");
-                logger.Display($"Collection {cosmosCollection.Account}"
-                    + $".{cosmosCollection.Database}.{cosmosCollection.Collection}");
+                logger.Display($"Collection {collection.Parent.Parent.AccountName}"
+                    + $".{collection.Parent.DatabaseName}.{collection.CollectionName}");
 
                 var storageCollection = await _storageController.LockLogBlobAsync(
-                    cosmosCollection.Account,
-                    cosmosCollection.Database,
-                    cosmosCollection.Collection);
+                    collection.Parent.Parent.AccountName,
+                    collection.Parent.DatabaseName,
+                    collection.CollectionName);
 
                 try
                 {
                     var recordCount = await BackupCollectionContentAsync(
-                        cosmosCollection, storageCollection, logger);
+                        collection, storageCollection, logger);
 
                     logger.Display($"{recordCount} records backed up");
                     logger.AddContext("count", recordCount).WriteEvent("Backup-End-Records");
@@ -143,12 +142,12 @@ namespace Cosbak.Controllers.Backup
         }
 
         private async Task<long> BackupCollectionContentAsync(
-            ICosmosCollectionController cosmosCollection,
+            ICollectionFacade collectionFacade,
             IStorageCollectionController storageCollection,
             ILogger logger)
         {
             var destinationTimeStamp =
-                await GetDestinationTimeStampAsync(cosmosCollection, storageCollection);
+                await GetDestinationTimeStampAsync(collectionFacade, storageCollection);
 
             if (destinationTimeStamp == null)
             {
@@ -158,16 +157,16 @@ namespace Cosbak.Controllers.Backup
             }
             else
             {
-                var partitions = await cosmosCollection.GetPartitionsAsync();
+                var partitions = await collectionFacade.GetPartitionsAsync();
 
                 _logger.Display($"{partitions.Length} partitions");
 
                 var tasks = from p in partitions
                             select BackupPartitionContentAsync(
                                 p,
-                                storageCollection.GetPartition(p.Id),
+                                storageCollection.GetPartition(p.KeyRangeId),
                                 storageCollection.LastContentTimeStamp,
-                                logger.AddContext("partition", p.Id));
+                                logger.AddContext("partition", p.KeyRangeId));
                 var recordCounts = await Task.WhenAll(tasks);
 
                 storageCollection.UpdateContent(destinationTimeStamp.Value);
@@ -177,15 +176,15 @@ namespace Cosbak.Controllers.Backup
         }
 
         private async Task<long> BackupPartitionContentAsync(
-            ICosmosPartitionController cosmosPartition,
+            IPartitionFacade partitionFacade,
             IStoragePartitionController storagePartitionController,
             long? lastContentTimeStamp,
             ILogger logger)
         {
             logger.WriteEvent("Backup-Start-Partition");
 
-            var partitionPathParts = cosmosPartition.PartitionPath.Split('/').Skip(1);
-            var feed = cosmosPartition.GetChangeFeed(lastContentTimeStamp);
+            var partitionPathParts = partitionFacade.Parent.PartitionPath.Split('/').Skip(1);
+            var feed = partitionFacade.GetChangeFeed(lastContentTimeStamp);
             var metaStream = new MemoryStream();
             var contentStream = new MemoryStream();
             var pendingStorageTask = Task.CompletedTask;
@@ -240,10 +239,10 @@ namespace Cosbak.Controllers.Backup
         }
 
         private async Task<long?> GetDestinationTimeStampAsync(
-            ICosmosCollectionController cosmosCollection,
+            ICollectionFacade collectionFacade,
             IStorageCollectionController storageCollection)
         {
-            var lastRecordTimeStamp = await cosmosCollection.GetLastRecordTimeStampAsync();
+            var lastRecordTimeStamp = await collectionFacade.GetLastUpdateTimeAsync();
 
             if (lastRecordTimeStamp == null
                 || lastRecordTimeStamp == storageCollection.LastContentTimeStamp)
