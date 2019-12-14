@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 
-namespace Cosbak.Controllers.Backup
+namespace Cosbak.Commands
 {
     public class BackupCommand : CommandBase<BackupCommandParameters>
     {

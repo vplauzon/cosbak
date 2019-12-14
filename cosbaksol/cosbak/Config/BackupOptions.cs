@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Cosbak.Controllers.Backup
+namespace Cosbak.Config
 {
     public class BackupOptions
     {

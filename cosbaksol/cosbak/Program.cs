@@ -1,5 +1,6 @@
-﻿using Cosbak.Controllers;
-using Cosbak.Controllers.Backup;
+﻿using Cosbak.Commands;
+using Cosbak.Config;
+using Cosbak.Controllers;
 using Cosbak.Cosmos;
 using Cosbak.Storage;
 using System;
@@ -9,7 +10,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
-using YamlDotNet.Serialization.NodeDeserializers;
 
 namespace Cosbak
 {
@@ -97,13 +97,13 @@ namespace Cosbak
                     configuration.Validate();
 
                     var storageFacade = CreateStorageFacade(configuration.StorageAccount);
+                    var cosmosFacade = new CosmosAccountFacade(
+                        configuration.CosmosAccount.Name,
+                        configuration.CosmosAccount.Key);
                     ILogger logger = new StorageFolderLogger(storageFacade.ChangeFolder("logs"));
 
                     try
                     {
-                        var cosmosFacade = new CosmosAccountFacade(
-                            configuration.CosmosAccount.Name,
-                            configuration.CosmosAccount.Key);
                         var scheduler = new BackupScheduler(
                             logger,
                             cosmosFacade,
@@ -111,7 +111,14 @@ namespace Cosbak
                             configuration.GetCollectionPlans());
 
                         await scheduler.InitializeAsync();
-                        await scheduler.BackupAsync();
+                        if (parameters.Mode == BackupMode.Iterative)
+                        {
+                            await scheduler.ProcessIterationAsync();
+                        }
+                        else
+                        {
+                            await scheduler.ProcessContinuouslyAsync();
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -135,7 +142,7 @@ namespace Cosbak
                     .IgnoreUnmatchedProperties()
                     .Build();
                 var description = deserializer.Deserialize<BackupConfiguration>(content);
-                
+
                 return description;
             }
             catch (DirectoryNotFoundException)

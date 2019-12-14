@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Cosbak.Controllers.Backup
+namespace Cosbak.Commands
 {
     public class BackupCommandParameters
     {

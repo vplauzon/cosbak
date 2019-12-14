@@ -1,4 +1,4 @@
-﻿namespace Cosbak.Controllers.Backup
+﻿namespace Cosbak.Commands
 {
     public enum BackupMode
     {

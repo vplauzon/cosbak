@@ -27,4 +27,9 @@
     <PackageReference Include="YamlDotNet" Version="6.1.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Controllers\Index\" />
+    <Folder Include="Config\" />
+  </ItemGroup>
+
 </Project>

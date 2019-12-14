@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Linq;
 
-namespace Cosbak.Controllers
+namespace Cosbak.Config
 {
     public class CosmosAccountConfiguration
     {
