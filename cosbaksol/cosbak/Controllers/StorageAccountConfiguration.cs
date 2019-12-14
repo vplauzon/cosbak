@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace Cosbak.Controllers
 {
-    public class StorageAccountDescription
+    public class StorageAccountConfiguration
     {
         public string Name { get; set; } = string.Empty;
 

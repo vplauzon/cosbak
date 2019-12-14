@@ -6,9 +6,9 @@ namespace Cosbak.Controllers.Backup
 {
     public class BackupConfiguration
     {
-        public CosmosAccountDescription CosmosAccount { get; set; } = new CosmosAccountDescription();
+        public CosmosAccountConfiguration CosmosAccount { get; set; } = new CosmosAccountConfiguration();
 
-        public StorageAccountDescription StorageAccount { get; set; } = new StorageAccountDescription();
+        public StorageAccountConfiguration StorageAccount { get; set; } = new StorageAccountConfiguration();
 
         public void Validate()
         {

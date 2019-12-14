@@ -1,14 +1,15 @@
-﻿using Cosbak.Controllers.Backup;
+﻿using Cosbak.Controllers;
+using Cosbak.Controllers.Backup;
 using Cosbak.Cosmos;
 using Cosbak.Storage;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Text.Json;
-using System.IO;
-using Cosbak.Controllers;
+using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.NamingConventions;
+using YamlDotNet.Serialization.NodeDeserializers;
 
 namespace Cosbak
 {
@@ -42,23 +43,13 @@ namespace Cosbak
             Console.WriteLine("Here are the base commands:");
             Console.WriteLine();
             Console.WriteLine("backup:\t\t\t\tTake a backup of one or many collections");
-            Console.WriteLine("index:\t\t\t\tIndex backup of one or many collections");
             Console.WriteLine("restore:\t\t\t\tRestore a collection");
-            Console.WriteLine("rotate:\t\t\t\tRotate backups");
         }
 
         private static void DisplayBackupHelp()
         {
             Console.WriteLine("usage:");
-            Console.WriteLine("\tcosbak backup -f COSBAK_CONFIG_PATH");
-            Console.WriteLine("\tcosbak backup "
-                + "-cn COSMOS_ACCOUNT_NAME "
-                + "-ck COSMOS_ACCOUNT_KEY "
-                + "-sn STORAGE_ACCOUNT_NAME "
-                + "[-sc STORAGE_ACCOUNT_CONTAINER] "
-                + "[-sf STORAGE_ACCOUNT_FOLDER] "
-                + "[-sk STORAGE_ACCOUNT_KEY] "
-                + "[-st STORAGE_ACCOUNT_TOKEN]");
+            Console.WriteLine("\tcosbak backup -c COSBAK_CONFIG_PATH [-m continuous/iterative]");
             Console.WriteLine();
         }
         #endregion
@@ -141,10 +132,14 @@ namespace Cosbak
         {
             try
             {
-                using (var stream = File.OpenRead(configPath))
-                {
-                    return await JsonSerializer.DeserializeAsync<BackupConfiguration>(stream);
-                }
+                var content = await File.ReadAllTextAsync(configPath);
+                var deserializer = new DeserializerBuilder()
+                    .WithNamingConvention(new CamelCaseNamingConvention())
+                    .IgnoreUnmatchedProperties()
+                    .Build();
+                var description = deserializer.Deserialize<BackupConfiguration>(content);
+                
+                return description;
             }
             catch (DirectoryNotFoundException)
             {
@@ -156,9 +151,9 @@ namespace Cosbak
             }
         }
 
-        private static IStorageFacade CreateStorageFacade(StorageAccountDescription description)
+        private static IStorageFacade CreateStorageFacade(StorageAccountConfiguration description)
         {
-            if (string.IsNullOrWhiteSpace(description.Key))
+            if (!string.IsNullOrWhiteSpace(description.Token))
             {
                 return StorageFacade.FromToken(
                     description.Name,
@@ -166,13 +161,25 @@ namespace Cosbak
                     description.Folder,
                     description.Token);
             }
-            else
+            else if (!string.IsNullOrWhiteSpace(description.TokenPath))
+            {
+                throw new NotImplementedException();
+            }
+            else if (!string.IsNullOrWhiteSpace(description.Key))
             {
                 return StorageFacade.FromKey(
                     description.Name,
                     description.Container,
                     description.Folder,
                     description.Key);
+            }
+            else if (!string.IsNullOrWhiteSpace(description.KeyPath))
+            {
+                throw new NotImplementedException();
+            }
+            else
+            {
+                throw new NotSupportedException();
             }
         }
     }
