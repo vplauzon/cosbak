@@ -8,9 +8,9 @@ namespace Cosbak.Controllers
     {
         public const string BACKUPS_FOLDER = "backups";
 
-        public const string LOG_EXTENSION = ".log";
+        public const string LOG_EXTENSION = "log";
         
-        public const string INDEX_EXTENSION = ".index";
+        public const string INDEX_EXTENSION = "index";
 
         public const int MAX_INDEX_LENGTH = 2048;
 

@@ -10,43 +10,87 @@ using System.Threading.Tasks;
 
 namespace Cosbak.Controllers.Backup
 {
-    public class BackupController
+    public class BackupScheduler
     {
+        #region Inner Types
+        private class CollectionPlan
+        {
+            public CollectionPlan(ICollectionFacade collection, BackupPlan plan)
+            {
+                Collection = collection;
+                Plan = plan;
+            }
+
+            public ICollectionFacade Collection { get; }
+
+            public BackupPlan Plan { get; }
+        }
+
+        private class Initialized
+        {
+            public Initialized(IEnumerable<CollectionPlan> collectionPlans)
+            {
+                CollectionPlans = collectionPlans.ToImmutableArray();
+            }
+
+            public IImmutableList<CollectionPlan> CollectionPlans { get; }
+        }
+        #endregion
+
         private readonly ILogger _logger;
         private readonly IBackupStorageController _storageController;
-        private readonly IBackupCosmosController _cosmosController;
-        private readonly IImmutableList<CollectionBackupPlan> _collectionPlans;
+        private readonly ICosmosAccountFacade _cosmosFacade;
+        private IImmutableList<CollectionBackupPlan> _collectionBackupPlans;
+        private Initialized? _initialized;
 
-        public BackupController(
+        public BackupScheduler(
             ILogger logger,
             ICosmosAccountFacade cosmosFacade,
             IStorageFacade storageFacade,
             IImmutableList<CollectionBackupPlan> collectionPlans)
         {
             var storageController = new BackupStorageController(storageFacade, logger);
-            var cosmosController = new BackupCosmosController(cosmosFacade, logger);
 
             _logger = logger;
+            _cosmosFacade = cosmosFacade;
             _storageController = storageController;
-            _cosmosController = cosmosController;
-            _collectionPlans = collectionPlans;
+            _collectionBackupPlans = collectionPlans;
+        }
+
+        public async Task InitializeAsync()
+        {
+            if (_initialized != null || _collectionBackupPlans == null)
+            {
+                throw new InvalidOperationException("InitializeAsync has already been called");
+            }
+
+            var collectionPlans = await GetCollectionPlansAsync(
+                _collectionBackupPlans,
+                _cosmosFacade).ToEnumerable();
+
+            _initialized = new Initialized(collectionPlans);
         }
 
         public async Task BackupAsync()
         {
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
             _logger.Display("Backup...");
             _logger.WriteEvent("Backup-Start");
-            foreach (var plan in _collectionPlans)
+            foreach (var plan in _initialized.CollectionPlans)
             {
-                var cosmosCollection = await _cosmosController.GetCollectionAsync(plan.Db, plan.Collection);
                 var context = ImmutableDictionary<string, string>
                     .Empty
-                    .Add("account", cosmosCollection.Account)
-                    .Add("db", cosmosCollection.Database)
-                    .Add("collection", cosmosCollection.Collection);
+                    .Add("account", plan.Collection.Parent.Parent.AccountName)
+                    .Add("db", plan.Collection.Parent.DatabaseName)
+                    .Add("collection", plan.Collection.CollectionName);
+                var cosmosCollection = new CosmosCollectionController(plan.Collection, _logger)
+                    as ICosmosCollectionController;
 
                 _logger.WriteEvent("Backup-Start-Collection", context);
-                await _logger.FlushAsync();
                 _logger.Display($"Collection {cosmosCollection.Account}"
                     + $".{cosmosCollection.Database}.{cosmosCollection.Collection}");
 
@@ -70,6 +114,33 @@ namespace Cosbak.Controllers.Backup
                 }
             }
             _logger.WriteEvent("Backup-End");
+        }
+
+        private async static IAsyncEnumerable<CollectionPlan> GetCollectionPlansAsync(
+            IImmutableList<CollectionBackupPlan> collectionBackupPlans,
+            ICosmosAccountFacade cosmosFacade)
+        {
+            var byDbs = collectionBackupPlans.GroupBy(p => p.Db).ToDictionary(g => g.Key);
+            var dbs = await cosmosFacade.GetDatabasesAsync();
+
+            foreach (var db in dbs)
+            {
+                if (byDbs.ContainsKey(db.DatabaseName))
+                {
+                    var byCollections = byDbs[db.DatabaseName].ToDictionary(c => c.Collection);
+                    var collections = await db.GetCollectionsAsync();
+
+                    foreach (var coll in collections)
+                    {
+                        if (byCollections.ContainsKey(coll.CollectionName))
+                        {
+                            var plan = byCollections[coll.CollectionName].SpecificPlan;
+
+                            yield return new CollectionPlan(coll, plan);
+                        }
+                    }
+                }
+            }
         }
 
         private async Task<long> BackupCollectionContentAsync(

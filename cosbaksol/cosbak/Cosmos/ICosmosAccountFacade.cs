@@ -7,6 +7,6 @@ namespace Cosbak.Cosmos
     {
         string AccountName { get; }
 
-        Task<ICollectionFacade> GetCollectionAsync(string db, string collection);
+        Task<IEnumerable<IDatabaseFacade>> GetDatabasesAsync();
     }
 }

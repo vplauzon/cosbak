@@ -44,7 +44,7 @@ namespace Cosbak.Cosmos
             _parent = parent;
             _partitionKeyRangeId = partitionKeyRangeId;
             _collectionUri = UriFactory.CreateDocumentCollectionUri(
-                _parent.DatabaseName,
+                _parent.Parent.DatabaseName,
                 _parent.CollectionName);
         }
 

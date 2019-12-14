@@ -104,13 +104,14 @@ namespace Cosbak
                         var cosmosFacade = new CosmosAccountFacade(
                             configuration.CosmosAccount.Name,
                             configuration.CosmosAccount.Key);
-                        var controller = new BackupController(
+                        var scheduler = new BackupScheduler(
                             logger,
                             cosmosFacade,
                             storageFacade,
                             configuration.GetCollectionPlans());
 
-                        await controller.BackupAsync();
+                        await scheduler.InitializeAsync();
+                        await scheduler.BackupAsync();
                     }
                     catch (Exception ex)
                     {

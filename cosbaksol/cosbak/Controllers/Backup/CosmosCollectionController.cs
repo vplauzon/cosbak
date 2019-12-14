@@ -15,9 +15,9 @@ namespace Cosbak.Controllers.Backup
             _logger = logger;
         }
 
-        string ICosmosCollectionController.Account => _collection.Account.AccountName;
+        string ICosmosCollectionController.Account => _collection.Parent.Parent.AccountName;
 
-        string ICosmosCollectionController.Database => _collection.DatabaseName;
+        string ICosmosCollectionController.Database => _collection.Parent.DatabaseName;
 
         string ICosmosCollectionController.Collection => _collection.CollectionName;
 

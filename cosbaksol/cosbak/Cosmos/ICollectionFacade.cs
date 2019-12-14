@@ -6,9 +6,7 @@ namespace Cosbak.Cosmos
 {
     public interface ICollectionFacade
     {
-        ICosmosAccountFacade Account { get; }
-
-        string DatabaseName { get; }
+        IDatabaseFacade Parent { get; }
 
         string CollectionName { get; }
 

@@ -23,41 +23,16 @@ namespace Cosbak.Cosmos
 
         string ICosmosAccountFacade.AccountName => _accountName;
 
-        async Task<ICollectionFacade> ICosmosAccountFacade.GetCollectionAsync(
-            string db,
-            string collection)
+        async Task<IEnumerable<IDatabaseFacade>> ICosmosAccountFacade.GetDatabasesAsync()
         {
-            var queryDb = from d in _client.CreateDatabaseQuery()
-                          where d.Id == db
-                          select d;
-            var dbs = await QueryHelper.GetAllResultsAsync(queryDb.AsDocumentQuery());
+            var query = _client.CreateDatabaseQuery();
+            var dbs = await QueryHelper.GetAllResultsAsync(query.AsDocumentQuery());
 
-            if (dbs.Length == 0)
-            {
-                throw new CosbakException($"Db '{db}' doesn't exist");
-            }
-            else
-            {
-                var queryCollection =
-                    from c in _client.CreateDocumentCollectionQuery(dbs.First().SelfLink)
-                    where c.Id == collection
-                    select c;
-                var collections = await QueryHelper.GetAllResultsAsync(queryCollection.AsDocumentQuery());
+            var gateways = dbs
+                .Select(db => new DatabaseFacade(_client, db.Id, this))
+                .ToArray<IDatabaseFacade>();
 
-                if (collections.Length == 0)
-                {
-                    throw new CosbakException($"Collection '{collection}' doesn't exist");
-                }
-                else
-                {
-                    return new CollectionFacade(
-                        _client,
-                        this,
-                        db,
-                        collection,
-                        collections.First().PartitionKey.Paths.First());
-                }
-            }
+            return gateways;
         }
     }
 }
