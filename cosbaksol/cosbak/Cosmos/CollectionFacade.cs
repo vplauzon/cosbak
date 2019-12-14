@@ -12,21 +12,30 @@ namespace Cosbak.Cosmos
     internal class CollectionFacade : ICollectionFacade
     {
         private readonly DocumentClient _client;
+        private readonly ICosmosAccountFacade _account;
+        private readonly string _databaseName;
         private readonly string _collectionName;
         private readonly string _partitionPath;
-        private readonly IDatabaseFacade _parent;
         private readonly Uri _collectionUri;
 
-        public CollectionFacade(DocumentClient client, string collectionName, string partitionPath, IDatabaseFacade parent)
+        public CollectionFacade(
+            DocumentClient client,
+            ICosmosAccountFacade account,
+            string databaseName,
+            string collectionName,
+            string partitionPath)
         {
             _client = client;
+            _account = account;
+            _databaseName = databaseName;
             _collectionName = collectionName;
             _partitionPath = partitionPath;
-            _parent = parent;
-            _collectionUri = UriFactory.CreateDocumentCollectionUri(_parent.DatabaseName, _collectionName);
+            _collectionUri = UriFactory.CreateDocumentCollectionUri(_databaseName, _collectionName);
         }
 
-        IDatabaseFacade ICollectionFacade.Parent => _parent;
+        ICosmosAccountFacade ICollectionFacade.Account => _account;
+
+        string ICollectionFacade.DatabaseName => _databaseName;
 
         string ICollectionFacade.CollectionName => _collectionName;
 

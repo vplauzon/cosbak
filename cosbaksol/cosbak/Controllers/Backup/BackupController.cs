@@ -16,23 +16,27 @@ namespace Cosbak.Controllers.Backup
         private readonly ILogger _logger;
         private readonly IBackupStorageController _storageController;
         private readonly IBackupCosmosController _cosmosController;
+        private readonly IImmutableList<CollectionBackupPlan> _collectionPlans;
 
         public BackupController(
             ILogger logger,
             IBackupCosmosController cosmosController,
-            IBackupStorageController storageController)
+            IBackupStorageController storageController,
+            IImmutableList<CollectionBackupPlan> collectionPlans)
         {
             _logger = logger;
             _storageController = storageController;
             _cosmosController = cosmosController;
+            _collectionPlans = collectionPlans;
         }
 
         public async Task BackupAsync()
         {
             _logger.Display("Backup...");
             _logger.WriteEvent("Backup-Start");
-            foreach (var cosmosCollection in await _cosmosController.GetCollectionsAsync())
+            foreach (var plan in _collectionPlans)
             {
+                var cosmosCollection = await _cosmosController.GetCollectionAsync(plan.Db, plan.Collection);
                 var context = ImmutableDictionary<string, string>
                     .Empty
                     .Add("account", cosmosCollection.Account)

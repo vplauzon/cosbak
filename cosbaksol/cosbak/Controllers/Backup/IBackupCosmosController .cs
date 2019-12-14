@@ -7,6 +7,6 @@ namespace Cosbak.Controllers.Backup
 {
     public interface IBackupCosmosController
     {
-        Task<IImmutableList<ICosmosCollectionController>> GetCollectionsAsync();
+        Task<ICosmosCollectionController> GetCollectionAsync(string db, string collection);
     }
 }

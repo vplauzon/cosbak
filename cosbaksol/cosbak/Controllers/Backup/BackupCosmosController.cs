@@ -9,40 +9,27 @@ namespace Cosbak.Controllers.Backup
 {
     public class BackupCosmosController : IBackupCosmosController
     {
-        private readonly IDatabaseAccountFacade _accountFacade;
+        private readonly ICosmosAccountFacade _accountFacade;
         private readonly ILogger _logger;
-        private readonly CollectionFilter _collectionFilter;
 
         #region Constructors
         public BackupCosmosController(
-            IDatabaseAccountFacade accountFacade,
-            ILogger logger,
-            IEnumerable<string> filters)
+            ICosmosAccountFacade accountFacade,
+            ILogger logger)
         {
             _accountFacade = accountFacade ?? throw new ArgumentNullException(nameof(accountFacade));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _collectionFilter = new CollectionFilter(filters);
         }
         #endregion
 
-        async Task<IImmutableList<ICosmosCollectionController>> IBackupCosmosController.GetCollectionsAsync()
+        async Task<ICosmosCollectionController> IBackupCosmosController.GetCollectionAsync(
+            string db,
+            string collection)
         {
-            var builder = ImmutableList<ICosmosCollectionController>.Empty.ToBuilder();
+            var collectionFacade = await _accountFacade.GetCollectionAsync(db, collection);
+            var controller = new CosmosCollectionController(collectionFacade, _logger);
 
-            foreach (var db in await _accountFacade.GetDatabasesAsync())
-            {
-                foreach (var collection in await db.GetCollectionsAsync())
-                {
-                    if (_collectionFilter.IsIncluded(db.DatabaseName, collection.CollectionName))
-                    {
-                        var controller = new CosmosCollectionController(collection, _logger);
-
-                        builder.Add(controller);
-                    }
-                }
-            }
-
-            return builder.ToImmutableArray();
+            return controller;
         }
     }
 }

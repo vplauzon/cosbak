@@ -101,18 +101,16 @@ namespace Cosbak
 
                     try
                     {
-                        var cosmosFacade = new DatabaseAccountFacade(
+                        var cosmosFacade = new CosmosAccountFacade(
                             configuration.CosmosAccount.Name,
                             configuration.CosmosAccount.Key);
                         var storageController = new BackupStorageController(storageFacade, logger);
-                        var cosmosController = new BackupCosmosController(
-                            cosmosFacade,
-                            logger,
-                            new string[0]);
+                        var cosmosController = new BackupCosmosController(cosmosFacade, logger);
                         var controller = new BackupController(
                             logger,
                             cosmosController,
-                            storageController);
+                            storageController,
+                            configuration.GetCollectionPlans());
 
                         await controller.BackupAsync();
                     }

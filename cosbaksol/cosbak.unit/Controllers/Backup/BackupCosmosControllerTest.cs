@@ -74,9 +74,9 @@ namespace cosbak.unit.Controllers.Backup
             Assert.Equal("a", sorted[0].Collection);
         }
 
-        private static IDatabaseAccountFacade CreateMockDatabaseAccountFacade()
+        private static ICosmosAccountFacade CreateMockDatabaseAccountFacade()
         {
-            var account = new Mock<IDatabaseAccountFacade>();
+            var account = new Mock<ICosmosAccountFacade>();
             var db1 = new Mock<IDatabaseFacade>();
             var db2 = new Mock<IDatabaseFacade>();
             var collectionA = new Mock<ICollectionFacade>();

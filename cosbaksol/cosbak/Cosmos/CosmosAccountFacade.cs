@@ -8,12 +8,12 @@ using Microsoft.Azure.Documents.Linq;
 
 namespace Cosbak.Cosmos
 {
-    internal class DatabaseAccountFacade : IDatabaseAccountFacade
+    internal class CosmosAccountFacade : ICosmosAccountFacade
     {
         private readonly string _accountName;
         private readonly DocumentClient _client;
 
-        public DatabaseAccountFacade(string accountName, string key)
+        public CosmosAccountFacade(string accountName, string key)
         {
             _accountName = accountName;
             _client = new DocumentClient(
@@ -21,29 +21,42 @@ namespace Cosbak.Cosmos
                 key);
         }
 
-        string IDatabaseAccountFacade.AccountName => _accountName;
+        string ICosmosAccountFacade.AccountName => _accountName;
 
-        async Task<IEnumerable<IDatabaseFacade>> IDatabaseAccountFacade.GetDatabasesAsync()
+        async Task<ICollectionFacade> ICosmosAccountFacade.GetCollectionAsync(
+            string db,
+            string collection)
         {
-            var query = _client.CreateDatabaseQuery();
-            var dbs = await QueryHelper.GetAllResultsAsync(query.AsDocumentQuery());
+            var queryDb = from d in _client.CreateDatabaseQuery()
+                          where d.Id == db
+                          select d;
+            var dbs = await QueryHelper.GetAllResultsAsync(queryDb.AsDocumentQuery());
 
-                var gateways = dbs
-                    .Select(db => new DatabaseFacade(_client, db.Id, this, new string[0]))
-                    .ToArray<IDatabaseFacade>();
-
-                return gateways;
-        }
-
-        private string[] AccountForNoCollections(string[] collections)
-        {
-            if (collections.Any(c => c == null))
+            if (dbs.Length == 0)
             {
-                return new string[0];
+                throw new CosbakException($"Db '{db}' doesn't exist");
             }
             else
             {
-                return collections;
+                var queryCollection =
+                    from c in _client.CreateDocumentCollectionQuery(dbs.First().SelfLink)
+                    where c.Id == collection
+                    select c;
+                var collections = await QueryHelper.GetAllResultsAsync(queryCollection.AsDocumentQuery());
+
+                if (collections.Length == 0)
+                {
+                    throw new CosbakException($"Collection '{collection}' doesn't exist");
+                }
+                else
+                {
+                    return new CollectionFacade(
+                        _client,
+                        this,
+                        db,
+                        collection,
+                        collections.First().PartitionKey.Paths.First());
+                }
             }
         }
     }
