@@ -16,14 +16,17 @@ namespace Cosbak.Controllers.Backup
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        async Task<IStorageCollectionController> IBackupStorageController.LockMasterAsync(
+        async Task<IStorageCollectionController> IBackupStorageController.LockLogBlobAsync(
             string account,
             string database,
             string collection)
         {
             var backupFolder = _storageFacade.ChangeFolder(
-                $"{Constants.ACCOUNTS_FOLDER}/{account}/{database}/{collection}/{Constants.BACKUP_FOLDER}");
-            var collectionController = new StorageCollectionController(backupFolder, _logger);
+                $"{Constants.BACKUPS_FOLDER}/{account}/{database}");
+            var collectionController = new StorageCollectionController(
+                backupFolder,
+                collection,
+                _logger);
 
             await collectionController.InitializeAsync();
 

@@ -6,6 +6,9 @@ namespace Cosbak.Controllers.Backup
 {
     public interface IBackupStorageController
     {
-        Task<IStorageCollectionController> LockMasterAsync(string account, string database, string collection);
+        Task<IStorageCollectionController> LockLogBlobAsync(
+            string account,
+            string database,
+            string collection);
     }
 }

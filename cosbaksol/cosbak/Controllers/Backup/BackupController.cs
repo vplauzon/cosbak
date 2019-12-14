@@ -10,9 +10,6 @@ namespace Cosbak.Controllers.Backup
 {
     public class BackupController
     {
-        private static readonly TimeSpan WAIT_FOR_CURRENT_BACKUP_PERIOD = TimeSpan.FromSeconds(2);
-        private static readonly TimeSpan WAIT_FOR_CURRENT_BACKUP_TOTAL = TimeSpan.FromSeconds(15);
-
         private readonly ILogger _logger;
         private readonly IBackupStorageController _storageController;
         private readonly IBackupCosmosController _cosmosController;
@@ -48,7 +45,7 @@ namespace Cosbak.Controllers.Backup
                 _logger.Display($"Collection {cosmosCollection.Account}"
                     + $".{cosmosCollection.Database}.{cosmosCollection.Collection}");
 
-                var storageCollection = await _storageController.LockMasterAsync(
+                var storageCollection = await _storageController.LockLogBlobAsync(
                     cosmosCollection.Account,
                     cosmosCollection.Database,
                     cosmosCollection.Collection);

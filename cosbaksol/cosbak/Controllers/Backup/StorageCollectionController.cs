@@ -12,6 +12,7 @@ namespace Cosbak.Controllers.Backup
     public class StorageCollectionController : IStorageCollectionController
     {
         private readonly IStorageFacade _rootStorage;
+        private readonly string _logBlobName;
         private readonly ILogger _logger;
         private BlobLease? _lease;
         private MasterBackupData? _master;
@@ -19,28 +20,32 @@ namespace Cosbak.Controllers.Backup
         private int _contentFolderId;
         private IStorageFacade? _contentStorage;
 
-        public StorageCollectionController(IStorageFacade storageFacade, ILogger logger)
+        public StorageCollectionController(
+            IStorageFacade storageFacade,
+            string collection,
+            ILogger logger)
         {
             _rootStorage = storageFacade;
+            _logBlobName = $"{collection}.{Constants.LOG_EXTENSION}";
             _logger = logger;
         }
 
         public async Task InitializeAsync()
         {
-            if (!await _rootStorage.DoesExistAsync(Constants.BACKUP_MASTER))
+            if (!await _rootStorage.DoesExistAsync(_logBlobName))
             {   //  Create empty master
-                await _rootStorage.UploadBlockBlobAsync(Constants.BACKUP_MASTER, string.Empty);
+                await _rootStorage.UploadBlockBlobAsync(_logBlobName, string.Empty);
             }
 
-            _lease = await _rootStorage.GetLeaseAsync(Constants.BACKUP_MASTER);
+            _lease = await _rootStorage.GetLeaseAsync(_logBlobName);
 
             if (_lease == null)
             {
-                throw new CosbakException($"Can't lease '{Constants.BACKUP_MASTER}' blob");
+                throw new CosbakException($"Can't lease '{_logBlobName}' blob");
             }
             else
             {
-                var masterContent = await _rootStorage.GetContentAsync(Constants.BACKUP_MASTER);
+                var masterContent = await _rootStorage.GetContentAsync(_logBlobName);
                 var serializer = new JsonSerializer();
 
                 using (var stringReader = new StringReader(masterContent))
@@ -100,7 +105,7 @@ namespace Cosbak.Controllers.Backup
                                   select cf.FolderId.ToString()).ToArray();
             Func<string, bool> keepFilter = (path) =>
             //  Keep master
-            path == Constants.BACKUP_MASTER
+            path == _logBlobName
             //  Keep all blobs under content folders
             || contentFolders.Any(f => path.StartsWith(f + '/'));
             Func<string, bool> toDeleteFilter = (path) => !keepFilter(path);
@@ -123,7 +128,7 @@ namespace Cosbak.Controllers.Backup
                 var masterContent = stringWriter.ToString();
 
                 await _rootStorage.UploadBlockBlobAsync(
-                    Constants.BACKUP_MASTER,
+                    _logBlobName,
                     masterContent,
                     (_lease ?? throw new NotSupportedException("Lease")).LeaseId);
             }
