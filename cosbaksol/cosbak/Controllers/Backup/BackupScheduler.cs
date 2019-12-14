@@ -82,16 +82,15 @@ namespace Cosbak.Controllers.Backup
             _logger.WriteEvent("Backup-Start");
             foreach (var plan in _initialized.CollectionPlans)
             {
-                var context = ImmutableDictionary<string, string>
-                    .Empty
-                    .Add("account", plan.Collection.Parent.Parent.AccountName)
-                    .Add("db", plan.Collection.Parent.DatabaseName)
-                    .Add("collection", plan.Collection.CollectionName);
-                var cosmosCollection = new CosmosCollectionController(plan.Collection, _logger)
+                var logger = _logger
+                    .AddContext("account", plan.Collection.Parent.Parent.AccountName)
+                    .AddContext("db", plan.Collection.Parent.DatabaseName)
+                    .AddContext("collection", plan.Collection.CollectionName);
+                var cosmosCollection = new CosmosCollectionController(plan.Collection, logger)
                     as ICosmosCollectionController;
 
-                _logger.WriteEvent("Backup-Start-Collection", context);
-                _logger.Display($"Collection {cosmosCollection.Account}"
+                logger.WriteEvent("Backup-Start-Collection");
+                logger.Display($"Collection {cosmosCollection.Account}"
                     + $".{cosmosCollection.Database}.{cosmosCollection.Collection}");
 
                 var storageCollection = await _storageController.LockLogBlobAsync(
@@ -102,11 +101,11 @@ namespace Cosbak.Controllers.Backup
                 try
                 {
                     var recordCount = await BackupCollectionContentAsync(
-                        cosmosCollection, storageCollection, context);
+                        cosmosCollection, storageCollection, logger);
 
-                    _logger.Display($"{recordCount} records backed up", context);
-                    _logger.WriteEvent("Backup-End-Records", context, count: recordCount);
-                    _logger.WriteEvent("Backup-End-Collection", context);
+                    logger.Display($"{recordCount} records backed up");
+                    logger.AddContext("count", recordCount).WriteEvent("Backup-End-Records");
+                    logger.WriteEvent("Backup-End-Collection");
                 }
                 finally
                 {
@@ -146,14 +145,14 @@ namespace Cosbak.Controllers.Backup
         private async Task<long> BackupCollectionContentAsync(
             ICosmosCollectionController cosmosCollection,
             IStorageCollectionController storageCollection,
-            IImmutableDictionary<string, string> context)
+            ILogger logger)
         {
             var destinationTimeStamp =
                 await GetDestinationTimeStampAsync(cosmosCollection, storageCollection);
 
             if (destinationTimeStamp == null)
             {
-                _logger.WriteEvent("Backup-Collection-NoNewContent", context);
+                logger.WriteEvent("Backup-Collection-NoNewContent");
 
                 return 0;
             }
@@ -168,7 +167,7 @@ namespace Cosbak.Controllers.Backup
                                 p,
                                 storageCollection.GetPartition(p.Id),
                                 storageCollection.LastContentTimeStamp,
-                                context.Add("partition", p.Id));
+                                logger.AddContext("partition", p.Id));
                 var recordCounts = await Task.WhenAll(tasks);
 
                 storageCollection.UpdateContent(destinationTimeStamp.Value);
@@ -181,9 +180,9 @@ namespace Cosbak.Controllers.Backup
             ICosmosPartitionController cosmosPartition,
             IStoragePartitionController storagePartitionController,
             long? lastContentTimeStamp,
-            IImmutableDictionary<string, string> context)
+            ILogger logger)
         {
-            _logger.WriteEvent("Backup-Start-Partition", context);
+            logger.WriteEvent("Backup-Start-Partition");
 
             var partitionPathParts = cosmosPartition.PartitionPath.Split('/').Skip(1);
             var feed = cosmosPartition.GetChangeFeed(lastContentTimeStamp);
@@ -196,7 +195,7 @@ namespace Cosbak.Controllers.Backup
             while (feed.HasMoreResults)
             {
                 var batch = await feed.GetBatchAsync();
-                var batchContext = context.Add("batch", batchId.ToString());
+                var batchLogger = logger.AddContext("batch", batchId.ToString());
 
                 ++batchId;
                 await pendingStorageTask;
@@ -221,24 +220,21 @@ namespace Cosbak.Controllers.Backup
                 metaStream.Position = 0;
                 contentStream.Position = 0;
 
-                _logger.WriteEvent(
-                    "Backup-End-Partition-Batch-Count",
-                    batchContext,
-                    count: batch.Count);
-                _logger.WriteEvent(
-                    "Backup-End-Partition-Batch-MetaSize",
-                    batchContext,
-                    count: metaStream.Length);
-                _logger.WriteEvent(
-                    "Backup-End-Partition-Batch-ContentSize",
-                    batchContext,
-                    count: contentStream.Length);
+                batchLogger
+                    .AddContext("count", batch.Count)
+                    .WriteEvent("Backup-End-Partition-Batch-Count");
+                batchLogger
+                    .AddContext("count", metaStream.Length)
+                    .WriteEvent("Backup-End-Partition-Batch-MetaSize");
+                batchLogger
+                    .AddContext("count", contentStream.Length)
+                    .WriteEvent("Backup-End-Partition-Batch-ContentSize");
                 pendingStorageTask = storagePartitionController.WriteBatchAsync(
                     metaStream,
                     contentStream);
             }
             await pendingStorageTask;
-            _logger.WriteEvent("Backup-End-Partition", context);
+            logger.WriteEvent("Backup-End-Partition");
 
             return recordCount;
         }

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
+using System.Net.NetworkInformation;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -10,6 +11,55 @@ namespace Cosbak
 {
     public class StorageFolderLogger : ILogger
     {
+        #region Inner types
+        private class DerivedLogger : ILogger
+        {
+            private readonly StorageFolderLogger _parentLogger;
+            private readonly IImmutableDictionary<string, string> _context;
+
+            public DerivedLogger(StorageFolderLogger parentLogger, IImmutableDictionary<string, string> baseContext)
+            {
+                _parentLogger = parentLogger;
+                _context = baseContext;
+            }
+
+            ILogger ILogger.AddContext<T>(string label, T value)
+            {
+                if (value != null)
+                {
+                    var textValue = value.ToString();
+
+                    if (textValue != null)
+                    {
+                        return new DerivedLogger(_parentLogger, _context.Add(label, textValue));
+                    }
+                }
+
+                return this;
+            }
+
+            void ILogger.Display(string text)
+            {
+                _parentLogger.Display(text, _context);
+            }
+
+            void ILogger.DisplayError(Exception exception)
+            {
+                _parentLogger.DisplayError(exception, _context);
+            }
+
+            void ILogger.WriteEvent(string eventName)
+            {
+                _parentLogger.WriteEvent(eventName, _context);
+            }
+
+            Task ILogger.FlushAsync()
+            {
+                return _parentLogger.FlushAsync();
+            }
+        }
+        #endregion
+
         private static readonly int MAX_BUFFER_SIZE = 1 * 1024 * 1024;
         private static readonly int MAX_BLOCKS = 50000;
         private static readonly TimeSpan MAX_TIME = TimeSpan.FromSeconds(3);
@@ -32,18 +82,51 @@ namespace Cosbak
             _stream = new MemoryStream();
         }
 
-        void ILogger.Display(
-                string text,
-                IImmutableDictionary<string, string>? context)
+        ILogger ILogger.AddContext<T>(string label, T value)
+        {
+            if (value != null)
+            {
+                var textValue = value.ToString();
+
+                if (textValue != null)
+                {
+                    return new DerivedLogger(
+                        this,
+                        ImmutableDictionary<string, string>.Empty.Add(label, textValue));
+                }
+            }
+
+            return this;
+        }
+
+        void ILogger.Display(string text)
+        {
+            Display(text, ImmutableDictionary<string, string>.Empty);
+        }
+
+        void ILogger.DisplayError(Exception exception)
+        {
+            DisplayError(exception, ImmutableDictionary<string, string>.Empty);
+        }
+
+        void ILogger.WriteEvent(string eventName)
+        {
+            WriteEvent(eventName, ImmutableDictionary<string, string>.Empty);
+        }
+
+        async Task ILogger.FlushAsync()
+        {
+            await FlushAsync();
+        }
+
+        private void Display(string text, IImmutableDictionary<string, string> context)
         {
             Console.WriteLine(text);
 
             PushLog("display", new { Text = text }, context);
         }
 
-        void ILogger.DisplayError(
-            Exception exception,
-            IImmutableDictionary<string, string>? context)
+        private void DisplayError(Exception exception, IImmutableDictionary<string, string> context)
         {
             Console.Error.WriteLine($"Exception:  '{exception.GetType().Name}'");
             Console.Error.WriteLine($"Full Name:  '{exception.GetType().FullName}'");
@@ -56,28 +139,15 @@ namespace Cosbak
             }, context);
         }
 
-        void ILogger.WriteEvent(
-            string eventName,
-            IImmutableDictionary<string, string>? context,
-            double? metric,
-            long? count,
-            TimeSpan? duration)
+        private void WriteEvent(string eventName, IImmutableDictionary<string, string> context)
         {
             PushLog(
                 "event",
                 new
                 {
-                    eventName,
-                    metric,
-                    count,
-                    duration
+                    eventName
                 },
                 context);
-        }
-
-        async Task ILogger.FlushAsync()
-        {
-            await FlushAsync();
         }
 
         private void PushLog(
