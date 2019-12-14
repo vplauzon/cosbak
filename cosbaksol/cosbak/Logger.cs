@@ -17,11 +17,11 @@ namespace Cosbak
         private readonly Guid _sessionId = Guid.NewGuid();
         private readonly IStorageFacade _storageFacade;
         private readonly JsonSerializer _serializer;
-        private string _blobName = null;
+        private string? _blobName = null;
         private int _blocks = 0;
         private Stream _stream;
         private TextWriter _writer;
-        private Task _lastWriteTask = null;
+        private Task? _lastWriteTask = null;
         private DateTime? _lastWriteTime = null;
 
         public Logger(IStorageFacade storageFacade)
@@ -37,7 +37,7 @@ namespace Cosbak
 
         void ILogger.Display(
                 string text,
-                IImmutableDictionary<string, string> context)
+                IImmutableDictionary<string, string>? context)
         {
             Console.WriteLine(text);
 
@@ -46,7 +46,7 @@ namespace Cosbak
 
         void ILogger.DisplayError(
             Exception exception,
-            IImmutableDictionary<string, string> context)
+            IImmutableDictionary<string, string>? context)
         {
             Console.Error.WriteLine($"Exception:  '{exception.GetType().Name}'");
             Console.Error.WriteLine($"Full Name:  '{exception.GetType().FullName}'");
@@ -61,7 +61,7 @@ namespace Cosbak
 
         void ILogger.WriteEvent(
             string eventName,
-            IImmutableDictionary<string, string> context,
+            IImmutableDictionary<string, string>? context,
             double? metric,
             long? count,
             TimeSpan? duration)
@@ -86,7 +86,7 @@ namespace Cosbak
         private void PushLog(
             string eventType,
             object content,
-            IImmutableDictionary<string, string> context)
+            IImmutableDictionary<string, string>? context)
         {
             var telemetry = new
             {

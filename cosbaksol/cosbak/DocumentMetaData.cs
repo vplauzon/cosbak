@@ -6,7 +6,7 @@ namespace Cosbak
 {
     public struct DocumentMetaData
     {
-        public DocumentMetaData(string id, object partitionKey, long timeStamp, int size)
+        public DocumentMetaData(string id, object? partitionKey, long timeStamp, int size)
         {
             Id = id;
             PartitionHash = partitionKey == null

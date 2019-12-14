@@ -31,7 +31,7 @@ namespace Cosbak.Storage
             get => _leaseId;
         }
 
-        public static async Task<BlobLease> CreateLeaseAsync(CloudBlob blob)
+        public static async Task<BlobLease?> CreateLeaseAsync(CloudBlob blob)
         {
             try
             {

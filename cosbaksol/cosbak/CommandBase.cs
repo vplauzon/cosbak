@@ -9,60 +9,33 @@ using YamlDotNet.Serialization.NamingConventions;
 
 namespace Cosbak.Controllers.Backup
 {
-    public abstract class CommandBase<CONFIG> where CONFIG : new()
+    public abstract class CommandBase<CONFIG>
     {
-        private readonly IImmutableDictionary<string, Action<CONFIG, string>> _switchToAction;
-        private readonly Action<CONFIG> _createSubSections;
-
-        protected CommandBase(
-            Action<CONFIG> createSubSections,
-            IImmutableDictionary<string, Action<CONFIG, string>> switchToAction)
+        public CONFIG ReadParameters(IEnumerable<string> args)
         {
-            _createSubSections = createSubSections;
-            _switchToAction = switchToAction
-                ?? throw new ArgumentNullException(nameof(switchToAction));
-        }
+            var config = NewConfig();
+            var switchToAction = GetSwitchToAction();
+            var switchValues = ReadValues(switchToAction, args);
 
-        public async Task<CONFIG> ReadDescriptionAsync(IEnumerable<string> args)
-        {
-            var switchValues = ReadValues(args);
-            var config = switchValues.ContainsKey("f")
-                ? await ReadRawDescriptionAsync(switchValues["f"])
-                : new CONFIG();
-
-            _createSubSections(config);
             foreach (var a in switchValues)
             {
                 var switchLabel = a.Key;
                 var switchValue = a.Value;
+                var action = switchToAction[switchLabel];
 
-                if (switchLabel != "f")
-                {
-                    _switchToAction[switchLabel](config, switchValue);
-                }
+                action(config, switchValue);
             }
 
             return config;
         }
 
-        private async Task<CONFIG> ReadRawDescriptionAsync(string filePath)
-        {
-            if (!File.Exists(filePath))
-            {
-                throw new CosbakException($"There is no configuration file at '{filePath}'");
-            }
+        protected abstract CONFIG NewConfig();
 
-            var content = await File.ReadAllTextAsync(filePath);
-            var deserializer = new DeserializerBuilder()
-                .WithNamingConvention(new CamelCaseNamingConvention())
-                .IgnoreUnmatchedProperties()
-                .Build();
-            var description = deserializer.Deserialize<CONFIG>(content);
+        protected abstract IImmutableDictionary<string, Action<CONFIG, string>> GetSwitchToAction();
 
-            return description;
-        }
-
-        private ImmutableSortedDictionary<string, string> ReadValues(IEnumerable<string> args)
+        private IImmutableDictionary<string, string> ReadValues(
+            IImmutableDictionary<string, Action<CONFIG, string>> switchToAction,
+            IEnumerable<string> args)
         {
             var switchValues = ImmutableSortedDictionary<string, string>.Empty;
 
@@ -77,7 +50,7 @@ namespace Cosbak.Controllers.Backup
 
                 var switchLabel = first.Substring(1);
 
-                if (!_switchToAction.ContainsKey(switchLabel) && switchLabel != "f")
+                if (!switchToAction.ContainsKey(switchLabel))
                 {
                     throw new CosbakException($"'{switchLabel}' isn't a valid switch label");
                 }

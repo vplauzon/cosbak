@@ -13,11 +13,11 @@ namespace Cosbak.Controllers.Backup
     {
         private readonly IStorageFacade _rootStorage;
         private readonly ILogger _logger;
-        private BlobLease _lease;
-        private MasterBackupData _master;
+        private BlobLease? _lease;
+        private MasterBackupData? _master;
         private bool _isMasterDirty = false;
         private int _contentFolderId;
-        private IStorageFacade _contentStorage;
+        private IStorageFacade? _contentStorage;
 
         public StorageCollectionController(IStorageFacade storageFacade, ILogger logger)
         {
@@ -61,13 +61,14 @@ namespace Cosbak.Controllers.Backup
             }
         }
 
-        long? IStorageCollectionController.LastContentTimeStamp => _master.LastContentTimeStamp;
+        long? IStorageCollectionController.LastContentTimeStamp =>
+            (_master ?? throw new NotSupportedException("Null master")).LastContentTimeStamp;
 
         void IStorageCollectionController.UpdateContent(long lastContentTimeStamp)
         {
             _isMasterDirty = true;
 
-            _master.LastContentTimeStamp = lastContentTimeStamp;
+            (_master ?? throw new NotSupportedException("Null master")).LastContentTimeStamp = lastContentTimeStamp;
             _master.Batches.Add(new BackupBatchData
             {
                 FolderId = _contentFolderId,
@@ -77,7 +78,10 @@ namespace Cosbak.Controllers.Backup
 
         IStoragePartitionController IStorageCollectionController.GetPartition(string id)
         {
-            return new StoragePartitionController(id, _contentStorage, _logger);
+            return new StoragePartitionController(
+                id,
+                (_contentStorage ?? throw new NotSupportedException("Content storage")),
+                _logger);
         }
 
         async Task IStorageCollectionController.ReleaseAsync()
@@ -87,12 +91,12 @@ namespace Cosbak.Controllers.Backup
                 await UpdateMasterAsync();
             }
 
-            await _lease.ReleaseLeaseAsync();
+            await (_lease ?? throw new NotSupportedException("Lease")).ReleaseLeaseAsync();
         }
 
         private async Task CleanFolderAsync()
         {
-            var contentFolders = (from cf in _master.Batches
+            var contentFolders = (from cf in (_master ?? throw new NotSupportedException("Null master")).Batches
                                   select cf.FolderId.ToString()).ToArray();
             Func<string, bool> keepFilter = (path) =>
             //  Keep master
@@ -121,7 +125,7 @@ namespace Cosbak.Controllers.Backup
                 await _rootStorage.UploadBlockBlobAsync(
                     Constants.BACKUP_MASTER,
                     masterContent,
-                    _lease.LeaseId);
+                    (_lease ?? throw new NotSupportedException("Lease")).LeaseId);
             }
         }
     }

@@ -1,6 +1,4 @@
-﻿using Cosbak.Config;
-using Cosbak.Controllers.Backup;
-using Cosbak.Controllers.Index;
+﻿using Cosbak.Controllers.Backup;
 using Cosbak.Cosmos;
 using Cosbak.Storage;
 using System;
@@ -8,6 +6,9 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Text.Json;
+using System.IO;
+using Cosbak.Controllers;
 
 namespace Cosbak
 {
@@ -85,46 +86,73 @@ namespace Cosbak
 
         private static async Task BackupAsync(IEnumerable<string> args)
         {
-            var command = new BackupCommand();
-
             if (args.Any() && args.First() == "-h")
             {
                 DisplayBackupHelp();
             }
             else
             {
-                var description = await command.ReadDescriptionAsync(args);
+                var command = new BackupCommand();
+                var parameters = command.ReadParameters(args);
 
-                description.Validate();
-
-                var storageFacade = CreateStorageFacade(description.StorageAccount);
-                ILogger logger = new Logger(storageFacade.ChangeFolder("logs"));
-
-                try
+                if (parameters.ConfigPath == null)
                 {
-                    var cosmosFacade = new DatabaseAccountFacade(
-                        description.CosmosAccount.Name,
-                        description.CosmosAccount.Key);
-                    var storageController = new BackupStorageController(storageFacade, logger);
-                    var cosmosController = new BackupCosmosController(
-                        cosmosFacade,
-                        logger,
-                        description.Filters);
-                    var controller = new BackupController(
-                        logger,
-                        cosmosController,
-                        storageController);
+                    throw new CosbakException("Switch 'c' not specified, i.e. path to configuration");
+                }
+                else
+                {
+                    var configuration = await LoadBackupConfigurationAsync(parameters.ConfigPath);
 
-                    await controller.BackupAsync();
+                    configuration.Validate();
+
+                    var storageFacade = CreateStorageFacade(configuration.StorageAccount);
+                    ILogger logger = new Logger(storageFacade.ChangeFolder("logs"));
+
+                    try
+                    {
+                        var cosmosFacade = new DatabaseAccountFacade(
+                            configuration.CosmosAccount.Name,
+                            configuration.CosmosAccount.Key);
+                        var storageController = new BackupStorageController(storageFacade, logger);
+                        var cosmosController = new BackupCosmosController(
+                            cosmosFacade,
+                            logger,
+                            new string[0]);
+                        var controller = new BackupController(
+                            logger,
+                            cosmosController,
+                            storageController);
+
+                        await controller.BackupAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.DisplayError(ex);
+                    }
+                    finally
+                    {
+                        await logger.FlushAsync();
+                    }
                 }
-                catch (Exception ex)
+            }
+        }
+
+        private static async Task<BackupConfiguration> LoadBackupConfigurationAsync(string configPath)
+        {
+            try
+            {
+                using (var stream = File.OpenRead(configPath))
                 {
-                    logger.DisplayError(ex);
+                    return await JsonSerializer.DeserializeAsync<BackupConfiguration>(stream);
                 }
-                finally
-                {
-                    await logger.FlushAsync();
-                }
+            }
+            catch (DirectoryNotFoundException)
+            {
+                throw new CosbakException("Folder for backup configuration not found");
+            }
+            catch (FileNotFoundException ex)
+            {
+                throw new CosbakException($"File '{ex.FileName}' not found");
             }
         }
 

@@ -6,6 +6,7 @@
     <AssemblyName>cosbak</AssemblyName>
     <RootNamespace>Cosbak</RootNamespace>
     <LangVersion>default</LangVersion>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">

@@ -1,19 +1,23 @@
 ﻿using System;
 using System.Linq;
 
-namespace Cosbak.Config
+namespace Cosbak.Controllers
 {
     public class StorageAccountDescription
     {
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
-        public string Container { get; set; }
+        public string Container { get; set; } = string.Empty;
 
-        public string Folder { get; set; }
+        public string Folder { get; set; } = string.Empty;
 
-        public string Key { get; set; }
+        public string Key { get; set; } = string.Empty;
+        
+        public string KeyPath { get; set; } = string.Empty;
 
-        public string Token { get; set; }
+        public string Token { get; set; } = string.Empty;
+        
+        public string TokenPath { get; set; } = string.Empty;
 
         public void Validate()
         {
@@ -25,9 +29,13 @@ namespace Cosbak.Config
             {
                 throw new CosbakException("Storage Account container is required");
             }
-            if (string.IsNullOrWhiteSpace(Key) && string.IsNullOrWhiteSpace(Token))
+            if (string.IsNullOrWhiteSpace(Key)
+                && string.IsNullOrWhiteSpace(KeyPath)
+                && string.IsNullOrWhiteSpace(Token)
+                && string.IsNullOrWhiteSpace(TokenPath))
             {
-                throw new CosbakException("One of the two is required:  Storage Account key or token");
+                throw new CosbakException(
+                    "Storage Account key, key path, token or token path is requires");
             }
         }
     }

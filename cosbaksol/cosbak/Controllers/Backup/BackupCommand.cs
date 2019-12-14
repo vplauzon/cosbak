@@ -1,46 +1,39 @@
-﻿using Cosbak.Config;
-using Cosbak.Controllers.Backup;
+﻿using Cosbak.Controllers.Backup;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 
 namespace Cosbak.Controllers.Backup
 {
-    public class BackupCommand : CommandBase<BackupDescription>
+    public class BackupCommand : CommandBase<BackupCommandParameters>
     {
-        public BackupCommand() : base(CreateSubSections, CreateSwitchToAction())
+        protected override BackupCommandParameters NewConfig()
         {
+            return new BackupCommandParameters();
         }
 
-        private static void CreateSubSections(BackupDescription description)
+        protected override IImmutableDictionary<string, Action<BackupCommandParameters, string>> GetSwitchToAction()
         {
-            if (description.CosmosAccount == null)
-            {
-                description.CosmosAccount = new CosmosAccountDescription();
-            }
-            if (description.StorageAccount == null)
-            {
-                description.StorageAccount = new StorageAccountDescription();
-            }
-            if (description.Plan == null)
-            {
-                description.Plan = new BackupPlan();
-            }
-        }
-
-        private static IImmutableDictionary<string, Action<BackupDescription, string>> CreateSwitchToAction()
-        {
-            var switchToAction = ImmutableSortedDictionary<string, Action<BackupDescription, string>>
+            var switchToAction = ImmutableSortedDictionary<string, Action<BackupCommandParameters, string>>
                 .Empty
-                .Add("cn", (c, a) => c.CosmosAccount.Name = a)
-                .Add("ck", (c, a) => c.CosmosAccount.Key = a)
-                .Add("sn", (c, a) => c.StorageAccount.Name = a)
-                .Add("sc", (c, a) => c.StorageAccount.Container = a)
-                .Add("sf", (c, a) => c.StorageAccount.Folder = a)
-                .Add("sk", (c, a) => c.StorageAccount.Key = a)
-                .Add("st", (c, a) => c.StorageAccount.Token = a);
+                .Add("c", (c, value) => c.ConfigPath = value)
+                .Add("m", (c, value) => c.Mode = GetMode(value));
 
             return switchToAction;
+        }
+
+        private BackupMode GetMode(string value)
+        {
+            switch(value.ToLower())
+            {
+                case "continuous":
+                    return BackupMode.Continuous;
+                case "iterative":
+                    return BackupMode.Iterative;
+
+                default:
+                    throw new CosbakException($"'{value}' isn't a valid backup mode");
+            }
         }
     }
 }

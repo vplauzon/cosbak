@@ -19,7 +19,7 @@ namespace Cosbak
         {
             public string Id { get; set; }
 
-            public object PartitionKey { get; set; }
+            public object? PartitionKey { get; set; }
 
             public Int64 TimeStamp { get; set; }
         }
@@ -101,7 +101,7 @@ namespace Cosbak
             };
         }
 
-        private static object GetPartitionValue(JObject document, IEnumerable<string> partitionPathParts)
+        private static object? GetPartitionValue(JObject document, IEnumerable<string> partitionPathParts)
         {
             var field = partitionPathParts.First();
 

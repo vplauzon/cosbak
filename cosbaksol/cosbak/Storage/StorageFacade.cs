@@ -125,7 +125,7 @@ namespace Cosbak.Storage
             await blob.CreateOrReplaceAsync();
         }
 
-        async Task IStorageFacade.UploadBlockBlobAsync(string blobPath, string content, string leaseId)
+        async Task IStorageFacade.UploadBlockBlobAsync(string blobPath, string content, string? leaseId)
         {
             var blob = _container.GetBlockBlobReference(_blobPrefix + blobPath);
 
@@ -146,18 +146,18 @@ namespace Cosbak.Storage
             await blob.AppendFromStreamAsync(contentStream);
         }
 
-        async Task<BlobLease> IStorageFacade.GetLeaseAsync(string blobPath)
+        async Task<BlobLease?> IStorageFacade.GetLeaseAsync(string blobPath)
         {
             var blob = _container.GetBlobReference(_blobPrefix + blobPath);
 
             return await BlobLease.CreateLeaseAsync(blob);
         }
 
-        async Task<string[]> IStorageFacade.ListBlobsAsync(Func<string, bool> filter)
+        async Task<string[]> IStorageFacade.ListBlobsAsync(Func<string, bool>? filter)
         {
             var prefix = _blobPrefix;
             var list = new List<string>();
-            BlobContinuationToken token = null;
+            BlobContinuationToken? token = null;
 
             do
             {
