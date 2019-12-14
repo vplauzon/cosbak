@@ -1,57 +1,77 @@
-﻿using System;
+﻿using Microsoft.Azure.Cosmos;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.Documents;
-using Microsoft.Azure.Documents.Client;
-using Microsoft.Azure.Documents.Linq;
 
 namespace Cosbak.Cosmos
 {
     internal class CollectionFacade : ICollectionFacade
     {
-        private readonly DocumentClient _client;
-        private readonly string _collectionName;
+        private readonly Container _container;
         private readonly string _partitionPath;
         private readonly IDatabaseFacade _parent;
-        private readonly Uri _collectionUri;
 
-        public CollectionFacade(DocumentClient client, string collectionName, string partitionPath, IDatabaseFacade parent)
+        public CollectionFacade(Container container, string partitionPath, IDatabaseFacade parent)
         {
-            _client = client;
-            _collectionName = collectionName;
+            _container = container;
             _partitionPath = partitionPath;
             _parent = parent;
-            _collectionUri = UriFactory.CreateDocumentCollectionUri(_parent.DatabaseName, _collectionName);
         }
 
         IDatabaseFacade ICollectionFacade.Parent => _parent;
 
-        string ICollectionFacade.CollectionName => _collectionName;
+        string ICollectionFacade.CollectionName => _container.Id;
 
         string ICollectionFacade.PartitionPath => _partitionPath;
 
-        async Task<long?> ICollectionFacade.GetLastUpdateTimeAsync()
+        async Task<long?> ICollectionFacade.GetLastUpdateTimeAsync(long fromTime, int maxItemCount)
         {
-            var sql = new SqlQuerySpec("SELECT TOP 1 c._ts FROM c ORDER BY c._ts DESC");
-            var query = _client.CreateDocumentQuery<IDictionary<string, long>>(_collectionUri, sql, new FeedOptions
-            {
-                EnableCrossPartitionQuery = true
-            });
-            var results = await QueryHelper.GetAllResultsAsync(query.AsDocumentQuery());
-            var time = results.Length == 0 ? (long?)null : results[0].First().Value;
+            //var countSql = new SqlQuerySpec(
+            //    "SELECT VALUE COUNT(1) FROM c WHERE c._ts > @fromTime",
+            //    new SqlParameterCollection(
+            //        new[] {
+            //            new SqlParameter("@fromTime", fromTime)
+            //        }));
+            //var countQuery = _container.CreateDocumentQuery<long>(
+            //    _collectionUri,
+            //    countSql,
+            //    new FeedOptions
+            //    {
+            //        EnableCrossPartitionQuery = true
+            //    });
+            //var countResults = await QueryHelper.GetAllResultsAsync(countQuery.AsDocumentQuery());
+            //var count = countResults.First();
 
-            return time;
-        }
+            //if (count == 0)
+            //{
+            //    return null;
+            //}
+            //else
+            //{
+            //    var lastUpdateTimeSql = new SqlQuerySpec(
+            //        "SELECT c._ts FROM c WHERE c._ts > @fromTime ORDER BY c._ts DESC OFFSET @offset LIMIT 1",
+            //        new SqlParameterCollection(
+            //            new[]
+            //            {
+            //                new SqlParameter("@fromTime", fromTime),
+            //                new SqlParameter("@offset", Math.Max(0, count- maxItemCount))
+            //            }));
+            //    var timeQuery = _container.CreateDocumentQuery<IDictionary<string, long>>(
+            //        _collectionUri,
+            //        lastUpdateTimeSql,
+            //        new FeedOptions
+            //        {
+            //            EnableCrossPartitionQuery = true
+            //        });
+            //    var timeResults = await QueryHelper.GetAllResultsAsync(timeQuery.AsDocumentQuery());
+            //    var time = timeResults.Length == 0 ? (long?)null : timeResults[0].First().Value;
 
-        async Task<IPartitionFacade[]> ICollectionFacade.GetPartitionsAsync()
-        {
-            var keyRanges = await _client.ReadPartitionKeyRangeFeedAsync(_collectionUri);
-            var gateways = from k in keyRanges
-                           select new PartitionFacade(_client, this, k.Id);
-
-            return gateways.ToArray();
+            //    return time;
+            //}
+            await Task.FromResult(42);
+            throw new NotImplementedException();
         }
     }
 }

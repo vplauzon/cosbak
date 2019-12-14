@@ -12,8 +12,6 @@ namespace Cosbak.Cosmos
 
         string PartitionPath { get; }
 
-        Task<IPartitionFacade[]> GetPartitionsAsync();
-
-        Task<Int64?> GetLastUpdateTimeAsync();
+        Task<long?> GetLastUpdateTimeAsync(long fromTime, int maxItemCount);
     }
 }

@@ -100,12 +100,12 @@ namespace Cosbak.Controllers.Backup
 
                 try
                 {
-                    var recordCount = await BackupCollectionContentAsync(
-                        collection, storageCollection, logger);
+                    //var recordCount = await BackupCollectionContentAsync(
+                    //    collection, storageCollection, logger);
 
-                    logger.Display($"{recordCount} records backed up");
-                    logger.AddContext("count", recordCount).WriteEvent("Backup-End-Records");
-                    logger.WriteEvent("Backup-End-Collection");
+                    //logger.Display($"{recordCount} records backed up");
+                    //logger.AddContext("count", recordCount).WriteEvent("Backup-End-Records");
+                    //logger.WriteEvent("Backup-End-Collection");
                 }
                 finally
                 {
@@ -142,118 +142,108 @@ namespace Cosbak.Controllers.Backup
             }
         }
 
-        private async Task<long> BackupCollectionContentAsync(
-            ICollectionFacade collectionFacade,
-            IStorageCollectionController storageCollection,
-            ILogger logger)
-        {
-            var destinationTimeStamp =
-                await GetDestinationTimeStampAsync(collectionFacade, storageCollection);
+        //private async Task<long> BackupCollectionContentAsync(
+        //    ICollectionFacade collectionFacade,
+        //    IStorageCollectionController storageCollection,
+        //    ILogger logger)
+        //{
+        //    var destinationTimeStamp =
+        //        await GetDestinationTimeStampAsync(collectionFacade, storageCollection);
 
-            if (destinationTimeStamp == null)
-            {
-                logger.WriteEvent("Backup-Collection-NoNewContent");
+        //    if (destinationTimeStamp == null)
+        //    {
+        //        logger.WriteEvent("Backup-Collection-NoNewContent");
 
-                return 0;
-            }
-            else
-            {
-                var partitions = await collectionFacade.GetPartitionsAsync();
+        //        return 0;
+        //    }
+        //    else
+        //    {
+        //        var partitions = await collectionFacade.GetPartitionsAsync();
 
-                _logger.Display($"{partitions.Length} partitions");
+        //        _logger.Display($"{partitions.Length} partitions");
 
-                var tasks = from p in partitions
-                            select BackupPartitionContentAsync(
-                                p,
-                                storageCollection.GetPartition(p.KeyRangeId),
-                                storageCollection.LastContentTimeStamp,
-                                logger.AddContext("partition", p.KeyRangeId));
-                var recordCounts = await Task.WhenAll(tasks);
+        //        var tasks = from p in partitions
+        //                    select BackupPartitionContentAsync(
+        //                        p,
+        //                        storageCollection.GetPartition(p.KeyRangeId),
+        //                        storageCollection.LastContentTimeStamp,
+        //                        logger.AddContext("partition", p.KeyRangeId));
+        //        var recordCounts = await Task.WhenAll(tasks);
 
-                storageCollection.UpdateContent(destinationTimeStamp.Value);
+        //        storageCollection.UpdateContent(destinationTimeStamp.Value);
 
-                return recordCounts.Sum();
-            }
-        }
+        //        return recordCounts.Sum();
+        //    }
+        //}
 
-        private async Task<long> BackupPartitionContentAsync(
-            IPartitionFacade partitionFacade,
-            IStoragePartitionController storagePartitionController,
-            long? lastContentTimeStamp,
-            ILogger logger)
-        {
-            logger.WriteEvent("Backup-Start-Partition");
+        //private async Task<long> BackupPartitionContentAsync(
+        //    IPartitionFacade partitionFacade,
+        //    IStoragePartitionController storagePartitionController,
+        //    long? lastContentTimeStamp,
+        //    ILogger logger)
+        //{
+        //    logger.WriteEvent("Backup-Start-Partition");
 
-            var partitionPathParts = partitionFacade.Parent.PartitionPath.Split('/').Skip(1);
-            var feed = partitionFacade.GetChangeFeed(lastContentTimeStamp);
-            var metaStream = new MemoryStream();
-            var contentStream = new MemoryStream();
-            var pendingStorageTask = Task.CompletedTask;
-            var batchId = 0;
-            var recordCount = (long)0;
+        //    var partitionPathParts = partitionFacade.Parent.PartitionPath.Split('/').Skip(1);
+        //    var feed = partitionFacade.GetChangeFeed(lastContentTimeStamp);
+        //    var metaStream = new MemoryStream();
+        //    var contentStream = new MemoryStream();
+        //    var pendingStorageTask = Task.CompletedTask;
+        //    var batchId = 0;
+        //    var recordCount = (long)0;
 
-            while (feed.HasMoreResults)
-            {
-                var batch = await feed.GetBatchAsync();
-                var batchLogger = logger.AddContext("batch", batchId.ToString());
+        //    while (feed.HasMoreResults)
+        //    {
+        //        var batch = await feed.GetBatchAsync();
+        //        var batchLogger = logger.AddContext("batch", batchId.ToString());
 
-                ++batchId;
-                await pendingStorageTask;
-                metaStream.SetLength(0);
-                contentStream.SetLength(0);
-                using (var metaWriter = new BinaryWriter(metaStream, Encoding.UTF8, true))
-                using (var contentWriter = new BinaryWriter(contentStream, Encoding.UTF8, true))
-                {
-                    foreach (var doc in batch)
-                    {
-                        var metaData =
-                            DocumentSpliter.WriteContent(doc, partitionPathParts, contentWriter);
+        //        ++batchId;
+        //        await pendingStorageTask;
+        //        metaStream.SetLength(0);
+        //        contentStream.SetLength(0);
+        //        using (var metaWriter = new BinaryWriter(metaStream, Encoding.UTF8, true))
+        //        using (var contentWriter = new BinaryWriter(contentStream, Encoding.UTF8, true))
+        //        {
+        //            foreach (var doc in batch)
+        //            {
+        //                var metaData =
+        //                    DocumentSpliter.WriteContent(doc, partitionPathParts, contentWriter);
 
-                        metaData.Write(metaWriter);
-                        ++recordCount;
-                    }
-                    metaWriter.Flush();
-                    contentWriter.Flush();
-                }
-                metaStream.Flush();
-                contentStream.Flush();
-                metaStream.Position = 0;
-                contentStream.Position = 0;
+        //                metaData.Write(metaWriter);
+        //                ++recordCount;
+        //            }
+        //            metaWriter.Flush();
+        //            contentWriter.Flush();
+        //        }
+        //        metaStream.Flush();
+        //        contentStream.Flush();
+        //        metaStream.Position = 0;
+        //        contentStream.Position = 0;
 
-                batchLogger
-                    .AddContext("count", batch.Count)
-                    .WriteEvent("Backup-End-Partition-Batch-Count");
-                batchLogger
-                    .AddContext("count", metaStream.Length)
-                    .WriteEvent("Backup-End-Partition-Batch-MetaSize");
-                batchLogger
-                    .AddContext("count", contentStream.Length)
-                    .WriteEvent("Backup-End-Partition-Batch-ContentSize");
-                pendingStorageTask = storagePartitionController.WriteBatchAsync(
-                    metaStream,
-                    contentStream);
-            }
-            await pendingStorageTask;
-            logger.WriteEvent("Backup-End-Partition");
+        //        batchLogger
+        //            .AddContext("count", batch.Count)
+        //            .WriteEvent("Backup-End-Partition-Batch-Count");
+        //        batchLogger
+        //            .AddContext("count", metaStream.Length)
+        //            .WriteEvent("Backup-End-Partition-Batch-MetaSize");
+        //        batchLogger
+        //            .AddContext("count", contentStream.Length)
+        //            .WriteEvent("Backup-End-Partition-Batch-ContentSize");
+        //        pendingStorageTask = storagePartitionController.WriteBatchAsync(
+        //            metaStream,
+        //            contentStream);
+        //    }
+        //    await pendingStorageTask;
+        //    logger.WriteEvent("Backup-End-Partition");
 
-            return recordCount;
-        }
+        //    return recordCount;
+        //}
 
-        private async Task<long?> GetDestinationTimeStampAsync(
+        private Task<long?> GetDestinationTimeStampAsync(
             ICollectionFacade collectionFacade,
             IStorageCollectionController storageCollection)
         {
-            var lastRecordTimeStamp = await collectionFacade.GetLastUpdateTimeAsync();
-
-            if (lastRecordTimeStamp == null
-                || lastRecordTimeStamp == storageCollection.LastContentTimeStamp)
-            {
-                return null;
-            }
-            else
-            {
-                return lastRecordTimeStamp;
-            }
+            throw new NotImplementedException();
         }
     }
 }

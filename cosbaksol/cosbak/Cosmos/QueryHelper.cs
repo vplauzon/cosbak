@@ -1,35 +1,26 @@
-﻿using Microsoft.Azure.Documents.Linq;
+﻿using Microsoft.Azure.Cosmos;
+using Microsoft.Azure.Cosmos.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Cosbak.Cosmos
 {
     internal static class QueryHelper
     {
-        public async static Task<T[]> GetAllResultsAsync<T>(IDocumentQuery<T> query)
+        public async static Task<T[]> GetAllResultsAsync<T>(FeedIterator<T> query)
         {
             return await GetAllResultsAsync(query, d => d);
         }
 
-        public async static Task<U[]> GetAllResultsAsync<T, U>(IDocumentQuery<T> query, Func<T, U> transform)
+        public async static Task<U[]> GetAllResultsAsync<T, U>(FeedIterator<T> query, Func<T, U> transform)
         {
-            if (query == null)
-            {
-                throw new ArgumentNullException(nameof(query));
-            }
-            if (transform == null)
-            {
-                throw new ArgumentNullException(nameof(query));
-            }
-
             var list = new List<U>();
 
             while (query.HasMoreResults)
             {
-                var docs = await query.ExecuteNextAsync<T>();
+                var docs = await query.ReadNextAsync();
                 var transformed = from d in docs
                                   select transform(d);
 
