@@ -138,7 +138,7 @@ namespace Cosbak
             {
                 var content = await File.ReadAllTextAsync(configPath);
                 var deserializer = new DeserializerBuilder()
-                    .WithNamingConvention(new CamelCaseNamingConvention())
+                    .WithNamingConvention(CamelCaseNamingConvention.Instance)
                     .IgnoreUnmatchedProperties()
                     .Build();
                 var description = deserializer.Deserialize<BackupConfiguration>(content);
