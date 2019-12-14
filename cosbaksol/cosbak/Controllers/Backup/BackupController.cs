@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Cosbak.Cosmos;
+using Cosbak.Storage;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
@@ -17,10 +19,13 @@ namespace Cosbak.Controllers.Backup
 
         public BackupController(
             ILogger logger,
-            IBackupCosmosController cosmosController,
-            IBackupStorageController storageController,
+            ICosmosAccountFacade cosmosFacade,
+            IStorageFacade storageFacade,
             IImmutableList<CollectionBackupPlan> collectionPlans)
         {
+            var storageController = new BackupStorageController(storageFacade, logger);
+            var cosmosController = new BackupCosmosController(cosmosFacade, logger);
+
             _logger = logger;
             _storageController = storageController;
             _cosmosController = cosmosController;
