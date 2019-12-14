@@ -1,14 +1,14 @@
 ﻿using Cosbak.Storage;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Cosbak
 {
-    public class Logger : ILogger
+    public class StorageFolderLogger : ILogger
     {
         private static readonly int MAX_BUFFER_SIZE = 1 * 1024 * 1024;
         private static readonly int MAX_BLOCKS = 50000;
@@ -16,23 +16,20 @@ namespace Cosbak
 
         private readonly Guid _sessionId = Guid.NewGuid();
         private readonly IStorageFacade _storageFacade;
-        private readonly JsonSerializer _serializer;
+        private readonly JsonSerializerOptions _serializerOptions = new JsonSerializerOptions
+        {
+            IgnoreNullValues = true
+        };
         private string? _blobName = null;
         private int _blocks = 0;
         private Stream _stream;
-        private TextWriter _writer;
         private Task? _lastWriteTask = null;
         private DateTime? _lastWriteTime = null;
 
-        public Logger(IStorageFacade storageFacade)
+        public StorageFolderLogger(IStorageFacade storageFacade)
         {
             _storageFacade = storageFacade;
-            _serializer = JsonSerializer.Create(new JsonSerializerSettings
-            {
-                NullValueHandling = NullValueHandling.Ignore
-            });
             _stream = new MemoryStream();
-            _writer = new StreamWriter(_stream);
         }
 
         void ILogger.Display(
@@ -100,8 +97,8 @@ namespace Cosbak
 
             lock (_stream)
             {
-                _serializer.Serialize(_writer, telemetry);
-                _writer.Flush();
+                JsonSerializer.SerializeAsync(_stream, telemetry, _serializerOptions);
+                _stream.WriteByte((byte)'\n');
                 if (_stream.Length > MAX_BUFFER_SIZE
                     || (_lastWriteTime != null && now.Subtract(_lastWriteTime.Value) > MAX_TIME))
                 {
@@ -117,7 +114,7 @@ namespace Cosbak
             //  Buffer the stream
             var stream = _stream;
 
-            //  Flip the streams and companions
+            //  Flip the streams
             lock (_stream)
             {
                 if (_stream.Length == 0)
@@ -127,7 +124,6 @@ namespace Cosbak
                 else
                 {
                     _stream = new MemoryStream();
-                    _writer = new StreamWriter(_stream);
                     _lastWriteTime = null;
                 }
             }

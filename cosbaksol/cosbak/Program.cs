@@ -106,7 +106,7 @@ namespace Cosbak
                     configuration.Validate();
 
                     var storageFacade = CreateStorageFacade(configuration.StorageAccount);
-                    ILogger logger = new Logger(storageFacade.ChangeFolder("logs"));
+                    ILogger logger = new StorageFolderLogger(storageFacade.ChangeFolder("logs"));
 
                     try
                     {
