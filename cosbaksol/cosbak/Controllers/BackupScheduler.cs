@@ -1,5 +1,5 @@
 ﻿using Cosbak.Config;
-using Cosbak.Controllers.Log;
+using Cosbak.Controllers.LogBackup;
 using Cosbak.Cosmos;
 using Cosbak.Storage;
 using System;
@@ -68,7 +68,10 @@ namespace Cosbak.Controllers
                 _cosmosFacade,
                 _storageFacade,
                 _logger).ToEnumerable();
+            var initializeControllerTasks = from p in collectionPlans
+                                            select p.CollectionController.InitializeAsync();
 
+            await Task.WhenAll(initializeControllerTasks);
             _initialized = new Initialized(collectionPlans);
         }
 
@@ -90,7 +93,25 @@ namespace Cosbak.Controllers
 
         public Task ProcessContinuouslyAsync()
         {
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
             throw new NotImplementedException();
+        }
+
+        public async Task DisposeAsync()
+        {
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
+            var disposeControllerTasks = from p in _initialized.CollectionPlans
+                                         select p.CollectionController.DisposeAsync();
+
+            await Task.WhenAll(disposeControllerTasks);
         }
 
         private async static IAsyncEnumerable<CollectionPlan> GetCollectionPlansAsync(

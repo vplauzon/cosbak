@@ -102,15 +102,14 @@ namespace Cosbak
                         configuration.CosmosAccount.Name,
                         configuration.CosmosAccount.Key,
                         logger);
+                    var scheduler = new BackupScheduler(
+                        logger,
+                        cosmosFacade,
+                        storageFacade,
+                        configuration.GetCollectionPlans());
 
                     try
                     {
-                        var scheduler = new BackupScheduler(
-                            logger,
-                            cosmosFacade,
-                            storageFacade,
-                            configuration.GetCollectionPlans());
-
                         await scheduler.InitializeAsync();
                         if (parameters.Mode == BackupMode.Iterative)
                         {
@@ -127,7 +126,7 @@ namespace Cosbak
                     }
                     finally
                     {
-                        await logger.FlushAsync();
+                        await Task.WhenAll(scheduler.DisposeAsync(), logger.FlushAsync());
                     }
                 }
             }

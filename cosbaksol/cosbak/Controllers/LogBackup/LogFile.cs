@@ -2,7 +2,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace Cosbak.Controllers.Log
+namespace Cosbak.Controllers.LogBackup
 {
     internal class LogFile
     {

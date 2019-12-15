@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Cosbak.Controllers.Log
+namespace Cosbak.Controllers.LogBackup
 {
     internal class LogCollectionBackupController
     {
