@@ -47,7 +47,7 @@ namespace Cosbak.Cosmos
                 countResult.Content.First().currentTimeStamp,
                 countResult.Content.First().count);
 
-            if (current.count < maxItemCount)
+            if (current.count <= maxItemCount)
             {
                 _logger
                     .AddContext("ru", countResult.RequestCharge)

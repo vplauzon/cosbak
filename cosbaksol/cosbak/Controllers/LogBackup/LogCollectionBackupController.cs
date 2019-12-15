@@ -36,7 +36,7 @@ namespace Cosbak.Controllers.LogBackup
             await _logFile.InitializeAsync();
         }
 
-        public async Task LogBatchAsync()
+        public async Task<LogBatchResult> LogBatchAsync()
         {
             var previousLastUpdateTime = _logFile.LastUpdateTime;
             var timeWindow = await _collectionFacade.SizeTimeWindowAsync(
@@ -52,7 +52,16 @@ namespace Cosbak.Controllers.LogBackup
             {
                 await LogDocumentBatchAsync(previousLastUpdateTime, timeWindow.maxTimeStamp);
             }
-            //await _logFile.PersistAsync();
+            if (timeWindow.currentTimeStamp != timeWindow.maxTimeStamp)
+            {
+                return new LogBatchResult(false);
+            }
+            else
+            {
+
+                //await _logFile.PersistAsync();
+                return new LogBatchResult(true);
+            }
         }
 
         private async Task LogDocumentBatchAsync(long previousLastUpdateTime, long maxTimeStamp)
