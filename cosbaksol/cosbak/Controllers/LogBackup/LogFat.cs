@@ -15,7 +15,7 @@ namespace Cosbak.Controllers.LogBackup
             = ImmutableList<LogCheckPoint>.Empty;
 
         [JsonIgnore]
-        public long LastUpdateTime
+        public long LastTimeStamp
         {
             get
             {
@@ -23,7 +23,19 @@ namespace Cosbak.Controllers.LogBackup
                 {
                     return InProgressDocumentBatches.Last().TimeStamp;
                 }
-                else if (CheckPoints.Count > 0)
+                else
+                {
+                    return LastCheckpointTimeStamp;
+                }
+            }
+        }
+
+        [JsonIgnore]
+        public long LastCheckpointTimeStamp
+        {
+            get
+            {
+                if (CheckPoints.Count > 0)
                 {
                     return CheckPoints.Last().TimeStamp;
                 }
@@ -62,10 +74,14 @@ namespace Cosbak.Controllers.LogBackup
 
         public IImmutableList<string> GetAllBlockNames()
         {
-            var checkpointBlocks = CheckPoints.SelectMany(c => c.DocumentBatches.SelectMany(b => b.BlockNames));
-            var inprogressBlocks = InProgressDocumentBatches.SelectMany(b => b.BlockNames);
+            var docCheckpointBlocks = CheckPoints.SelectMany(c => c.DocumentBatches.SelectMany(b => b.BlockNames));
+            var docInprogressBlocks = InProgressDocumentBatches.SelectMany(b => b.BlockNames);
+            var idsCheckpointBlocks = CheckPoints.SelectMany(c => c.IdsBlockNames);
 
-            return checkpointBlocks.Concat(inprogressBlocks).ToImmutableList();
+            return docCheckpointBlocks
+                .Concat(docInprogressBlocks)
+                .Concat(idsCheckpointBlocks)
+                .ToImmutableList();
         }
     }
 }

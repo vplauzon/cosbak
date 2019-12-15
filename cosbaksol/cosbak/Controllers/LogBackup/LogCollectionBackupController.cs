@@ -42,7 +42,7 @@ namespace Cosbak.Controllers.LogBackup
 
         public async Task<LogBatchResult> LogBatchAsync()
         {
-            var previousTimeStamp = _logFile.LastUpdateTime;
+            var previousTimeStamp = _logFile.LastTimeStamp;
             var timeWindow = await _collectionFacade.SizeTimeWindowAsync(
                 previousTimeStamp,
                 MAX_BATCH_SIZE);
@@ -59,7 +59,7 @@ namespace Cosbak.Controllers.LogBackup
             var hasLoggedUntilNow = timeWindow.currentTimeStamp == timeWindow.maxTimeStamp;
 
             if (hasLoggedUntilNow
-                && IsCheckPointTime(previousTimeStamp, timeWindow.currentTimeStamp))
+                && IsCheckPointTime(_logFile.LastCheckpointTimeStamp, timeWindow.currentTimeStamp))
             {
                 await LogCheckPointAsync(timeWindow.currentTimeStamp);
             }

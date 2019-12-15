@@ -46,7 +46,7 @@ namespace Cosbak.Controllers.LogBackup
             _logger = logger;
         }
 
-        public long LastUpdateTime
+        public long LastTimeStamp
         {
             get
             {
@@ -55,7 +55,20 @@ namespace Cosbak.Controllers.LogBackup
                     throw new InvalidOperationException("InitializeAsync hasn't been called");
                 }
 
-                return _initialized.LogFat.LastUpdateTime;
+                return _initialized.LogFat.LastTimeStamp;
+            }
+        }
+
+        public long LastCheckpointTimeStamp
+        {
+            get
+            {
+                if (_initialized == null)
+                {
+                    throw new InvalidOperationException("InitializeAsync hasn't been called");
+                }
+
+                return _initialized.LogFat.LastCheckpointTimeStamp;
             }
         }
 
