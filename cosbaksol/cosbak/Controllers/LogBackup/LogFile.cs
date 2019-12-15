@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Cosbak.Controllers.LogBackup
@@ -44,7 +45,7 @@ namespace Cosbak.Controllers.LogBackup
             _logger = logger;
         }
 
-        public int LastUpdateTime
+        public long LastUpdateTime
         {
             get
             {
@@ -90,8 +91,17 @@ namespace Cosbak.Controllers.LogBackup
 
         public async Task PersistAsync()
         {
-            await Task.FromResult(42);
-            throw new NotImplementedException();
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
+            var fatBuffer = JsonSerializer.SerializeToUtf8Bytes(_initialized.LogFat);
+            var fatBlockName = await WriteBlockAsync(fatBuffer, fatBuffer.Length);
+            var blockNames = _initialized.LogFat.GetAllBlockNames();
+
+            blockNames = blockNames.Insert(0, fatBlockName);
+            _storageFacade.WriteAsync(_blobName, blockNames, _initialized.Lease);
         }
 
         public async Task DisposeAsync()
@@ -101,6 +111,36 @@ namespace Cosbak.Controllers.LogBackup
                 throw new InvalidOperationException("InitializeAsync hasn't been called");
             }
             await _initialized.Lease.ReleaseLeaseAsync();
+        }
+
+        public async Task<string> WriteBlockAsync(byte[] buffer, int length)
+        {
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
+            var blockName = Convert.ToBase64String(Guid.NewGuid().ToByteArray());
+
+            await _storageFacade.WriteBlockAsync(
+                _blobName, blockName, buffer, length, _initialized.Lease);
+
+            return blockName;
+        }
+
+        public void AddDocumentBatch(long lastUpdateTime, ImmutableList<string> blockNames)
+        {
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
+            _initialized.LogFat.AddDocumentBatch(lastUpdateTime, blockNames);
         }
     }
 }

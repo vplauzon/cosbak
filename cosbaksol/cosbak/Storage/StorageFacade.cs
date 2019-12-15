@@ -162,5 +162,46 @@ namespace Cosbak.Storage
 
             return items.ToImmutableArray();
         }
+
+        async Task IStorageFacade.WriteBlockAsync(
+            string blobPath,
+            string blockName,
+            byte[] buffer,
+            int length,
+            BlobLease? lease)
+        {
+            var blob = _container.GetBlockBlobReference(_blobPrefix + blobPath);
+
+            using (var stream = new MemoryStream(buffer, 0, length))
+            {
+                await blob.PutBlockAsync(
+                    blockName,
+                    stream,
+                    string.Empty,
+                    new AccessCondition
+                    {
+                        LeaseId = lease?.LeaseId
+                    },
+                    null,
+                    null);
+            }
+        }
+
+        void IStorageFacade.WriteAsync(
+            string blobPath,
+            IImmutableList<string> blockNames,
+            BlobLease? lease)
+        {
+            var blob = _container.GetBlockBlobReference(_blobPrefix + blobPath);
+
+            blob.PutBlockListAsync(
+                blockNames,
+                new AccessCondition
+                {
+                    LeaseId = lease?.LeaseId
+                },
+                null,
+                null);
+        }
     }
 }

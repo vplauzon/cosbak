@@ -63,5 +63,16 @@ namespace Cosbak.Cosmos
                 return time;
             }
         }
+
+        StreamIterator ICollectionFacade.GetTimeWindowDocuments(long minTime, long maxTime)
+        {
+            var lastUpdateTimeQuery = _container.GetItemQueryStreamIterator(
+                new QueryDefinition(
+                    "SELECT * FROM c WHERE c._ts > @minTime AND c._ts <= @maxTime")
+                .WithParameter("@minTime", minTime)
+                .WithParameter("@maxTime", maxTime));
+
+            return new StreamIterator(lastUpdateTimeQuery);
+        }
     }
 }

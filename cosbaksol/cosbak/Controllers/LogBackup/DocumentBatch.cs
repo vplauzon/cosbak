@@ -5,7 +5,7 @@ namespace Cosbak.Controllers.LogBackup
 {
     public class DocumentBatch
     {
-        public int LastUpdateTime { get; set; }
+        public long LastUpdateTime { get; set; }
 
         public ImmutableList<string> BlockNames { get; set; } = ImmutableList<string>.Empty;
     }

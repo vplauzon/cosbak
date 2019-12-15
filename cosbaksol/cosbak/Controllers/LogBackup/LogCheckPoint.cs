@@ -4,7 +4,7 @@ namespace Cosbak.Controllers.LogBackup
 {
     public class LogCheckPoint
     {
-        public int CheckPointTime { get; set; }
+        public long CheckPointTime { get; set; }
 
         public ImmutableList<DocumentBatch> DocumentBatches { get; set; }
             = ImmutableList<DocumentBatch>.Empty;

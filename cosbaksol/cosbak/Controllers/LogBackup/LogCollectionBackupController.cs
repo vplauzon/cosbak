@@ -2,6 +2,7 @@
 using Cosbak.Storage;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -42,7 +43,49 @@ namespace Cosbak.Controllers.LogBackup
                 previousLastUpdateTime,
                 MAX_BATCH_SIZE);
 
-            throw new NotImplementedException();
+            if (lastUpdateTime == null)
+            {
+            }
+            else
+            {
+                var buffer = new byte[Constants.MAX_LOG_BLOCK_SIZE];
+                var blockNames = ImmutableList<string>.Empty;
+                var iterator = _collectionFacade.GetTimeWindowDocuments(
+                    previousLastUpdateTime,
+                    lastUpdateTime.Value);
+                int index = 0;
+
+                while (iterator.HasMoreResults)
+                {
+                    var stream = await iterator.ReadNextAsync();
+
+                    if (stream.Length > buffer.Length)
+                    {
+                        throw new NotSupportedException(
+                            $"Query return bigger than buffer:  {stream.Length}");
+                    }
+                    if (stream.Length > buffer.Length - index)
+                    {
+                        var blockName = await _logFile.WriteBlockAsync(buffer, index);
+
+                        blockNames = blockNames.Add(blockName);
+                        index = 0;
+                    }
+
+                    var memory = new Memory<byte>(buffer, index, (int)stream.Length);
+
+                    await stream.ReadAsync(memory);
+                    index += memory.Length;
+                }
+                if (index > 0)
+                {
+                    var blockName = await _logFile.WriteBlockAsync(buffer, index);
+
+                    blockNames = blockNames.Add(blockName);
+                }
+                _logFile.AddDocumentBatch(lastUpdateTime.Value, blockNames);
+                await _logFile.PersistAsync();
+            }
         }
 
         public async Task DisposeAsync()

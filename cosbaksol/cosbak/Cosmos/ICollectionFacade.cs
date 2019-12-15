@@ -13,5 +13,7 @@ namespace Cosbak.Cosmos
         string PartitionPath { get; }
 
         Task<long?> GetLastUpdateTimeAsync(long fromTime, int maxItemCount);
+
+        StreamIterator GetTimeWindowDocuments(long minTime, long maxTime);
     }
 }

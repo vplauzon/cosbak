@@ -28,5 +28,17 @@ namespace Cosbak.Storage
         Task CreateEmptyBlockBlobAsync(string blobName);
 
         Task<IImmutableList<BlockItem>> GetBlocksAsync(string blobPath);
+        
+        Task WriteBlockAsync(
+            string blobPath,
+            string blockName,
+            byte[] buffer,
+            int length,
+            BlobLease? lease);
+
+        void WriteAsync(
+            string blobPath,
+            IImmutableList<string> blockNames,
+            BlobLease? lease);
     }
 }
