@@ -37,9 +37,16 @@ namespace Cosbak.Controllers.LogBackup
 
         public async Task InitializeAsync()
         {
-            if (_initialized != null )
+            if (_initialized != null)
             {
                 throw new InvalidOperationException("InitializeAsync has already been called");
+            }
+
+            var doesExist = await _storageFacade.DoesExistAsync(_blobName);
+
+            if (!doesExist)
+            {
+                await _storageFacade.UploadBlockBlobAsync(_blobName, string.Empty);
             }
 
             var lease = await _storageFacade.GetLeaseAsync(_blobName);
