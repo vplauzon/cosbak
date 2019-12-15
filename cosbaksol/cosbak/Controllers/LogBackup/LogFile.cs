@@ -1,6 +1,7 @@
 ﻿using Cosbak.Storage;
 using System;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Cosbak.Controllers.LogBackup
@@ -10,15 +11,18 @@ namespace Cosbak.Controllers.LogBackup
         #region Inner Types
         private class Initialized
         {
-            public Initialized(BlobLease lease, IImmutableList<BlockItem> blocks)
+            public Initialized(BlobLease lease, IImmutableList<BlockItem> blocks, LogFat logFat)
             {
                 Lease = lease;
                 Blocks = blocks;
+                LogFat = logFat;
             }
 
             public BlobLease Lease { get; }
-            
+
             public IImmutableList<BlockItem> Blocks { get; }
+
+            public LogFat LogFat { get; }
         }
         #endregion
 
@@ -37,6 +41,19 @@ namespace Cosbak.Controllers.LogBackup
             _storageFacade = storageFacade.ChangeFolder($"backups/{accountName}/{databaseName}");
             _blobName = $"{collectionName}.{Constants.LOG_EXTENSION}";
             _logger = logger;
+        }
+
+        public int LastUpdateTime
+        {
+            get
+            {
+                if (_initialized == null)
+                {
+                    throw new InvalidOperationException("InitializeAsync hasn't been called");
+                }
+
+                return _initialized.LogFat.LastUpdateTime;
+            }
         }
 
         public async Task InitializeAsync()
@@ -62,9 +79,18 @@ namespace Cosbak.Controllers.LogBackup
             else
             {
                 var blocks = await _storageFacade.GetBlocksAsync(_blobName);
+                var logFat = blocks.Count == 0
+                    ? new LogFat()
+                    : throw new NotImplementedException();
 
-                _initialized = new Initialized(lease, blocks);
+                _initialized = new Initialized(lease, blocks, logFat);
             }
+        }
+
+        public async Task PersistAsync()
+        {
+            await Task.FromResult(42);
+            throw new NotImplementedException();
         }
 
         public async Task DisposeAsync()

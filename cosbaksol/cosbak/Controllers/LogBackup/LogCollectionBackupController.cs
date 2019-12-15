@@ -37,7 +37,10 @@ namespace Cosbak.Controllers.LogBackup
 
         public async Task BackupBatchAsync()
         {
-            var lastUpdateTime = await _collectionFacade.GetLastUpdateTimeAsync(0, MAX_BATCH_SIZE);
+            var previousLastUpdateTime = _logFile.LastUpdateTime;
+            var lastUpdateTime = await _collectionFacade.GetLastUpdateTimeAsync(
+                previousLastUpdateTime,
+                MAX_BATCH_SIZE);
 
             throw new NotImplementedException();
         }
