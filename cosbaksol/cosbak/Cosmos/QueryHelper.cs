@@ -10,12 +10,12 @@ namespace Cosbak.Cosmos
 {
     internal static class QueryHelper
     {
-        public async static Task<QueryResult<T>> GetAllResultsAsync<T>(FeedIterator<T> query)
+        public async static Task<QueryItemResult<T>> GetAllResultsAsync<T>(FeedIterator<T> query)
         {
             return await GetAllResultsAsync(query, d => d);
         }
 
-        public async static Task<QueryResult<U>> GetAllResultsAsync<T, U>(FeedIterator<T> query, Func<T, U> transform)
+        public async static Task<QueryItemResult<U>> GetAllResultsAsync<T, U>(FeedIterator<T> query, Func<T, U> transform)
         {
             var list = ImmutableList<U>.Empty;
             double requestCharge = 0;
@@ -30,7 +30,7 @@ namespace Cosbak.Cosmos
                 list = list.AddRange(transformed);
             }
 
-            return new QueryResult<U>(list, requestCharge);
+            return new QueryItemResult<U>(list, requestCharge);
         }
     }
 }

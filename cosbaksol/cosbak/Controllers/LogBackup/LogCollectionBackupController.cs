@@ -62,37 +62,48 @@ namespace Cosbak.Controllers.LogBackup
             var iterator = _collectionFacade.GetTimeWindowDocuments(
                 previousLastUpdateTime,
                 maxTimeStamp);
+            double ru = 0;
+            var resultCount = 0;
+            var blockCount = 0;
             int index = 0;
 
             while (iterator.HasMoreResults)
             {
-                var stream = await iterator.ReadNextAsync();
+                var result = await iterator.ReadNextAsync();
 
-                if (stream.Length > buffer.Length)
+                if (result.Stream.Length > buffer.Length)
                 {
                     throw new NotSupportedException(
-                        $"Query return bigger than buffer:  {stream.Length}");
+                        $"Query return bigger than buffer:  {result.Stream.Length}");
                 }
-                if (stream.Length > buffer.Length - index)
+                if (result.Stream.Length > buffer.Length - index)
                 {
                     var blockName = await _logFile.WriteBlockAsync(buffer, index);
 
                     blockNames = blockNames.Add(blockName);
+                    ++blockCount;
                     index = 0;
                 }
 
-                var memory = new Memory<byte>(buffer, index, (int)stream.Length);
+                var memory = new Memory<byte>(buffer, index, (int)result.Stream.Length);
 
-                await stream.ReadAsync(memory);
+                await result.Stream.ReadAsync(memory);
                 index += memory.Length;
+                ++resultCount;
+                ru += result.RequestCharge;
             }
             if (index > 0)
             {
                 var blockName = await _logFile.WriteBlockAsync(buffer, index);
 
                 blockNames = blockNames.Add(blockName);
+                ++blockCount;
             }
             _logFile.AddDocumentBatch(maxTimeStamp, blockNames);
+            _logger
+                .AddContext("ru", ru)
+                .AddContext("blockCount", blockCount)
+                .WriteEvent("LogDocumentBatchAsync");
         }
 
         public async Task DisposeAsync()

@@ -1,19 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.Text;
 
 namespace Cosbak.Cosmos
 {
-    internal class QueryItemResult<T>
+    public class QueryStreamResult
     {
-        public QueryItemResult(IImmutableList<T> content, double requestCharge)
+        public QueryStreamResult(Stream stream, double requestCharge)
         {
-            Content = content;
+            Stream = stream;
             RequestCharge = requestCharge;
         }
 
-        public IImmutableList<T> Content { get; }
+        public Stream Stream { get; }
 
         public double RequestCharge { get; }
     }

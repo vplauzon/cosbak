@@ -18,11 +18,13 @@ namespace Cosbak.Cosmos
             get { return _iterator.HasMoreResults; }
         }
 
-        public async Task<Stream> ReadNextAsync()
+        public async Task<QueryStreamResult> ReadNextAsync()
         {
             var response = await _iterator.ReadNextAsync();
 
-            return response.Content;
+            return new QueryStreamResult(
+                response.Content,
+                response.Headers.RequestCharge);
         }
     }
 }
