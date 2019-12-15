@@ -83,7 +83,7 @@ namespace Cosbak.Controllers.LogBackup
                 var blocks = await _storageFacade.GetBlocksAsync(_blobName);
                 var logFat = blocks.Count == 0
                     ? new LogFat()
-                    : throw new NotImplementedException();
+                    : await LoadLogFatAsync((int)blocks[0].Length);
 
                 _initialized = new Initialized(lease, blocks, logFat);
             }
@@ -141,6 +141,15 @@ namespace Cosbak.Controllers.LogBackup
             }
 
             _initialized.LogFat.AddDocumentBatch(lastUpdateTime, blockNames);
+        }
+
+        private async Task<LogFat> LoadLogFatAsync(int length)
+        {
+            var buffer = new byte[length];
+
+            await _storageFacade.DownloadRangeAsync(_blobName, buffer);
+
+            return JsonSerializer.Deserialize<LogFat>(buffer);
         }
     }
 }
