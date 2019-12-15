@@ -44,7 +44,8 @@ namespace Cosbak.Cosmos
                 .WithParameter("@minTimeStamp", minTimeStamp));
             var countResult = await QueryHelper.GetAllResultsAsync(currentIterator);
             (long currentTimeStamp, int count) current = (
-                countResult.Content.First().currentTimeStamp,
+                //  GetCurrentTimestamp() returns in miliseconds while _ts is in second
+                countResult.Content.First().currentTimeStamp / 1000,
                 countResult.Content.First().count);
 
             if (current.count <= maxItemCount)
@@ -82,6 +83,15 @@ namespace Cosbak.Cosmos
                     "SELECT * FROM c WHERE c._ts > @minTimeStamp AND c._ts <= @maxTimeStamp")
                 .WithParameter("@minTimeStamp", minTimeStamp)
                 .WithParameter("@maxTimeStamp", maxTimeStamp));
+
+            return new StreamIterator(lastUpdateTimeQuery);
+        }
+
+        StreamIterator ICollectionFacade.GetAllIds()
+        {
+            var partitionKeyDotPath = string.Join('.', _partitionPath.Split('/').Skip(1));
+            var lastUpdateTimeQuery = _container.GetItemQueryStreamIterator(
+                new QueryDefinition($"SELECT c.id, c.{partitionKeyDotPath} FROM c"));
 
             return new StreamIterator(lastUpdateTimeQuery);
         }

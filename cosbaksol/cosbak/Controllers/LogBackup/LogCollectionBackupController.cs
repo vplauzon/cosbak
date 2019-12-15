@@ -1,4 +1,5 @@
-﻿using Cosbak.Cosmos;
+﻿using Cosbak.Config;
+using Cosbak.Cosmos;
 using Cosbak.Storage;
 using System;
 using System.Collections.Generic;
@@ -14,11 +15,13 @@ namespace Cosbak.Controllers.LogBackup
 
         private readonly ICollectionFacade _collectionFacade;
         private readonly LogFile _logFile;
+        private readonly BackupPlan _plan;
         private readonly ILogger _logger;
 
         public LogCollectionBackupController(
             ICollectionFacade collectionFacade,
             IStorageFacade storageFacade,
+            BackupPlan plan,
             ILogger logger)
         {
             _collectionFacade = collectionFacade;
@@ -28,6 +31,7 @@ namespace Cosbak.Controllers.LogBackup
                 collectionFacade.Parent.DatabaseName,
                 collectionFacade.CollectionName,
                 logger);
+            _plan = plan;
             _logger = logger;
         }
 
@@ -38,9 +42,9 @@ namespace Cosbak.Controllers.LogBackup
 
         public async Task<LogBatchResult> LogBatchAsync()
         {
-            var previousLastUpdateTime = _logFile.LastUpdateTime;
+            var previousTimeStamp = _logFile.LastUpdateTime;
             var timeWindow = await _collectionFacade.SizeTimeWindowAsync(
-                previousLastUpdateTime,
+                previousTimeStamp,
                 MAX_BATCH_SIZE);
 
             _logger
@@ -50,27 +54,52 @@ namespace Cosbak.Controllers.LogBackup
                 .WriteEvent("LogBatchTimeWindow");
             if (timeWindow.count != 0)
             {
-                await LogDocumentBatchAsync(previousLastUpdateTime, timeWindow.maxTimeStamp);
+                await LogDocumentBatchAsync(previousTimeStamp, timeWindow.maxTimeStamp);
             }
-            if (timeWindow.currentTimeStamp != timeWindow.maxTimeStamp)
-            {
-                return new LogBatchResult(false);
-            }
-            else
-            {
+            var hasLoggedUntilNow = timeWindow.currentTimeStamp == timeWindow.maxTimeStamp;
 
-                //await _logFile.PersistAsync();
-                return new LogBatchResult(true);
+            if (hasLoggedUntilNow
+                && IsCheckPointTime(previousTimeStamp, timeWindow.currentTimeStamp))
+            {
+                await LogCheckPointAsync(timeWindow.currentTimeStamp);
             }
+            await _logFile.PersistAsync();
+
+            return new LogBatchResult(hasLoggedUntilNow);
+        }
+
+        private async Task LogCheckPointAsync(long currentTimeStamp)
+        {
+            var idsBlockNames = _plan.Included.ExplicitDelete
+                ? await WriteIteratorToBlocksAsync(_collectionFacade.GetAllIds(), "LogAllIds")
+                : null;
+
+            _logFile.CreateCheckpoint(currentTimeStamp, idsBlockNames);
+        }
+
+        private bool IsCheckPointTime(long previousTimeStamp, long currentTimeStamp)
+        {
+            var delta = TimeSpan.FromMilliseconds(currentTimeStamp - previousTimeStamp);
+
+            return delta >= _plan.Rpo;
         }
 
         private async Task LogDocumentBatchAsync(long previousLastUpdateTime, long maxTimeStamp)
         {
-            var buffer = new byte[Constants.MAX_LOG_BLOCK_SIZE];
-            var blockNames = ImmutableList<string>.Empty;
             var iterator = _collectionFacade.GetTimeWindowDocuments(
                 previousLastUpdateTime,
                 maxTimeStamp);
+            var blockNames = await WriteIteratorToBlocksAsync(iterator, "LogDocumentBatch");
+
+            _logFile.AddDocumentBatch(maxTimeStamp, blockNames);
+        }
+
+        private async Task<ImmutableList<string>> WriteIteratorToBlocksAsync(
+            StreamIterator iterator,
+            string eventName)
+        {
+            var buffer = new byte[Constants.MAX_LOG_BLOCK_SIZE];
+            var blockNames = ImmutableList<string>.Empty;
             double ru = 0;
             var resultCount = 0;
             var blockCount = 0;
@@ -108,11 +137,12 @@ namespace Cosbak.Controllers.LogBackup
                 blockNames = blockNames.Add(blockName);
                 ++blockCount;
             }
-            _logFile.AddDocumentBatch(maxTimeStamp, blockNames);
             _logger
                 .AddContext("ru", ru)
                 .AddContext("blockCount", blockCount)
-                .WriteEvent("LogDocumentBatchAsync");
+                .WriteEvent(eventName);
+
+            return blockNames;
         }
 
         public async Task DisposeAsync()

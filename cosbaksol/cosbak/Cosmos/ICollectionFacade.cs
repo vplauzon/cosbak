@@ -17,5 +17,7 @@ namespace Cosbak.Cosmos
             int maxItemCount);
 
         StreamIterator GetTimeWindowDocuments(long minTimeStamp, long maxTimeStamp);
+
+        StreamIterator GetAllIds();
     }
 }

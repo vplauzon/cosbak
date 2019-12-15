@@ -6,19 +6,19 @@ namespace Cosbak.Config
     {
         public int RetentionInDays { get; set; } = 30;
 
-        public int RpoInSeconds { get; set; } = 900;
+        public TimeSpan Rpo { get; set; } = TimeSpan.FromMinutes(15);
 
         public BackupOptions Included { get; set; } = new BackupOptions();
 
         public void Validate()
         {
-            if (RetentionInDays<=0)
+            if (RetentionInDays <= 0)
             {
-                throw new CosbakException("RetentionInDays must be positive");
+                throw new CosbakException($"{nameof(RetentionInDays)} must be positive");
             }
-            if (RpoInSeconds <= 0)
+            if (Rpo <= TimeSpan.Zero)
             {
-                throw new CosbakException("RpoInSeconds must be positive");
+                throw new CosbakException($"{nameof(Rpo)} must be positive");
             }
             Included.Validate();
         }

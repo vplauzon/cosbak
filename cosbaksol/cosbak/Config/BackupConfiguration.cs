@@ -46,7 +46,7 @@ namespace Cosbak.Config
             return new BackupPlan
             {
                 RetentionInDays = Override(GeneralPlan.RetentionInDays, specificPlan.RetentionInDays),
-                RpoInSeconds = Override(GeneralPlan.RpoInSeconds, specificPlan.RpoInSeconds),
+                Rpo = Override(GeneralPlan.Rpo, specificPlan.Rpo),
                 Included = new BackupOptions
                 {
                     ExplicitDelete = Override(GeneralPlan.Included.ExplicitDelete, specificPlan.Included.ExplicitDelete),

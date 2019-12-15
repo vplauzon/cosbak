@@ -31,6 +31,7 @@ namespace Cosbak.Controllers.LogBackup
         private readonly string _blobName;
         private readonly ILogger _logger;
         private Initialized? _initialized;
+        private bool _isDirty = false;
 
         public LogFile(
             IStorageFacade storageFacade,
@@ -96,12 +97,16 @@ namespace Cosbak.Controllers.LogBackup
                 throw new InvalidOperationException("InitializeAsync hasn't been called");
             }
 
-            var fatBuffer = JsonSerializer.SerializeToUtf8Bytes(_initialized.LogFat);
-            var fatBlockName = await WriteBlockAsync(fatBuffer, fatBuffer.Length);
-            var blockNames = _initialized.LogFat.GetAllBlockNames();
+            if (_isDirty)
+            {
+                var fatBuffer = JsonSerializer.SerializeToUtf8Bytes(_initialized.LogFat);
+                var fatBlockName = await WriteBlockAsync(fatBuffer, fatBuffer.Length);
+                var blockNames = _initialized.LogFat.GetAllBlockNames();
 
-            blockNames = blockNames.Insert(0, fatBlockName);
-            _storageFacade.WriteAsync(_blobName, blockNames, _initialized.Lease);
+                blockNames = blockNames.Insert(0, fatBlockName);
+                _storageFacade.WriteAsync(_blobName, blockNames, _initialized.Lease);
+                _isDirty = false;
+            }
         }
 
         public async Task DisposeAsync()
@@ -135,12 +140,25 @@ namespace Cosbak.Controllers.LogBackup
                 throw new InvalidOperationException("InitializeAsync hasn't been called");
             }
 
+            if (blockNames.Any())
+            {
+                _initialized.LogFat.AddDocumentBatch(timeStamp, blockNames);
+                _isDirty = true;
+            }
+        }
+
+        public void CreateCheckpoint(
+            long timeStamp,
+            ImmutableList<string>? idsBlockNames)
+        {
             if (_initialized == null)
             {
                 throw new InvalidOperationException("InitializeAsync hasn't been called");
             }
-
-            _initialized.LogFat.AddDocumentBatch(timeStamp, blockNames);
+            _initialized.LogFat.CreateCheckPoint(
+                timeStamp,
+                idsBlockNames);
+            _isDirty = true;
         }
 
         private async Task<LogFat> LoadLogFatAsync(int length)

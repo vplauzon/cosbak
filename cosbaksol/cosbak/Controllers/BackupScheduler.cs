@@ -147,6 +147,7 @@ namespace Cosbak.Controllers
                             var collectionController = new LogCollectionBackupController(
                                 coll,
                                 storageFacade,
+                                plan,
                                 logger
                                 .AddContext("Db", db.DatabaseName)
                                 .AddContext("Collection", coll.CollectionName));

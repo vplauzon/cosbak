@@ -45,12 +45,27 @@ namespace Cosbak.Controllers.LogBackup
             InProgressDocumentBatches = InProgressDocumentBatches.Add(batch);
         }
 
+        public void CreateCheckPoint(
+            long timeStamp,
+            ImmutableList<string>? idsBlockNames)
+        {
+            var checkpoint = new LogCheckPoint
+            {
+                TimeStamp = timeStamp,
+                DocumentBatches = InProgressDocumentBatches,
+                IdsBlockNames = idsBlockNames
+            };
+
+            CheckPoints = CheckPoints.Add(checkpoint);
+            InProgressDocumentBatches = InProgressDocumentBatches.Clear();
+        }
+
         public IImmutableList<string> GetAllBlockNames()
         {
-            var inprogressBlocks = InProgressDocumentBatches.SelectMany(b => b.BlockNames);
             var checkpointBlocks = CheckPoints.SelectMany(c => c.DocumentBatches.SelectMany(b => b.BlockNames));
+            var inprogressBlocks = InProgressDocumentBatches.SelectMany(b => b.BlockNames);
 
-            return inprogressBlocks.Concat(checkpointBlocks).ToImmutableList();
+            return checkpointBlocks.Concat(inprogressBlocks).ToImmutableList();
         }
     }
 }
