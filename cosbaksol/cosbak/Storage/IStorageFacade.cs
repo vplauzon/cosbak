@@ -10,20 +10,11 @@ namespace Cosbak.Storage
 
         Task<bool> DoesExistAsync(string contentPath);
 
-        Task<string> GetContentAsync(string contentPath);
-
         Task CreateAppendBlobAsync(string blobPath);
-
-        Task UploadBlockBlobAsync(
-            string blobPath,
-            string content,
-            string? leaseId = null);
 
         Task AppendBlobAsync(string blobPath, Stream contentStream);
 
         Task<BlobLease?> GetLeaseAsync(string contentPath);
-
-        Task<string[]> ListBlobsAsync(Func<string, bool>? filter = null);
 
         Task DeleteBlobAsync(string path);
 
@@ -32,5 +23,7 @@ namespace Cosbak.Storage
             byte[] buffer,
             long? blobOffset = null,
             long? length = null);
+        
+        Task CreateEmptyBlockBlobAsync(string blobName);
     }
 }
