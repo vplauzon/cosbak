@@ -38,7 +38,8 @@ namespace Cosbak.Controllers.LogBackup
             string collectionName,
             ILogger logger)
         {
-            _storageFacade = storageFacade.ChangeFolder($"backups/{accountName}/{databaseName}");
+            _storageFacade = storageFacade.ChangeFolder(
+                $"{Constants.BACKUPS_FOLDER}/{accountName}/{databaseName}");
             _blobName = $"{collectionName}.{Constants.LOG_EXTENSION}";
             _logger = logger;
         }
