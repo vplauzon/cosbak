@@ -11,13 +11,15 @@ namespace Cosbak.Cosmos
     {
         private readonly string _accountName;
         private readonly CosmosClient _client;
+        private readonly ILogger _logger;
 
-        public CosmosAccountFacade(string accountName, string key)
+        public CosmosAccountFacade(string accountName, string key, ILogger logger)
         {
             _accountName = accountName;
             _client = new CosmosClient(
                 $"https://{_accountName}.documents.azure.com:443/",
                 key);
+            _logger = logger.AddContext("account", accountName);
         }
 
         string ICosmosAccountFacade.AccountName => _accountName;
@@ -28,7 +30,8 @@ namespace Cosbak.Cosmos
             var ids = await QueryHelper.GetAllResultsAsync(iterator);
 
             var gateways = ids
-                .Select(id => new DatabaseFacade(_client.GetDatabase(id), this))
+                .Content
+                .Select(id => new DatabaseFacade(_client.GetDatabase(id), this, _logger))
                 .ToArray<IDatabaseFacade>();
 
             return gateways;

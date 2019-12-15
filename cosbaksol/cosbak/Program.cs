@@ -97,10 +97,11 @@ namespace Cosbak
                     configuration.Validate();
 
                     var storageFacade = CreateStorageFacade(configuration.StorageAccount);
+                    ILogger logger = new StorageFolderLogger(storageFacade.ChangeFolder("logs"));
                     var cosmosFacade = new CosmosAccountFacade(
                         configuration.CosmosAccount.Name,
-                        configuration.CosmosAccount.Key);
-                    ILogger logger = new StorageFolderLogger(storageFacade.ChangeFolder("logs"));
+                        configuration.CosmosAccount.Key,
+                        logger);
 
                     try
                     {
