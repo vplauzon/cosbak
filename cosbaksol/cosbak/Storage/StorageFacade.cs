@@ -3,6 +3,7 @@ using Microsoft.WindowsAzure.Storage.Auth;
 using Microsoft.WindowsAzure.Storage.Blob;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -123,11 +124,15 @@ namespace Cosbak.Storage
             return await BlobLease.CreateLeaseAsync(blob);
         }
 
-        async Task IStorageFacade.DeleteBlobAsync(string path)
+        async Task IStorageFacade.DeleteBlobAsync(string path, BlobLease? lease)
         {
             var blob = _container.GetBlobReference(_blobPrefix + path);
 
-            await blob.DeleteAsync();
+            await blob.DeleteAsync(
+                DeleteSnapshotsOption.IncludeSnapshots,
+                new AccessCondition() { LeaseId = lease?.LeaseId },
+                null,
+                null);
         }
 
         async Task<int> IStorageFacade.DownloadRangeAsync(
@@ -146,6 +151,16 @@ namespace Cosbak.Storage
             var blob = _container.GetBlockBlobReference(_blobPrefix + blobPath);
 
             await blob.UploadTextAsync(string.Empty);
+        }
+
+        async Task<IImmutableList<BlockItem>> IStorageFacade.GetBlocksAsync(string blobPath)
+        {
+            var blob = _container.GetBlockBlobReference(_blobPrefix + blobPath);
+            var blockList = await blob.DownloadBlockListAsync();
+            var items = from i in blockList
+                        select new BlockItem(i.Name, i.Length);
+
+            return items.ToImmutableArray();
         }
     }
 }

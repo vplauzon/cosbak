@@ -1,5 +1,6 @@
 ﻿using Cosbak.Storage;
 using System;
+using System.Collections.Immutable;
 using System.Threading.Tasks;
 
 namespace Cosbak.Controllers.LogBackup
@@ -9,12 +10,15 @@ namespace Cosbak.Controllers.LogBackup
         #region Inner Types
         private class Initialized
         {
-            public Initialized(BlobLease lease)
+            public Initialized(BlobLease lease, IImmutableList<BlockItem> blocks)
             {
                 Lease = lease;
+                Blocks = blocks;
             }
 
             public BlobLease Lease { get; }
+            
+            public IImmutableList<BlockItem> Blocks { get; }
         }
         #endregion
 
@@ -57,7 +61,9 @@ namespace Cosbak.Controllers.LogBackup
             }
             else
             {
-                _initialized = new Initialized(lease);
+                var blocks = await _storageFacade.GetBlocksAsync(_blobName);
+
+                _initialized = new Initialized(lease, blocks);
             }
         }
 

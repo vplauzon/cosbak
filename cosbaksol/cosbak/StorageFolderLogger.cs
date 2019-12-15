@@ -9,30 +9,33 @@ using System.Threading.Tasks;
 
 namespace Cosbak
 {
-    public class StorageFolderLogger : ILogger
+    internal class StorageFolderLogger : ILogger
     {
         #region Inner types
         private class DerivedLogger : ILogger
         {
             private readonly StorageFolderLogger _parentLogger;
-            private readonly IImmutableDictionary<string, string> _context;
+            private readonly IImmutableDictionary<string, object> _context;
 
-            public DerivedLogger(StorageFolderLogger parentLogger, IImmutableDictionary<string, string> baseContext)
+            public DerivedLogger(StorageFolderLogger parentLogger, IImmutableDictionary<string, object> baseContext)
             {
                 _parentLogger = parentLogger;
                 _context = baseContext;
             }
 
-            ILogger ILogger.AddContext<T>(string label, T value)
+            ILogger ILogger.AddContext(string label, object value)
             {
+                if (string.IsNullOrWhiteSpace("label"))
+                {
+                    throw new ArgumentException("Must be characters", nameof(label));
+                }
+                if (_context.ContainsKey(label))
+                {
+                    throw new ArgumentException($"Context already contain '{label}'", nameof(label));
+                }
                 if (value != null)
                 {
-                    var textValue = value.ToString();
-
-                    if (textValue != null)
-                    {
-                        return new DerivedLogger(_parentLogger, _context.Add(label, textValue));
-                    }
+                    return new DerivedLogger(_parentLogger, _context.Add(label, value));
                 }
 
                 return this;
@@ -82,7 +85,7 @@ namespace Cosbak
             _stream = new MemoryStream();
         }
 
-        ILogger ILogger.AddContext<T>(string label, T value)
+        ILogger ILogger.AddContext(string label, object value)
         {
             if (value != null)
             {
@@ -92,7 +95,7 @@ namespace Cosbak
                 {
                     return new DerivedLogger(
                         this,
-                        ImmutableDictionary<string, string>.Empty.Add(label, textValue));
+                        ImmutableDictionary<string, object>.Empty.Add(label, textValue));
                 }
             }
 
@@ -101,17 +104,17 @@ namespace Cosbak
 
         void ILogger.Display(string text)
         {
-            Display(text, ImmutableDictionary<string, string>.Empty);
+            Display(text, ImmutableDictionary<string, object>.Empty);
         }
 
         void ILogger.DisplayError(Exception exception)
         {
-            DisplayError(exception, ImmutableDictionary<string, string>.Empty);
+            DisplayError(exception, ImmutableDictionary<string, object>.Empty);
         }
 
         void ILogger.WriteEvent(string eventName)
         {
-            WriteEvent(eventName, ImmutableDictionary<string, string>.Empty);
+            WriteEvent(eventName, ImmutableDictionary<string, object>.Empty);
         }
 
         async Task ILogger.FlushAsync()
@@ -119,14 +122,14 @@ namespace Cosbak
             await FlushAsync();
         }
 
-        private void Display(string text, IImmutableDictionary<string, string> context)
+        private void Display(string text, IImmutableDictionary<string, object> context)
         {
             Console.WriteLine(text);
 
             PushLog("display", new { Text = text }, context);
         }
 
-        private void DisplayError(Exception exception, IImmutableDictionary<string, string> context)
+        private void DisplayError(Exception exception, IImmutableDictionary<string, object> context)
         {
             Console.Error.WriteLine($"Exception:  '{exception.GetType().Name}'");
             Console.Error.WriteLine($"Full Name:  '{exception.GetType().FullName}'");
@@ -139,7 +142,7 @@ namespace Cosbak
             }, context);
         }
 
-        private void WriteEvent(string eventName, IImmutableDictionary<string, string> context)
+        private void WriteEvent(string eventName, IImmutableDictionary<string, object> context)
         {
             PushLog(
                 "event",
@@ -153,7 +156,7 @@ namespace Cosbak
         private void PushLog(
             string eventType,
             object content,
-            IImmutableDictionary<string, string>? context)
+            IImmutableDictionary<string, object>? context)
         {
             var telemetry = new
             {
@@ -204,13 +207,7 @@ namespace Cosbak
             stream.Position = 0;
             if (_blobName == null)
             {
-                _blobName = DateTime
-                    .Now
-                    .ToString()
-                    .Replace(' ', '_')
-                    .Replace(':', '-')
-                    .Replace('/', '-')
-                    + ".json";
+                _blobName = CreateBlobName();
                 await _storageFacade.CreateAppendBlobAsync(_blobName);
             }
             await _storageFacade.AppendBlobAsync(_blobName, stream);
@@ -219,6 +216,14 @@ namespace Cosbak
             {
                 _blobName = null;
             }
+        }
+
+        private static string CreateBlobName()
+        {
+            var now = DateTime.Now;
+
+            return $"{now.Year}/{now.Month,2:D2}/{now.Day,2:D2}/"
+                + $"{now.Hour,2:D2}.{now.Minute,2:D2}.{now.Second,2:D2}.json";
         }
     }
 }

@@ -1,10 +1,11 @@
 ﻿using System;
+using System.Collections.Immutable;
 using System.IO;
 using System.Threading.Tasks;
 
 namespace Cosbak.Storage
 {
-    public interface IStorageFacade
+    internal interface IStorageFacade
     {
         IStorageFacade ChangeFolder(string subFolder);
 
@@ -16,7 +17,7 @@ namespace Cosbak.Storage
 
         Task<BlobLease?> GetLeaseAsync(string contentPath);
 
-        Task DeleteBlobAsync(string path);
+        Task DeleteBlobAsync(string path, BlobLease? lease);
 
         Task<int> DownloadRangeAsync(
             string path,
@@ -25,5 +26,7 @@ namespace Cosbak.Storage
             long? length = null);
         
         Task CreateEmptyBlockBlobAsync(string blobName);
+
+        Task<IImmutableList<BlockItem>> GetBlocksAsync(string blobPath);
     }
 }

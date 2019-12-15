@@ -7,7 +7,7 @@ namespace Cosbak
 {
     public interface ILogger
     {
-        ILogger AddContext<T>(string label, T value);
+        ILogger AddContext(string label, object value);
 
         void Display(string text);
 
