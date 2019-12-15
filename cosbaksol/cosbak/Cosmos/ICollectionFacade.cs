@@ -12,8 +12,10 @@ namespace Cosbak.Cosmos
 
         string PartitionPath { get; }
 
-        Task<long?> GetLastUpdateTimeAsync(long fromTime, int maxItemCount);
+        Task<(long currentTimeStamp, int count, long maxTimeStamp)> SizeTimeWindowAsync(
+            long minTimeStamp,
+            int maxItemCount);
 
-        StreamIterator GetTimeWindowDocuments(long minTime, long maxTime);
+        StreamIterator GetTimeWindowDocuments(long minTimeStamp, long maxTimeStamp);
     }
 }

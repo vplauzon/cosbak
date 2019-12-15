@@ -128,7 +128,7 @@ namespace Cosbak.Controllers.LogBackup
             return blockName;
         }
 
-        public void AddDocumentBatch(long lastUpdateTime, ImmutableList<string> blockNames)
+        public void AddDocumentBatch(long timeStamp, ImmutableList<string> blockNames)
         {
             if (_initialized == null)
             {
@@ -140,7 +140,7 @@ namespace Cosbak.Controllers.LogBackup
                 throw new InvalidOperationException("InitializeAsync hasn't been called");
             }
 
-            _initialized.LogFat.AddDocumentBatch(lastUpdateTime, blockNames);
+            _initialized.LogFat.AddDocumentBatch(timeStamp, blockNames);
         }
 
         private async Task<LogFat> LoadLogFatAsync(int length)

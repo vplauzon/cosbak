@@ -21,11 +21,11 @@ namespace Cosbak.Controllers.LogBackup
             {
                 if (InProgressDocumentBatches.Count > 0)
                 {
-                    return InProgressDocumentBatches.Last().LastUpdateTime;
+                    return InProgressDocumentBatches.Last().TimeStamp;
                 }
                 else if (CheckPoints.Count > 0)
                 {
-                    return CheckPoints.Last().CheckPointTime;
+                    return CheckPoints.Last().TimeStamp;
                 }
                 else
                 {
@@ -34,11 +34,11 @@ namespace Cosbak.Controllers.LogBackup
             }
         }
 
-        public void AddDocumentBatch(long lastUpdateTime, ImmutableList<string> blockNames)
+        public void AddDocumentBatch(long timeStamp, ImmutableList<string> blockNames)
         {
             var batch = new DocumentBatch
             {
-                LastUpdateTime = lastUpdateTime,
+                TimeStamp = timeStamp,
                 BlockNames = blockNames
             };
 

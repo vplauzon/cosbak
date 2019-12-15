@@ -32,45 +32,56 @@ namespace Cosbak.Cosmos
 
         string ICollectionFacade.PartitionPath => _partitionPath;
 
-        async Task<long?> ICollectionFacade.GetLastUpdateTimeAsync(long fromTime, int maxItemCount)
+        async Task<(long currentTimeStamp, int count, long maxTimeStamp)> ICollectionFacade.SizeTimeWindowAsync(
+            long minTimeStamp,
+            int maxItemCount)
         {
-            var countQuery = _container.GetItemQueryIterator<long>(
-                new QueryDefinition("SELECT VALUE COUNT(1) FROM c WHERE c._ts > @fromTime")
-                .WithParameter("@fromTime", fromTime));
-            var countResults = await QueryHelper.GetAllResultsAsync(countQuery);
-            var count = countResults.Content.First();
+            var countQuery =
+                "SELECT GetCurrentTimestamp() AS currentTimeStamp, COUNT(1) AS count "
+                + "FROM c WHERE c._ts > @minTimeStamp";
+            var currentIterator = _container.GetItemQueryIterator<dynamic>(
+                new QueryDefinition(countQuery)
+                .WithParameter("@minTimeStamp", minTimeStamp));
+            var countResult = await QueryHelper.GetAllResultsAsync(currentIterator);
+            (long currentTimeStamp, int count) current = (
+                countResult.Content.First().currentTimeStamp,
+                countResult.Content.First().count);
 
-            if (count == 0)
+            if (current.count < maxItemCount)
             {
-                return null;
+                _logger
+                    .AddContext("ru", countResult.RequestCharge)
+                    .WriteEvent("SizeTimeWindowAsync");
+
+                return (current.currentTimeStamp, current.count, current.currentTimeStamp);
             }
             else
             {
-                var offset = Math.Max(0, count - maxItemCount);
-                var lastUpdateTimeQuery = _container.GetItemQueryIterator<long>(
-                    new QueryDefinition(
-                        "SELECT VALUE c._ts FROM c WHERE c._ts > @fromTime "
-                        + "ORDER BY c._ts DESC OFFSET @offset LIMIT 1")
-                    .WithParameter("@fromTime", fromTime)
+                var offset = current.count - maxItemCount;
+                var maxTimeStampQuery = "SELECT VALUE c._ts FROM c WHERE c._ts > @minTimeStamp "
+                    + "ORDER BY c._ts DESC OFFSET @offset LIMIT 1";
+                var maxTimeStampIterator = _container.GetItemQueryIterator<long>(
+                    new QueryDefinition(maxTimeStampQuery)
+                    .WithParameter("@minTimeStamp", minTimeStamp)
                     .WithParameter("@offset", offset));
-                var timeResults = await QueryHelper.GetAllResultsAsync(lastUpdateTimeQuery);
-                var time = timeResults.Content.Count == 0 ? (long?)null : timeResults.Content.First();
+                var maxTimeStampResult = await QueryHelper.GetAllResultsAsync(maxTimeStampIterator);
+                var maxTimeStamp = maxTimeStampResult.Content.First();
 
                 _logger
-                    .AddContext("ru", countResults.RequestCharge + timeResults.RequestCharge)
-                    .WriteEvent("GetLastUpdateTimeAsync");
+                    .AddContext("ru", countResult.RequestCharge + maxTimeStampResult.RequestCharge)
+                    .WriteEvent("SizeTimeWindowAsync");
 
-                return time;
+                return (current.currentTimeStamp, current.count, maxTimeStamp);
             }
         }
 
-        StreamIterator ICollectionFacade.GetTimeWindowDocuments(long minTime, long maxTime)
+        StreamIterator ICollectionFacade.GetTimeWindowDocuments(long minTimeStamp, long maxTimeStamp)
         {
             var lastUpdateTimeQuery = _container.GetItemQueryStreamIterator(
                 new QueryDefinition(
-                    "SELECT * FROM c WHERE c._ts > @minTime AND c._ts <= @maxTime")
-                .WithParameter("@minTime", minTime)
-                .WithParameter("@maxTime", maxTime));
+                    "SELECT * FROM c WHERE c._ts > @minTimeStamp AND c._ts <= @maxTimeStamp")
+                .WithParameter("@minTimeStamp", minTimeStamp)
+                .WithParameter("@maxTimeStamp", maxTimeStamp));
 
             return new StreamIterator(lastUpdateTimeQuery);
         }

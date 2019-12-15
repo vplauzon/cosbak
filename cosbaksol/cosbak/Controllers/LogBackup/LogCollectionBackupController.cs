@@ -10,7 +10,7 @@ namespace Cosbak.Controllers.LogBackup
 {
     internal class LogCollectionBackupController
     {
-        private const int MAX_BATCH_SIZE = 10;
+        private const int MAX_BATCH_SIZE = 2;
 
         private readonly ICollectionFacade _collectionFacade;
         private readonly LogFile _logFile;
@@ -36,56 +36,63 @@ namespace Cosbak.Controllers.LogBackup
             await _logFile.InitializeAsync();
         }
 
-        public async Task BackupBatchAsync()
+        public async Task LogBatchAsync()
         {
             var previousLastUpdateTime = _logFile.LastUpdateTime;
-            var lastUpdateTime = await _collectionFacade.GetLastUpdateTimeAsync(
+            var timeWindow = await _collectionFacade.SizeTimeWindowAsync(
                 previousLastUpdateTime,
                 MAX_BATCH_SIZE);
 
-            if (lastUpdateTime == null)
+            _logger
+                .AddContext("CurrentTimeStamp", timeWindow.currentTimeStamp)
+                .AddContext("DocumentCount", timeWindow.count)
+                .AddContext("MaxTimeStamp", timeWindow.maxTimeStamp)
+                .WriteEvent("LogBatchTimeWindow");
+            if (timeWindow.count != 0)
             {
+                await LogDocumentBatchAsync(previousLastUpdateTime, timeWindow.maxTimeStamp);
             }
-            else
+            //await _logFile.PersistAsync();
+        }
+
+        private async Task LogDocumentBatchAsync(long previousLastUpdateTime, long maxTimeStamp)
+        {
+            var buffer = new byte[Constants.MAX_LOG_BLOCK_SIZE];
+            var blockNames = ImmutableList<string>.Empty;
+            var iterator = _collectionFacade.GetTimeWindowDocuments(
+                previousLastUpdateTime,
+                maxTimeStamp);
+            int index = 0;
+
+            while (iterator.HasMoreResults)
             {
-                var buffer = new byte[Constants.MAX_LOG_BLOCK_SIZE];
-                var blockNames = ImmutableList<string>.Empty;
-                var iterator = _collectionFacade.GetTimeWindowDocuments(
-                    previousLastUpdateTime,
-                    lastUpdateTime.Value);
-                int index = 0;
+                var stream = await iterator.ReadNextAsync();
 
-                while (iterator.HasMoreResults)
+                if (stream.Length > buffer.Length)
                 {
-                    var stream = await iterator.ReadNextAsync();
-
-                    if (stream.Length > buffer.Length)
-                    {
-                        throw new NotSupportedException(
-                            $"Query return bigger than buffer:  {stream.Length}");
-                    }
-                    if (stream.Length > buffer.Length - index)
-                    {
-                        var blockName = await _logFile.WriteBlockAsync(buffer, index);
-
-                        blockNames = blockNames.Add(blockName);
-                        index = 0;
-                    }
-
-                    var memory = new Memory<byte>(buffer, index, (int)stream.Length);
-
-                    await stream.ReadAsync(memory);
-                    index += memory.Length;
+                    throw new NotSupportedException(
+                        $"Query return bigger than buffer:  {stream.Length}");
                 }
-                if (index > 0)
+                if (stream.Length > buffer.Length - index)
                 {
                     var blockName = await _logFile.WriteBlockAsync(buffer, index);
 
                     blockNames = blockNames.Add(blockName);
+                    index = 0;
                 }
-                _logFile.AddDocumentBatch(lastUpdateTime.Value, blockNames);
-                await _logFile.PersistAsync();
+
+                var memory = new Memory<byte>(buffer, index, (int)stream.Length);
+
+                await stream.ReadAsync(memory);
+                index += memory.Length;
             }
+            if (index > 0)
+            {
+                var blockName = await _logFile.WriteBlockAsync(buffer, index);
+
+                blockNames = blockNames.Add(blockName);
+            }
+            _logFile.AddDocumentBatch(maxTimeStamp, blockNames);
         }
 
         public async Task DisposeAsync()

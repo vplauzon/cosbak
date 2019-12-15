@@ -86,7 +86,7 @@ namespace Cosbak.Controllers
             _logger.WriteEvent("Backup-Iteration-Start");
             foreach (var plan in _initialized.CollectionPlans)
             {
-                await plan.CollectionController.BackupBatchAsync();
+                await plan.CollectionController.LogBatchAsync();
             }
             _logger.WriteEvent("Backup-Iteration-End");
         }
