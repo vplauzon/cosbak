@@ -86,15 +86,23 @@ namespace Cosbak.Controllers
             _logger.WriteEvent("Backup-Iteration-Start");
             foreach (var plan in _initialized.CollectionPlans)
             {
+                var collectionLogger = _logger
+                    .AddContext("db", plan.CollectionController.Collection.Parent.DatabaseName)
+                    .AddContext("collection", plan.CollectionController.Collection.CollectionName);
+
+                collectionLogger.Display($"Backup {plan.CollectionController.Collection.Parent.DatabaseName}"
+                    + $".{plan.CollectionController.Collection.CollectionName}...");
+                collectionLogger.WriteEvent("Backup-Collection-Start");
                 while (true)
                 {
                     var result = await plan.CollectionController.LogBatchAsync();
 
-                    if(result.HasLoggedUntilNow)
+                    if (result.HasLoggedUntilNow)
                     {
                         break;
                     }
                 }
+                collectionLogger.WriteEvent("Backup-Collection-End");
             }
             _logger.WriteEvent("Backup-Iteration-End");
         }
