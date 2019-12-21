@@ -76,7 +76,12 @@ namespace Cosbak.Controllers.LogBackup
         {
             get
             {
-                throw new NotImplementedException();
+                if (_initialized == null)
+                {
+                    throw new InvalidOperationException("InitializeAsync hasn't been called");
+                }
+
+                return _initialized.LogFat.GetDocumentsBlocks().Count();
             }
         }
 
@@ -84,7 +89,12 @@ namespace Cosbak.Controllers.LogBackup
         {
             get
             {
-                throw new NotImplementedException();
+                if (_initialized == null)
+                {
+                    throw new InvalidOperationException("InitializeAsync hasn't been called");
+                }
+
+                return _initialized.LogFat.GetDocumentsBlocks().Sum(b => b.Size);
             }
         }
 
@@ -92,7 +102,12 @@ namespace Cosbak.Controllers.LogBackup
         {
             get
             {
-                throw new NotImplementedException();
+                if (_initialized == null)
+                {
+                    throw new InvalidOperationException("InitializeAsync hasn't been called");
+                }
+
+                return _initialized.LogFat.GetCheckpointBlocks().Count();
             }
         }
 
@@ -100,7 +115,12 @@ namespace Cosbak.Controllers.LogBackup
         {
             get
             {
-                throw new NotImplementedException();
+                if (_initialized == null)
+                {
+                    throw new InvalidOperationException("InitializeAsync hasn't been called");
+                }
+
+                return _initialized.LogFat.GetCheckpointBlocks().Sum(b => b.Size);
             }
         }
 
@@ -147,9 +167,10 @@ namespace Cosbak.Controllers.LogBackup
             {
                 var fatBuffer = JsonSerializer.SerializeToUtf8Bytes(_initialized.LogFat);
                 var fatBlock = await WriteBlockAsync(fatBuffer, fatBuffer.Length);
-                var blocks = _initialized.LogFat.GetAllBlocks();
+                var blocks = _initialized.LogFat.GetCheckpointBlocks()
+                    .Concat(_initialized.LogFat.GetDocumentsBlocks())
+                    .Prepend(fatBlock);
 
-                blocks = blocks.Prepend(fatBlock);
                 _storageFacade.WriteAsync(_blobName, blocks.Select(b => b.Id), _initialized.Lease);
                 _isDirty = false;
             }
@@ -176,7 +197,11 @@ namespace Cosbak.Controllers.LogBackup
             await _storageFacade.WriteBlockAsync(
                 _blobName, blockId, buffer, length, _initialized.Lease);
 
-            return new Block(blockId, length);
+            return new Block
+            {
+                Id = blockId,
+                Size = length
+            };
         }
 
         public void AddDocumentBatch(long timeStamp, IImmutableList<Block> blocks)

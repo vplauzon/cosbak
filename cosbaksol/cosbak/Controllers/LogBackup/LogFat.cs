@@ -78,22 +78,27 @@ namespace Cosbak.Controllers.LogBackup
             InProgressDocumentBatches = InProgressDocumentBatches.Clear();
         }
 
-        public IEnumerable<Block> GetAllBlocks()
+        public IEnumerable<Block> GetDocumentsBlocks()
         {
-            var docCheckpointBlocks = CheckPoints.SelectMany(c => c.DocumentBatches.SelectMany(b => b.Blocks));
+            var docInprogressBlocks = InProgressDocumentBatches.SelectMany(b => b.Blocks);
+
+            return docInprogressBlocks;
+        }
+
+        public IEnumerable<Block> GetCheckpointBlocks()
+        {
+            var docCheckpointBlocks = CheckPoints
+                .SelectMany(c => c.DocumentBatches.SelectMany(b => b.Blocks));
             var idsCheckpointBlocks = CheckPoints.SelectMany(c => c.IdsBlocks);
             var sprocsCheckpointBlocks = CheckPoints.SelectMany(c => c.SprocsBlocks);
             var functionsCheckpointBlocks = CheckPoints.SelectMany(c => c.FunctionsBlocks);
             var triggersCheckpointBlocks = CheckPoints.SelectMany(c => c.TriggersBlocks);
-            var docInprogressBlocks = InProgressDocumentBatches.SelectMany(b => b.Blocks);
 
             return docCheckpointBlocks
                 .Concat(idsCheckpointBlocks)
                 .Concat(sprocsCheckpointBlocks)
                 .Concat(functionsCheckpointBlocks)
-                .Concat(triggersCheckpointBlocks)
-                .Concat(docInprogressBlocks)
-                .ToImmutableList();
+                .Concat(triggersCheckpointBlocks);
         }
     }
 }

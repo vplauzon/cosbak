@@ -6,14 +6,8 @@ namespace Cosbak.Controllers.LogBackup
 {
     public class Block
     {
-        public Block(string id, long size)
-        {
-            Id = id;
-            Size = size;
-        }
+        public string Id { get; set; } = string.Empty;
 
-        public string Id { get; }
-
-        public long Size { get; }
+        public long Size { get; set; }
     }
 }
