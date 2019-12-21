@@ -21,5 +21,9 @@ namespace Cosbak.Cosmos
         StreamIterator GetAllIds();
         
         StreamIterator GetAllStoredProcedures();
+        
+        StreamIterator GetAllFunctions();
+        
+        StreamIterator GetAllTriggers();
     }
 }

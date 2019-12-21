@@ -87,8 +87,19 @@ namespace Cosbak.Controllers.LogBackup
             var sprocsBlockNames = _plan.Included.Sprocs
                 ? await WriteIteratorToBlocksAsync(Collection.GetAllStoredProcedures(), "LogAllSprocs")
                 : null;
+            var functionsBlockNames = _plan.Included.Functions
+                ? await WriteIteratorToBlocksAsync(Collection.GetAllFunctions(), "LogAllFunctions")
+                : null;
+            var triggersBlockNames = _plan.Included.Triggers
+                ? await WriteIteratorToBlocksAsync(Collection.GetAllTriggers(), "LogAllTriggers")
+                : null;
 
-            _logFile.CreateCheckpoint(currentTimeStamp, idsBlockNames, sprocsBlockNames);
+            _logFile.CreateCheckpoint(
+                currentTimeStamp,
+                idsBlockNames,
+                sprocsBlockNames,
+                functionsBlockNames,
+                triggersBlockNames);
         }
 
         private bool IsCheckPointTime(long previousTimeStamp, long currentTimeStamp)

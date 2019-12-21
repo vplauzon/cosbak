@@ -164,7 +164,9 @@ namespace Cosbak.Controllers.LogBackup
         public void CreateCheckpoint(
             long timeStamp,
             ImmutableList<string>? idsBlockNames,
-            ImmutableList<string>? sprocsBlockNames)
+            ImmutableList<string>? sprocsBlockNames,
+            ImmutableList<string>? functionsBlockNames,
+            ImmutableList<string>? triggersBlockNames)
         {
             if (_initialized == null)
             {
@@ -173,7 +175,9 @@ namespace Cosbak.Controllers.LogBackup
             _initialized.LogFat.CreateCheckPoint(
                 timeStamp,
                 idsBlockNames,
-                sprocsBlockNames);
+                sprocsBlockNames,
+                functionsBlockNames,
+                triggersBlockNames);
             _isDirty = true;
         }
 

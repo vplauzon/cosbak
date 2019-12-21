@@ -60,14 +60,18 @@ namespace Cosbak.Controllers.LogBackup
         public void CreateCheckPoint(
             long timeStamp,
             ImmutableList<string>? idsBlockNames,
-            ImmutableList<string>? sprocsBlockNames)
+            ImmutableList<string>? sprocsBlockNames,
+            ImmutableList<string>? functionsBlockNames,
+            ImmutableList<string>? triggersBlockNames)
         {
             var checkpoint = new LogCheckPoint
             {
                 TimeStamp = timeStamp,
                 DocumentBatches = InProgressDocumentBatches,
                 IdsBlockNames = idsBlockNames,
-                SprocsBlockNames= sprocsBlockNames
+                SprocsBlockNames= sprocsBlockNames,
+                FunctionsBlockNames = functionsBlockNames,
+                TriggersBlockNames = triggersBlockNames
             };
 
             CheckPoints = CheckPoints.Add(checkpoint);
@@ -80,11 +84,15 @@ namespace Cosbak.Controllers.LogBackup
             var docInprogressBlocks = InProgressDocumentBatches.SelectMany(b => b.BlockNames);
             var idsCheckpointBlocks = CheckPoints.SelectMany(c => c.IdsBlockNames);
             var sprocsCheckpointBlocks = CheckPoints.SelectMany(c => c.SprocsBlockNames);
+            var functionsCheckpointBlocks = CheckPoints.SelectMany(c => c.FunctionsBlockNames);
+            var triggersCheckpointBlocks = CheckPoints.SelectMany(c => c.TriggersBlockNames);
 
             return docCheckpointBlocks
                 .Concat(docInprogressBlocks)
                 .Concat(idsCheckpointBlocks)
                 .Concat(sprocsCheckpointBlocks)
+                .Concat(functionsCheckpointBlocks)
+                .Concat(triggersCheckpointBlocks)
                 .ToImmutableList();
         }
     }

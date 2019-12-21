@@ -103,5 +103,21 @@ namespace Cosbak.Cosmos
 
             return new StreamIterator(allSprocFeed);
         }
+
+        StreamIterator ICollectionFacade.GetAllFunctions()
+        {
+            var allFunctionFeed = _container.Scripts.GetUserDefinedFunctionQueryStreamIterator(
+                "SELECT * FROM c");
+
+            return new StreamIterator(allFunctionFeed);
+        }
+
+        StreamIterator ICollectionFacade.GetAllTriggers()
+        {
+            var allTriggerFeed = _container.Scripts.GetTriggerQueryStreamIterator(
+                "SELECT * FROM c");
+
+            return new StreamIterator(allTriggerFeed);
+        }
     }
 }
