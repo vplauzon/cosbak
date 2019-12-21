@@ -68,20 +68,23 @@ namespace Cosbak.Controllers.LogBackup
                 _logger.WriteEvent("No-document-to-backup");
             }
             var hasCaughtUp = timeWindow.currentTimeStamp == timeWindow.maxTimeStamp;
+            var delta = TimeSpan.FromSeconds(
+                timeWindow.currentTimeStamp
+                - _logFile.LastCheckpointTimeStamp);
+            var isCheckpoint = delta >= _plan.Rpo;
 
-            if (hasCaughtUp
-                && IsCheckPointTime(_logFile.LastCheckpointTimeStamp, timeWindow.currentTimeStamp))
+            if (hasCaughtUp && isCheckpoint)
             {
                 await LogCheckPointAsync(timeWindow.currentTimeStamp);
             }
             await _logFile.PersistAsync();
 
-            return new LogBatchResult(
-                hasCaughtUp,
-                _logFile.TotalDocumentBlockCount > MAX_BLOCK_COUNT
-                || _logFile.TotalDocumentSize > MAX_DOCUMENT_LOG_SIZE,
-                _logFile.TotalCheckPointBlockCount > MAX_BLOCK_COUNT
-                || _logFile.TotalCheckPointSize > MAX_DOCUMENT_LOG_SIZE);
+            var needDocumentsPurge = _logFile.TotalDocumentBlockCount > MAX_BLOCK_COUNT
+                || _logFile.TotalDocumentSize > MAX_DOCUMENT_LOG_SIZE;
+            var needCheckpointPurge = _logFile.TotalCheckPointBlockCount > MAX_BLOCK_COUNT
+                || _logFile.TotalCheckPointSize > MAX_DOCUMENT_LOG_SIZE;
+
+            return new LogBatchResult(hasCaughtUp, needDocumentsPurge, needCheckpointPurge);
         }
 
         private async Task LogCheckPointAsync(long currentTimeStamp)
@@ -109,13 +112,6 @@ namespace Cosbak.Controllers.LogBackup
                 functionsBlockNames,
                 triggersBlockNames);
             _logger.WriteEvent("Checkpoint-End");
-        }
-
-        private bool IsCheckPointTime(long previousTimeStamp, long currentTimeStamp)
-        {
-            var delta = TimeSpan.FromSeconds(currentTimeStamp - previousTimeStamp);
-
-            return delta >= _plan.Rpo;
         }
 
         private async Task LogDocumentBatchAsync(long previousLastUpdateTime, long maxTimeStamp)

@@ -12,16 +12,13 @@ namespace Cosbak.Controllers.LogBackup
         #region Inner Types
         private class Initialized
         {
-            public Initialized(BlobLease lease, IImmutableList<BlockItem> blocks, LogFat logFat)
+            public Initialized(BlobLease lease, LogFat logFat)
             {
                 Lease = lease;
-                Blocks = blocks;
                 LogFat = logFat;
             }
 
             public BlobLease Lease { get; }
-
-            public IImmutableList<BlockItem> Blocks { get; }
 
             public LogFat LogFat { get; }
         }
@@ -152,7 +149,7 @@ namespace Cosbak.Controllers.LogBackup
                     ? new LogFat()
                     : await LoadLogFatAsync((int)blocks[0].Length);
 
-                _initialized = new Initialized(lease, blocks, logFat);
+                _initialized = new Initialized(lease, logFat);
             }
         }
 
