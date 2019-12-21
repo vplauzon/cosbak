@@ -7,6 +7,6 @@ namespace Cosbak.Controllers.LogBackup
     {
         public long TimeStamp { get; set; }
 
-        public ImmutableList<string> BlockNames { get; set; } = ImmutableList<string>.Empty;
+        public IImmutableList<Block> Blocks { get; set; } = ImmutableList<Block>.Empty;
     }
 }

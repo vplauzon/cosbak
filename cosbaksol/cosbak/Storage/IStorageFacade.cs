@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Threading.Tasks;
@@ -31,14 +33,14 @@ namespace Cosbak.Storage
         
         Task WriteBlockAsync(
             string blobPath,
-            string blockName,
+            string blockId,
             byte[] buffer,
             int length,
             BlobLease? lease);
 
         void WriteAsync(
             string blobPath,
-            IImmutableList<string> blockNames,
+            IEnumerable<string> blockIds,
             BlobLease? lease);
     }
 }

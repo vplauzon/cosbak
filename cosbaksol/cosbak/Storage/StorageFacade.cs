@@ -169,7 +169,7 @@ namespace Cosbak.Storage
 
         async Task IStorageFacade.WriteBlockAsync(
             string blobPath,
-            string blockName,
+            string blockId,
             byte[] buffer,
             int length,
             BlobLease? lease)
@@ -179,7 +179,7 @@ namespace Cosbak.Storage
             using (var stream = new MemoryStream(buffer, 0, length))
             {
                 await blob.PutBlockAsync(
-                    blockName,
+                    blockId,
                     stream,
                     string.Empty,
                     new AccessCondition
@@ -193,13 +193,13 @@ namespace Cosbak.Storage
 
         void IStorageFacade.WriteAsync(
             string blobPath,
-            IImmutableList<string> blockNames,
+            IEnumerable<string> blockIds,
             BlobLease? lease)
         {
             var blob = _container.GetBlockBlobReference(_blobPrefix + blobPath);
 
             blob.PutBlockListAsync(
-                blockNames,
+                blockIds,
                 new AccessCondition
                 {
                     LeaseId = lease?.LeaseId

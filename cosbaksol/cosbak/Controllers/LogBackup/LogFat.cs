@@ -46,12 +46,12 @@ namespace Cosbak.Controllers.LogBackup
             }
         }
 
-        public void AddDocumentBatch(long timeStamp, ImmutableList<string> blockNames)
+        public void AddDocumentBatch(long timeStamp, IImmutableList<Block> blocks)
         {
             var batch = new DocumentBatch
             {
                 TimeStamp = timeStamp,
-                BlockNames = blockNames
+                Blocks = blocks
             };
 
             InProgressDocumentBatches = InProgressDocumentBatches.Add(batch);
@@ -59,40 +59,40 @@ namespace Cosbak.Controllers.LogBackup
 
         public void CreateCheckPoint(
             long timeStamp,
-            ImmutableList<string>? idsBlockNames,
-            ImmutableList<string>? sprocsBlockNames,
-            ImmutableList<string>? functionsBlockNames,
-            ImmutableList<string>? triggersBlockNames)
+            IImmutableList<Block>? idsBlocks,
+            IImmutableList<Block>? sprocsBlocks,
+            IImmutableList<Block>? functionsBlocks,
+            IImmutableList<Block>? triggersBlocks)
         {
             var checkpoint = new LogCheckPoint
             {
                 TimeStamp = timeStamp,
                 DocumentBatches = InProgressDocumentBatches,
-                IdsBlockNames = idsBlockNames,
-                SprocsBlockNames= sprocsBlockNames,
-                FunctionsBlockNames = functionsBlockNames,
-                TriggersBlockNames = triggersBlockNames
+                IdsBlocks = idsBlocks,
+                SprocsBlocks= sprocsBlocks,
+                FunctionsBlocks = functionsBlocks,
+                TriggersBlocks = triggersBlocks
             };
 
             CheckPoints = CheckPoints.Add(checkpoint);
             InProgressDocumentBatches = InProgressDocumentBatches.Clear();
         }
 
-        public IImmutableList<string> GetAllBlockNames()
+        public IEnumerable<Block> GetAllBlocks()
         {
-            var docCheckpointBlocks = CheckPoints.SelectMany(c => c.DocumentBatches.SelectMany(b => b.BlockNames));
-            var docInprogressBlocks = InProgressDocumentBatches.SelectMany(b => b.BlockNames);
-            var idsCheckpointBlocks = CheckPoints.SelectMany(c => c.IdsBlockNames);
-            var sprocsCheckpointBlocks = CheckPoints.SelectMany(c => c.SprocsBlockNames);
-            var functionsCheckpointBlocks = CheckPoints.SelectMany(c => c.FunctionsBlockNames);
-            var triggersCheckpointBlocks = CheckPoints.SelectMany(c => c.TriggersBlockNames);
+            var docCheckpointBlocks = CheckPoints.SelectMany(c => c.DocumentBatches.SelectMany(b => b.Blocks));
+            var idsCheckpointBlocks = CheckPoints.SelectMany(c => c.IdsBlocks);
+            var sprocsCheckpointBlocks = CheckPoints.SelectMany(c => c.SprocsBlocks);
+            var functionsCheckpointBlocks = CheckPoints.SelectMany(c => c.FunctionsBlocks);
+            var triggersCheckpointBlocks = CheckPoints.SelectMany(c => c.TriggersBlocks);
+            var docInprogressBlocks = InProgressDocumentBatches.SelectMany(b => b.Blocks);
 
             return docCheckpointBlocks
-                .Concat(docInprogressBlocks)
                 .Concat(idsCheckpointBlocks)
                 .Concat(sprocsCheckpointBlocks)
                 .Concat(functionsCheckpointBlocks)
                 .Concat(triggersCheckpointBlocks)
+                .Concat(docInprogressBlocks)
                 .ToImmutableList();
         }
     }

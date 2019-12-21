@@ -72,6 +72,38 @@ namespace Cosbak.Controllers.LogBackup
             }
         }
 
+        public int TotalDocumentBlockCount
+        {
+            get
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public long TotalDocumentSize
+        {
+            get
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public int TotalCheckPointBlockCount
+        {
+            get
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public long TotalCheckPointSize
+        {
+            get
+            {
+                throw new NotImplementedException();
+            }
+        }
+
         public async Task InitializeAsync()
         {
             if (_initialized != null)
@@ -114,11 +146,11 @@ namespace Cosbak.Controllers.LogBackup
             if (_isDirty)
             {
                 var fatBuffer = JsonSerializer.SerializeToUtf8Bytes(_initialized.LogFat);
-                var fatBlockName = await WriteBlockAsync(fatBuffer, fatBuffer.Length);
-                var blockNames = _initialized.LogFat.GetAllBlockNames();
+                var fatBlock = await WriteBlockAsync(fatBuffer, fatBuffer.Length);
+                var blocks = _initialized.LogFat.GetAllBlocks();
 
-                blockNames = blockNames.Insert(0, fatBlockName);
-                _storageFacade.WriteAsync(_blobName, blockNames, _initialized.Lease);
+                blocks = blocks.Prepend(fatBlock);
+                _storageFacade.WriteAsync(_blobName, blocks.Select(b => b.Id), _initialized.Lease);
                 _isDirty = false;
             }
         }
@@ -132,41 +164,41 @@ namespace Cosbak.Controllers.LogBackup
             await _initialized.Lease.ReleaseLeaseAsync();
         }
 
-        public async Task<string> WriteBlockAsync(byte[] buffer, int length)
+        public async Task<Block> WriteBlockAsync(byte[] buffer, int length)
         {
             if (_initialized == null)
             {
                 throw new InvalidOperationException("InitializeAsync hasn't been called");
             }
 
-            var blockName = Convert.ToBase64String(Guid.NewGuid().ToByteArray());
+            var blockId = Convert.ToBase64String(Guid.NewGuid().ToByteArray());
 
             await _storageFacade.WriteBlockAsync(
-                _blobName, blockName, buffer, length, _initialized.Lease);
+                _blobName, blockId, buffer, length, _initialized.Lease);
 
-            return blockName;
+            return new Block(blockId, length);
         }
 
-        public void AddDocumentBatch(long timeStamp, ImmutableList<string> blockNames)
+        public void AddDocumentBatch(long timeStamp, IImmutableList<Block> blocks)
         {
             if (_initialized == null)
             {
                 throw new InvalidOperationException("InitializeAsync hasn't been called");
             }
 
-            if (blockNames.Any())
+            if (blocks.Any())
             {
-                _initialized.LogFat.AddDocumentBatch(timeStamp, blockNames);
+                _initialized.LogFat.AddDocumentBatch(timeStamp, blocks);
                 _isDirty = true;
             }
         }
 
         public void CreateCheckpoint(
             long timeStamp,
-            ImmutableList<string>? idsBlockNames,
-            ImmutableList<string>? sprocsBlockNames,
-            ImmutableList<string>? functionsBlockNames,
-            ImmutableList<string>? triggersBlockNames)
+            IImmutableList<Block>? idsBlocks,
+            IImmutableList<Block>? sprocsBlocks,
+            IImmutableList<Block>? functionsBlocks,
+            IImmutableList<Block>? triggersBlocks)
         {
             if (_initialized == null)
             {
@@ -174,10 +206,10 @@ namespace Cosbak.Controllers.LogBackup
             }
             _initialized.LogFat.CreateCheckPoint(
                 timeStamp,
-                idsBlockNames,
-                sprocsBlockNames,
-                functionsBlockNames,
-                triggersBlockNames);
+                idsBlocks,
+                sprocsBlocks,
+                functionsBlocks,
+                triggersBlocks);
             _isDirty = true;
         }
 

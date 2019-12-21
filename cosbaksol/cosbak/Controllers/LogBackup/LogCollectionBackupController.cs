@@ -12,6 +12,9 @@ namespace Cosbak.Controllers.LogBackup
     internal class LogCollectionBackupController
     {
         private const int MAX_BATCH_SIZE = 2;
+        private const int MAX_BLOCK_COUNT = 1000;
+        private const long MAX_DOCUMENT_LOG_SIZE = 1024 * 1024 * 1024;
+        private static readonly TimeSpan MAX_CHECKPOINT_AGE = TimeSpan.FromDays(1);
 
         private readonly LogFile _logFile;
         private readonly BackupPlan _plan;
@@ -73,7 +76,12 @@ namespace Cosbak.Controllers.LogBackup
             }
             await _logFile.PersistAsync();
 
-            return new LogBatchResult(hasCaughtUp);
+            return new LogBatchResult(
+                hasCaughtUp,
+                _logFile.TotalDocumentBlockCount > MAX_BLOCK_COUNT
+                || _logFile.TotalDocumentSize > MAX_DOCUMENT_LOG_SIZE,
+                _logFile.TotalCheckPointBlockCount > MAX_BLOCK_COUNT
+                || _logFile.TotalCheckPointSize > MAX_DOCUMENT_LOG_SIZE);
         }
 
         private async Task LogCheckPointAsync(long currentTimeStamp)
@@ -115,17 +123,17 @@ namespace Cosbak.Controllers.LogBackup
             var iterator = Collection.GetTimeWindowDocuments(
                 previousLastUpdateTime,
                 maxTimeStamp);
-            var blockNames = await WriteIteratorToBlocksAsync(iterator, "LogDocumentBatch");
+            var blocks = await WriteIteratorToBlocksAsync(iterator, "LogDocumentBatch");
 
-            _logFile.AddDocumentBatch(maxTimeStamp, blockNames);
+            _logFile.AddDocumentBatch(maxTimeStamp, blocks);
         }
 
-        private async Task<ImmutableList<string>> WriteIteratorToBlocksAsync(
+        private async Task<IImmutableList<Block>> WriteIteratorToBlocksAsync(
             StreamIterator iterator,
             string eventName)
         {
             var buffer = new byte[Constants.MAX_LOG_BLOCK_SIZE];
-            var blockNames = ImmutableList<string>.Empty;
+            var blocks = ImmutableList<Block>.Empty;
             double ru = 0;
             var resultCount = 0;
             var blockCount = 0;
@@ -142,9 +150,9 @@ namespace Cosbak.Controllers.LogBackup
                 }
                 if (result.Stream.Length > buffer.Length - index)
                 {
-                    var blockName = await _logFile.WriteBlockAsync(buffer, index);
+                    var block = await _logFile.WriteBlockAsync(buffer, index);
 
-                    blockNames = blockNames.Add(blockName);
+                    blocks = blocks.Add(block);
                     ++blockCount;
                     index = 0;
                 }
@@ -158,9 +166,9 @@ namespace Cosbak.Controllers.LogBackup
             }
             if (index > 0)
             {
-                var blockName = await _logFile.WriteBlockAsync(buffer, index);
+                var block = await _logFile.WriteBlockAsync(buffer, index);
 
-                blockNames = blockNames.Add(blockName);
+                blocks = blocks.Add(block);
                 ++blockCount;
             }
             _logger
@@ -168,7 +176,7 @@ namespace Cosbak.Controllers.LogBackup
                 .AddContext("blockCount", blockCount)
                 .WriteEvent(eventName);
 
-            return blockNames;
+            return blocks;
         }
 
         public async Task DisposeAsync()
