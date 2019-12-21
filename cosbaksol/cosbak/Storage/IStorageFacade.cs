@@ -15,7 +15,7 @@ namespace Cosbak.Storage
 
         Task AppendBlobAsync(string blobPath, Stream contentStream);
 
-        Task<BlobLease?> GetLeaseAsync(string contentPath);
+        Task<BlobLease?> AcquireLeaseAsync(string contentPath);
 
         Task DeleteBlobAsync(string path, BlobLease? lease);
 

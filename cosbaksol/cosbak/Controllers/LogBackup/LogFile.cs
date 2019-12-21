@@ -86,7 +86,8 @@ namespace Cosbak.Controllers.LogBackup
                 await _storageFacade.CreateEmptyBlockBlobAsync(_blobName);
             }
 
-            var lease = await _storageFacade.GetLeaseAsync(_blobName);
+            var leaseController = new LeaseController(_logger, _storageFacade);
+            var lease = await leaseController.AcquireLeaseAsync(_blobName, TimeSpan.FromMinutes(1));
 
             if (lease == null)
             {

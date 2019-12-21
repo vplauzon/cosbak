@@ -117,11 +117,11 @@ namespace Cosbak.Storage
             await blob.AppendFromStreamAsync(contentStream);
         }
 
-        async Task<BlobLease?> IStorageFacade.GetLeaseAsync(string blobPath)
+        async Task<BlobLease?> IStorageFacade.AcquireLeaseAsync(string blobPath)
         {
             var blob = _container.GetBlobReference(_blobPrefix + blobPath);
 
-            return await BlobLease.CreateLeaseAsync(blob);
+            return await BlobLease.AcquireLeaseAsync(blob);
         }
 
         async Task IStorageFacade.DeleteBlobAsync(string path, BlobLease? lease)

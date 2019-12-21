@@ -10,8 +10,8 @@ namespace Cosbak.Storage
 {
     public class BlobLease : IDisposable
     {
-        private static readonly TimeSpan DEFAULT_LEASE_DURATION = TimeSpan.FromSeconds(30);
-        private static readonly TimeSpan DEFAULT_LEASE_RENEWAL_PERIOD = TimeSpan.FromSeconds(20);
+        private static readonly TimeSpan DEFAULT_LEASE_DURATION = TimeSpan.FromSeconds(60);
+        private static readonly TimeSpan DEFAULT_LEASE_RENEWAL_PERIOD = TimeSpan.FromSeconds(57);
 
         private readonly CloudBlob _blob;
         private readonly string _leaseId;
@@ -31,7 +31,7 @@ namespace Cosbak.Storage
             get => _leaseId;
         }
 
-        public static async Task<BlobLease?> CreateLeaseAsync(CloudBlob blob)
+        public static async Task<BlobLease?> AcquireLeaseAsync(CloudBlob blob)
         {
             try
             {
