@@ -90,7 +90,7 @@ namespace Cosbak.Controllers.LogBackup
 
         private bool IsCheckPointTime(long previousTimeStamp, long currentTimeStamp)
         {
-            var delta = TimeSpan.FromMilliseconds(currentTimeStamp - previousTimeStamp);
+            var delta = TimeSpan.FromSeconds(currentTimeStamp - previousTimeStamp);
 
             return delta >= _plan.Rpo;
         }
