@@ -12,15 +12,15 @@ namespace Cosbak.Controllers.LogBackup
         #region Inner Types
         private class Initialized
         {
-            public Initialized(BlobLease lease, LogFat logFat)
+            public Initialized(BlobLease lease, LogFat fat)
             {
                 Lease = lease;
-                LogFat = logFat;
+                Fat = fat;
             }
 
             public BlobLease Lease { get; }
 
-            public LogFat LogFat { get; }
+            public LogFat Fat { get; }
         }
         #endregion
 
@@ -52,7 +52,7 @@ namespace Cosbak.Controllers.LogBackup
                     throw new InvalidOperationException("InitializeAsync hasn't been called");
                 }
 
-                return _initialized.LogFat.LastTimeStamp;
+                return _initialized.Fat.LastTimeStamp;
             }
         }
 
@@ -65,7 +65,7 @@ namespace Cosbak.Controllers.LogBackup
                     throw new InvalidOperationException("InitializeAsync hasn't been called");
                 }
 
-                return _initialized.LogFat.LastCheckpointTimeStamp;
+                return _initialized.Fat.LastCheckpointTimeStamp;
             }
         }
 
@@ -78,7 +78,7 @@ namespace Cosbak.Controllers.LogBackup
                     throw new InvalidOperationException("InitializeAsync hasn't been called");
                 }
 
-                return _initialized.LogFat.GetDocumentsBlocks().Count();
+                return _initialized.Fat.GetDocumentsBlocks().Count();
             }
         }
 
@@ -91,7 +91,7 @@ namespace Cosbak.Controllers.LogBackup
                     throw new InvalidOperationException("InitializeAsync hasn't been called");
                 }
 
-                return _initialized.LogFat.GetDocumentsBlocks().Sum(b => b.Size);
+                return _initialized.Fat.GetDocumentsBlocks().Sum(b => b.Size);
             }
         }
 
@@ -104,7 +104,7 @@ namespace Cosbak.Controllers.LogBackup
                     throw new InvalidOperationException("InitializeAsync hasn't been called");
                 }
 
-                return _initialized.LogFat.GetCheckpointBlocks().Count();
+                return _initialized.Fat.GetCheckpointBlocks().Count();
             }
         }
 
@@ -117,7 +117,7 @@ namespace Cosbak.Controllers.LogBackup
                     throw new InvalidOperationException("InitializeAsync hasn't been called");
                 }
 
-                return _initialized.LogFat.GetCheckpointBlocks().Sum(b => b.Size);
+                return _initialized.Fat.GetCheckpointBlocks().Sum(b => b.Size);
             }
         }
 
@@ -147,7 +147,7 @@ namespace Cosbak.Controllers.LogBackup
                 var blocks = await _storageFacade.GetBlocksAsync(_blobName);
                 var logFat = blocks.Count == 0
                     ? new LogFat()
-                    : await LoadLogFatAsync((int)blocks[0].Length);
+                    : await LoadFatAsync((int)blocks[0].Length);
 
                 _initialized = new Initialized(lease, logFat);
             }
@@ -162,10 +162,10 @@ namespace Cosbak.Controllers.LogBackup
 
             if (_isDirty)
             {
-                var fatBuffer = JsonSerializer.SerializeToUtf8Bytes(_initialized.LogFat);
+                var fatBuffer = JsonSerializer.SerializeToUtf8Bytes(_initialized.Fat);
                 var fatBlock = await WriteBlockAsync(fatBuffer, fatBuffer.Length);
-                var blocks = _initialized.LogFat.GetCheckpointBlocks()
-                    .Concat(_initialized.LogFat.GetDocumentsBlocks())
+                var blocks = _initialized.Fat.GetCheckpointBlocks()
+                    .Concat(_initialized.Fat.GetDocumentsBlocks())
                     .Prepend(fatBlock);
 
                 _storageFacade.WriteAsync(_blobName, blocks.Select(b => b.Id), _initialized.Lease);
@@ -210,7 +210,7 @@ namespace Cosbak.Controllers.LogBackup
 
             if (blocks.Any())
             {
-                _initialized.LogFat.AddDocumentBatch(timeStamp, blocks);
+                _initialized.Fat.AddDocumentBatch(timeStamp, blocks);
                 _isDirty = true;
             }
         }
@@ -226,7 +226,7 @@ namespace Cosbak.Controllers.LogBackup
             {
                 throw new InvalidOperationException("InitializeAsync hasn't been called");
             }
-            _initialized.LogFat.CreateCheckPoint(
+            _initialized.Fat.CreateCheckPoint(
                 timeStamp,
                 idsBlocks,
                 sprocsBlocks,
@@ -235,7 +235,7 @@ namespace Cosbak.Controllers.LogBackup
             _isDirty = true;
         }
 
-        private async Task<LogFat> LoadLogFatAsync(int length)
+        private async Task<LogFat> LoadFatAsync(int length)
         {
             var buffer = new byte[length];
 

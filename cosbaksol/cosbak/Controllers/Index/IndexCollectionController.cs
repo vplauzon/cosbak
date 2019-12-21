@@ -31,11 +31,23 @@ namespace Cosbak.Controllers.Index
                 $"Index {_collection.Parent.DatabaseName}.{_collection.CollectionName}...");
             _logger.WriteEvent("Index-Collection-Start");
 
-            await Task.CompletedTask;
+            var file = new IndexFile(
+                _storageFacade,
+                _collection.Parent.Parent.AccountName,
+                _collection.Parent.DatabaseName,
+                _collection.CollectionName,
+                _logger);
 
-            _logger.WriteEvent("Index-Collection-End");
+            await file.InitializeAsync();
 
-            throw new NotImplementedException();
+            try
+            {
+                _logger.WriteEvent("Index-Collection-End");
+            }
+            finally
+            {
+                await file.DisposeAsync();
+            }
         }
     }
 }
