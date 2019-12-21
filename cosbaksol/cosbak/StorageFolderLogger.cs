@@ -2,10 +2,12 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Net.NetworkInformation;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace Cosbak
 {
@@ -58,11 +60,12 @@ namespace Cosbak
 
             Task ILogger.FlushAsync()
             {
-                return _parentLogger.FlushAsync();
+                return _parentLogger.WriteToStorageAsync();
             }
         }
         #endregion
 
+        private static readonly int MAX_QUEUE_LENGTH = 100;
         private static readonly int MAX_BUFFER_SIZE = 1 * 1024 * 1024;
         private static readonly int MAX_BLOCKS = 50000;
         private static readonly TimeSpan MAX_TIME = TimeSpan.FromSeconds(3);
@@ -73,16 +76,16 @@ namespace Cosbak
         {
             IgnoreNullValues = true
         };
+        private readonly ConcurrentQueue<object> _queue = new ConcurrentQueue<object>();
         private string? _blobName = null;
         private int _blocks = 0;
-        private Stream _stream;
-        private Task? _lastWriteTask = null;
+        private Task _writeTask = Task.CompletedTask;
         private DateTime? _lastWriteTime = null;
+        private int _writeLockInt = 0;
 
         public StorageFolderLogger(IStorageFacade storageFacade)
         {
             _storageFacade = storageFacade;
-            _stream = new MemoryStream();
         }
 
         ILogger ILogger.AddContext(string label, object value)
@@ -119,7 +122,10 @@ namespace Cosbak
 
         async Task ILogger.FlushAsync()
         {
-            await FlushAsync();
+            while (_queue.Count > 0)
+            {
+                await WriteToStorageAsync();
+            }
         }
 
         private void Display(string text, IImmutableDictionary<string, object> context)
@@ -168,53 +174,60 @@ namespace Cosbak
             };
             var now = DateTime.Now;
 
-            lock (_stream)
+            _queue.Enqueue(telemetry);
+            if (_writeTask.Status == TaskStatus.RanToCompletion)
             {
-                JsonSerializer.SerializeAsync(_stream, telemetry, _serializerOptions);
-                _stream.WriteByte((byte)'\n');
-                if (_stream.Length > MAX_BUFFER_SIZE
+                if (_queue.Count > MAX_QUEUE_LENGTH
                     || (_lastWriteTime != null && now.Subtract(_lastWriteTime.Value) > MAX_TIME))
                 {
-                    _lastWriteTask = FlushAsync();
+                    _writeTask = Task.Run(() => WriteToStorageAsync());
                 }
             }
         }
 
-        private async Task FlushAsync()
+        private async Task WriteToStorageAsync()
         {
-            //  Buffer the last write task
-            var lastWriteTask = _lastWriteTask;
-            //  Buffer the stream
-            var stream = _stream;
+            if (Interlocked.CompareExchange(ref _writeLockInt, 1, 0) != 0)
+            {
+                try
+                {
+                    bool isFirstLoop = true;
 
-            //  Flip the streams
-            lock (_stream)
-            {
-                if (_stream.Length == 0)
-                {
-                    return;
+                    while ((isFirstLoop && _queue.Count > 0)
+                        || _queue.Count > MAX_QUEUE_LENGTH)
+                    {
+                        var stream = new MemoryStream();
+                        object? telemetry;
+
+                        while (stream.Length < MAX_BUFFER_SIZE
+                            && _queue.TryDequeue(out telemetry))
+                        {
+                            if (telemetry == null)
+                            {
+                                throw new NullReferenceException("Logged telemetry can't be null");
+                            }
+                            await JsonSerializer.SerializeAsync(stream, telemetry, _serializerOptions);
+                            stream.WriteByte((byte)'\n');
+                        }
+                        stream.Position = 0;
+                        if (_blobName == null)
+                        {
+                            _blobName = CreateBlobName();
+                            await _storageFacade.CreateAppendBlobAsync(_blobName);
+                        }
+                        await _storageFacade.AppendBlobAsync(_blobName, stream);
+                        ++_blocks;
+                        if (_blocks == MAX_BLOCKS)
+                        {
+                            _blobName = null;
+                        }
+                        isFirstLoop = false;
+                    }
                 }
-                else
+                finally
                 {
-                    _stream = new MemoryStream();
-                    _lastWriteTime = null;
+                    _writeLockInt = 0;
                 }
-            }
-            if (lastWriteTask != null)
-            {   //  First wait for the last write
-                await lastWriteTask;
-            }
-            stream.Position = 0;
-            if (_blobName == null)
-            {
-                _blobName = CreateBlobName();
-                await _storageFacade.CreateAppendBlobAsync(_blobName);
-            }
-            await _storageFacade.AppendBlobAsync(_blobName, stream);
-            ++_blocks;
-            if (_blocks == MAX_BLOCKS)
-            {
-                _blobName = null;
             }
         }
 

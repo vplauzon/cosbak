@@ -5,6 +5,7 @@ using Cosbak.Cosmos;
 using Cosbak.Storage;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -92,8 +93,10 @@ namespace Cosbak
                 }
                 else
                 {
+                    var watch = new Stopwatch();
                     var configuration = await LoadBackupConfigurationAsync(parameters.ConfigPath);
 
+                    watch.Start();
                     configuration.Validate();
 
                     var storageFacade = CreateStorageFacade(configuration.StorageAccount);
@@ -119,6 +122,7 @@ namespace Cosbak
                         {
                             await scheduler.ProcessContinuouslyAsync();
                         }
+                        logger.Display($"Elapsed Time:  {watch.Elapsed}");
                     }
                     catch (Exception ex)
                     {
