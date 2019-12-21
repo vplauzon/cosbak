@@ -27,7 +27,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Controllers\Index\" />
     <Folder Include="Config\" />
   </ItemGroup>
 

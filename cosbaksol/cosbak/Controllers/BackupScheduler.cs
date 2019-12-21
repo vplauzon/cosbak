@@ -1,4 +1,5 @@
 ﻿using Cosbak.Config;
+using Cosbak.Controllers.Index;
 using Cosbak.Controllers.LogBackup;
 using Cosbak.Cosmos;
 using Cosbak.Storage;
@@ -16,13 +17,19 @@ namespace Cosbak.Controllers
         #region Inner Types
         private class CollectionPlan
         {
-            public CollectionPlan(LogCollectionBackupController collectionController, BackupPlan plan)
+            public CollectionPlan(
+                LogCollectionBackupController logController,
+                IndexCollectionController indexController,
+                BackupPlan plan)
             {
-                CollectionController = collectionController;
+                LogController = logController;
+                IndexController = indexController;
                 Plan = plan;
             }
 
-            public LogCollectionBackupController CollectionController { get; }
+            public LogCollectionBackupController LogController { get; }
+
+            public IndexCollectionController IndexController { get; }
 
             public BackupPlan Plan { get; }
         }
@@ -69,7 +76,7 @@ namespace Cosbak.Controllers
                 _storageFacade,
                 _logger).ToEnumerable();
             var initializeControllerTasks = from p in collectionPlans
-                                            select p.CollectionController.InitializeAsync();
+                                            select p.LogController.InitializeAsync();
 
             await Task.WhenAll(initializeControllerTasks);
             _initialized = new Initialized(collectionPlans);
@@ -86,23 +93,19 @@ namespace Cosbak.Controllers
             _logger.WriteEvent("Backup-Iteration-Start");
             foreach (var plan in _initialized.CollectionPlans)
             {
-                var collectionLogger = _logger
-                    .AddContext("db", plan.CollectionController.Collection.Parent.DatabaseName)
-                    .AddContext("collection", plan.CollectionController.Collection.CollectionName);
-
-                collectionLogger.Display($"Backup {plan.CollectionController.Collection.Parent.DatabaseName}"
-                    + $".{plan.CollectionController.Collection.CollectionName}...");
-                collectionLogger.WriteEvent("Backup-Collection-Start");
                 while (true)
                 {
-                    var result = await plan.CollectionController.LogBatchAsync();
+                    var result = await plan.LogController.LogBatchAsync();
 
+                    if (result.NeedDocumentsPurge || result.NeedCheckpointPurge)
+                    {
+                        await plan.IndexController.IndexAsync(result.NeedCheckpointPurge);
+                    }
                     if (result.HasCaughtUp)
                     {
                         break;
                     }
                 }
-                collectionLogger.WriteEvent("Backup-Collection-End");
             }
             _logger.WriteEvent("Backup-Iteration-End");
         }
@@ -125,7 +128,7 @@ namespace Cosbak.Controllers
             }
 
             var disposeControllerTasks = from p in _initialized.CollectionPlans
-                                         select p.CollectionController.DisposeAsync();
+                                         select p.LogController.DisposeAsync();
 
             await Task.WhenAll(disposeControllerTasks);
         }
@@ -152,15 +155,21 @@ namespace Cosbak.Controllers
                         if (byCollections.ContainsKey(coll.CollectionName))
                         {
                             var plan = byCollections[coll.CollectionName].SpecificPlan;
-                            var collectionController = new LogCollectionBackupController(
+                            var collectionLogger = logger
+                                .AddContext("Db", db.DatabaseName)
+                                .AddContext("Collection", coll.CollectionName);
+                            var logController = new LogCollectionBackupController(
                                 coll,
                                 storageFacade,
                                 plan,
-                                logger
-                                .AddContext("Db", db.DatabaseName)
-                                .AddContext("Collection", coll.CollectionName));
+                                collectionLogger);
+                            var indexController = new IndexCollectionController(
+                                coll,
+                                storageFacade,
+                                plan.RetentionInDays,
+                                collectionLogger);
 
-                            yield return new CollectionPlan(collectionController, plan);
+                            yield return new CollectionPlan(logController, indexController, plan);
                         }
                     }
                 }

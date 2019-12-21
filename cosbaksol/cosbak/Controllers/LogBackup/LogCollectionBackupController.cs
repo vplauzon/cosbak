@@ -16,6 +16,7 @@ namespace Cosbak.Controllers.LogBackup
         private const long MAX_DOCUMENT_LOG_SIZE = 1024 * 1024 * 1024;
         private static readonly TimeSpan MAX_CHECKPOINT_AGE = TimeSpan.FromDays(1);
 
+        private readonly ICollectionFacade _collection;
         private readonly LogFile _logFile;
         private readonly BackupPlan _plan;
         private readonly ILogger _logger;
@@ -26,7 +27,7 @@ namespace Cosbak.Controllers.LogBackup
             BackupPlan plan,
             ILogger logger)
         {
-            Collection = collectionFacade;
+            _collection = collectionFacade;
             _logFile = new LogFile(
                 storageFacade,
                 collectionFacade.Parent.Parent.AccountName,
@@ -37,8 +38,6 @@ namespace Cosbak.Controllers.LogBackup
             _logger = logger;
         }
 
-        public ICollectionFacade Collection { get; }
-
         public async Task InitializeAsync()
         {
             await _logFile.InitializeAsync();
@@ -46,8 +45,12 @@ namespace Cosbak.Controllers.LogBackup
 
         public async Task<LogBatchResult> LogBatchAsync()
         {
+            _logger.Display(
+                $"Backup {_collection.Parent.DatabaseName}.{_collection.CollectionName}...");
+            _logger.WriteEvent("Backup-Collection-Start");
+
             var previousTimeStamp = _logFile.LastTimeStamp;
-            var timeWindow = await Collection.SizeTimeWindowAsync(
+            var timeWindow = await _collection.SizeTimeWindowAsync(
                 previousTimeStamp,
                 MAX_BATCH_SIZE);
 
@@ -84,6 +87,8 @@ namespace Cosbak.Controllers.LogBackup
             var needCheckpointPurge = _logFile.TotalCheckPointBlockCount > MAX_BLOCK_COUNT
                 || _logFile.TotalCheckPointSize > MAX_DOCUMENT_LOG_SIZE;
 
+            _logger.WriteEvent("Backup-Collection-End");
+
             return new LogBatchResult(hasCaughtUp, needDocumentsPurge, needCheckpointPurge);
         }
 
@@ -93,16 +98,16 @@ namespace Cosbak.Controllers.LogBackup
             _logger.WriteEvent("Checkpoint-Start");
 
             var idsBlockNames = _plan.Included.ExplicitDelete
-                ? await WriteIteratorToBlocksAsync(Collection.GetAllIds(), "LogAllIds")
+                ? await WriteIteratorToBlocksAsync(_collection.GetAllIds(), "LogAllIds")
                 : null;
             var sprocsBlockNames = _plan.Included.Sprocs
-                ? await WriteIteratorToBlocksAsync(Collection.GetAllStoredProcedures(), "LogAllSprocs")
+                ? await WriteIteratorToBlocksAsync(_collection.GetAllStoredProcedures(), "LogAllSprocs")
                 : null;
             var functionsBlockNames = _plan.Included.Functions
-                ? await WriteIteratorToBlocksAsync(Collection.GetAllFunctions(), "LogAllFunctions")
+                ? await WriteIteratorToBlocksAsync(_collection.GetAllFunctions(), "LogAllFunctions")
                 : null;
             var triggersBlockNames = _plan.Included.Triggers
-                ? await WriteIteratorToBlocksAsync(Collection.GetAllTriggers(), "LogAllTriggers")
+                ? await WriteIteratorToBlocksAsync(_collection.GetAllTriggers(), "LogAllTriggers")
                 : null;
 
             _logFile.CreateCheckpoint(
@@ -116,7 +121,7 @@ namespace Cosbak.Controllers.LogBackup
 
         private async Task LogDocumentBatchAsync(long previousLastUpdateTime, long maxTimeStamp)
         {
-            var iterator = Collection.GetTimeWindowDocuments(
+            var iterator = _collection.GetTimeWindowDocuments(
                 previousLastUpdateTime,
                 maxTimeStamp);
             var blocks = await WriteIteratorToBlocksAsync(iterator, "LogDocumentBatch");
