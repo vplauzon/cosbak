@@ -78,22 +78,30 @@ namespace Cosbak.Cosmos
 
         StreamIterator ICollectionFacade.GetTimeWindowDocuments(long minTimeStamp, long maxTimeStamp)
         {
-            var lastUpdateTimeQuery = _container.GetItemQueryStreamIterator(
+            var timeFeed = _container.GetItemQueryStreamIterator(
                 new QueryDefinition(
                     "SELECT * FROM c WHERE c._ts > @minTimeStamp AND c._ts <= @maxTimeStamp")
                 .WithParameter("@minTimeStamp", minTimeStamp)
                 .WithParameter("@maxTimeStamp", maxTimeStamp));
 
-            return new StreamIterator(lastUpdateTimeQuery);
+            return new StreamIterator(timeFeed);
         }
 
         StreamIterator ICollectionFacade.GetAllIds()
         {
             var partitionKeyDotPath = string.Join('.', _partitionPath.Split('/').Skip(1));
-            var lastUpdateTimeQuery = _container.GetItemQueryStreamIterator(
-                new QueryDefinition($"SELECT c.id, c.{partitionKeyDotPath} FROM c"));
+            var allIdsFeed = _container.GetItemQueryStreamIterator(
+                $"SELECT c.id, c.{partitionKeyDotPath} FROM c");
 
-            return new StreamIterator(lastUpdateTimeQuery);
+            return new StreamIterator(allIdsFeed);
+        }
+
+        StreamIterator ICollectionFacade.GetAllStoredProcedures()
+        {
+            var allSprocFeed = _container.Scripts.GetStoredProcedureQueryStreamIterator(
+                "SELECT * FROM c");
+
+            return new StreamIterator(allSprocFeed);
         }
     }
 }

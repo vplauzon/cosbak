@@ -19,5 +19,7 @@ namespace Cosbak.Cosmos
         StreamIterator GetTimeWindowDocuments(long minTimeStamp, long maxTimeStamp);
 
         StreamIterator GetAllIds();
+        
+        StreamIterator GetAllStoredProcedures();
     }
 }

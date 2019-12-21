@@ -10,5 +10,7 @@ namespace Cosbak.Controllers.LogBackup
             = ImmutableList<DocumentBatch>.Empty;
 
         public ImmutableList<string>? IdsBlockNames { get; set; } = ImmutableList<string>.Empty;
+        
+        public ImmutableList<string>? SprocsBlockNames { get; set; } = ImmutableList<string>.Empty;
     }
 }
