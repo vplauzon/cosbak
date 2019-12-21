@@ -97,7 +97,7 @@ namespace Cosbak.Controllers
                 {
                     var result = await plan.CollectionController.LogBatchAsync();
 
-                    if (result.HasLoggedUntilNow)
+                    if (result.HasCaughtUp)
                     {
                         break;
                     }

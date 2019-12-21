@@ -64,23 +64,23 @@ namespace Cosbak.Controllers.LogBackup
                 _logger.Display("No document to backup");
                 _logger.WriteEvent("No-document-to-backup");
             }
-            var hasLoggedUntilNow = timeWindow.currentTimeStamp == timeWindow.maxTimeStamp;
+            var hasCaughtUp = timeWindow.currentTimeStamp == timeWindow.maxTimeStamp;
 
-            if (hasLoggedUntilNow
+            if (hasCaughtUp
                 && IsCheckPointTime(_logFile.LastCheckpointTimeStamp, timeWindow.currentTimeStamp))
             {
-                _logger.Display("Preparing Checkpoint...");
-                _logger.WriteEvent("Checkpoint-Start");
                 await LogCheckPointAsync(timeWindow.currentTimeStamp);
-                _logger.WriteEvent("Checkpoint-End");
             }
             await _logFile.PersistAsync();
 
-            return new LogBatchResult(hasLoggedUntilNow);
+            return new LogBatchResult(hasCaughtUp);
         }
 
         private async Task LogCheckPointAsync(long currentTimeStamp)
         {
+            _logger.Display("Preparing Checkpoint...");
+            _logger.WriteEvent("Checkpoint-Start");
+
             var idsBlockNames = _plan.Included.ExplicitDelete
                 ? await WriteIteratorToBlocksAsync(Collection.GetAllIds(), "LogAllIds")
                 : null;
@@ -100,6 +100,7 @@ namespace Cosbak.Controllers.LogBackup
                 sprocsBlockNames,
                 functionsBlockNames,
                 triggersBlockNames);
+            _logger.WriteEvent("Checkpoint-End");
         }
 
         private bool IsCheckPointTime(long previousTimeStamp, long currentTimeStamp)

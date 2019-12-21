@@ -6,11 +6,11 @@ namespace Cosbak.Controllers.LogBackup
 {
     internal class LogBatchResult
     {
-        public LogBatchResult(bool hasLoggedUntilNow)
+        public LogBatchResult(bool hasCaughtUp)
         {
-            HasLoggedUntilNow = hasLoggedUntilNow;
+            HasCaughtUp = hasCaughtUp;
         }
 
-        public bool HasLoggedUntilNow { get; }
+        public bool HasCaughtUp { get; }
     }
 }
