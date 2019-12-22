@@ -6,13 +6,13 @@ namespace Cosbak.Storage
 {
     internal class BlockItem
     {
-        public BlockItem(string name, long length)
+        public BlockItem(string id, long length)
         {
-            Name = name;
+            Id = id;
             Length = length;
         }
 
-        public string Name { get; }
+        public string Id { get; }
 
         public long Length { get; }
     }

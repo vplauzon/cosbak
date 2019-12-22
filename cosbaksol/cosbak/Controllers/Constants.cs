@@ -11,7 +11,5 @@ namespace Cosbak.Controllers
         public const string LOG_EXTENSION = "log";
 
         public const string INDEX_EXTENSION = "index";
-
-        public const int MAX_LOG_BLOCK_SIZE = 2 * 1024 * 1024;
     }
 }

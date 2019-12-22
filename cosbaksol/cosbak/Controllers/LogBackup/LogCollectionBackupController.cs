@@ -137,7 +137,7 @@ namespace Cosbak.Controllers.LogBackup
             StreamIterator iterator,
             string eventName)
         {
-            var buffer = new byte[Constants.MAX_LOG_BLOCK_SIZE];
+            var buffer = new byte[_logConstants.MaxBlockSize];
             var blocks = ImmutableList<Block>.Empty;
             double ru = 0;
             var resultCount = 0;

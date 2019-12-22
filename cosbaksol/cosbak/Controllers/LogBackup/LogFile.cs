@@ -78,7 +78,7 @@ namespace Cosbak.Controllers.LogBackup
                     throw new InvalidOperationException("InitializeAsync hasn't been called");
                 }
 
-                return _initialized.Fat.GetDocumentsBlocks().Count();
+                return _initialized.Fat.GetInProgressDocumentsBlocks().Count();
             }
         }
 
@@ -91,7 +91,7 @@ namespace Cosbak.Controllers.LogBackup
                     throw new InvalidOperationException("InitializeAsync hasn't been called");
                 }
 
-                return _initialized.Fat.GetDocumentsBlocks().Sum(b => b.Size);
+                return _initialized.Fat.GetInProgressDocumentsBlocks().Sum(b => b.Size);
             }
         }
 
@@ -177,8 +177,7 @@ namespace Cosbak.Controllers.LogBackup
             {
                 var fatBuffer = JsonSerializer.SerializeToUtf8Bytes(_initialized.Fat);
                 var fatBlock = await WriteBlockAsync(fatBuffer, fatBuffer.Length);
-                var blocks = _initialized.Fat.GetCheckpointBlocks()
-                    .Concat(_initialized.Fat.GetDocumentsBlocks())
+                var blocks = _initialized.Fat.GetAllBlocks()
                     .Prepend(fatBlock);
 
                 await _storageFacade.WriteAsync(_blobName, blocks.Select(b => b.Id), _initialized.Lease);
