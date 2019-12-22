@@ -4,7 +4,7 @@ namespace Cosbak.Config
 {
     public class LogConstants
     {
-        public int MaxBatchSize { get; set; } = 2;
+        public int MaxBatchSize { get; set; } = 1000;
 
         public int MaxBlockCount { get; set; } = 1000;
 
