@@ -4,8 +4,10 @@ using Microsoft.WindowsAzure.Storage.Blob;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
+using System.Reflection.Metadata;
 using System.Threading.Tasks;
 
 namespace Cosbak.Storage
@@ -139,9 +141,10 @@ namespace Cosbak.Storage
             string path,
             byte[] buffer,
             long? blobOffset,
-            long? length)
+            long? length,
+            DateTimeOffset? snapshotTime)
         {
-            var blob = _container.GetBlobReference(_blobPrefix + path);
+            var blob = _container.GetBlobReference(_blobPrefix + path, snapshotTime);
 
             return await blob.DownloadRangeToByteArrayAsync(
                 buffer,
@@ -157,9 +160,11 @@ namespace Cosbak.Storage
             await blob.UploadTextAsync(string.Empty);
         }
 
-        async Task<IImmutableList<BlockItem>> IStorageFacade.GetBlocksAsync(string blobPath)
+        async Task<IImmutableList<BlockItem>> IStorageFacade.GetBlocksAsync(
+            string blobPath,
+            DateTimeOffset? snapshotTime)
         {
-            var blob = _container.GetBlockBlobReference(_blobPrefix + blobPath);
+            var blob = _container.GetBlockBlobReference(_blobPrefix + blobPath, snapshotTime);
             var blockList = await blob.DownloadBlockListAsync();
             var items = from i in blockList
                         select new BlockItem(i.Name, i.Length);
@@ -191,21 +196,60 @@ namespace Cosbak.Storage
             }
         }
 
-        void IStorageFacade.WriteAsync(
+        async Task IStorageFacade.WriteAsync(
             string blobPath,
             IEnumerable<string> blockIds,
             BlobLease? lease)
         {
             var blob = _container.GetBlockBlobReference(_blobPrefix + blobPath);
 
-            blob.PutBlockListAsync(
-                blockIds,
-                new AccessCondition
+            await blob.PutBlockListAsync(
+                  blockIds,
+                  new AccessCondition
+                  {
+                      LeaseId = lease?.LeaseId
+                  },
+                  null,
+                  null);
+        }
+
+        async Task<DateTimeOffset?> IStorageFacade.SnapshotAsync(string blobPath)
+        {
+            var blob = _container.GetBlockBlobReference(_blobPrefix + blobPath);
+            var snapshot = await blob.SnapshotAsync();
+
+            return snapshot.SnapshotTime;
+        }
+
+        async Task IStorageFacade.ClearSnapshotsAsync(string blobName)
+        {
+            while (true)
+            {
+                var segment = await _container.ListBlobsSegmentedAsync(
+                    _blobPrefix + blobName,
+                    true,
+                    BlobListingDetails.Snapshots,
+                    200,
+                    null,
+                    null,
+                    null);
+                var snapshotBlobs = from item in segment.Results
+                                    let blob = (CloudBlockBlob)(item)
+                                    where blob.SnapshotTime != null
+                                    select blob;
+
+                if (snapshotBlobs.Any())
                 {
-                    LeaseId = lease?.LeaseId
-                },
-                null,
-                null);
+                    var deleteTasks = from blob in snapshotBlobs
+                                      select blob.DeleteAsync();
+
+                    await Task.WhenAll(deleteTasks);
+                }
+                else
+                {
+                    return;
+                }
+            }
         }
     }
 }

@@ -25,12 +25,15 @@ namespace Cosbak.Storage
             string path,
             byte[] buffer,
             long? blobOffset = null,
-            long? length = null);
-        
+            long? length = null,
+            DateTimeOffset? snapshotTime = null);
+
         Task CreateEmptyBlockBlobAsync(string blobName);
 
-        Task<IImmutableList<BlockItem>> GetBlocksAsync(string blobPath);
-        
+        Task<IImmutableList<BlockItem>> GetBlocksAsync(
+            string blobPath,
+            DateTimeOffset? snapshotTime = null);
+
         Task WriteBlockAsync(
             string blobPath,
             string blockId,
@@ -38,9 +41,13 @@ namespace Cosbak.Storage
             int length,
             BlobLease? lease);
 
-        void WriteAsync(
+        Task WriteAsync(
             string blobPath,
             IEnumerable<string> blockIds,
             BlobLease? lease);
+
+        Task<DateTimeOffset?> SnapshotAsync(string blobPath);
+        
+        Task ClearSnapshotsAsync(string blobName);
     }
 }

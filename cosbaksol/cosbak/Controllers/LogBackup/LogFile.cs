@@ -181,7 +181,7 @@ namespace Cosbak.Controllers.LogBackup
                     .Concat(_initialized.Fat.GetDocumentsBlocks())
                     .Prepend(fatBlock);
 
-                _storageFacade.WriteAsync(_blobName, blocks.Select(b => b.Id), _initialized.Lease);
+                await _storageFacade.WriteAsync(_blobName, blocks.Select(b => b.Id), _initialized.Lease);
                 _isDirty = false;
             }
         }

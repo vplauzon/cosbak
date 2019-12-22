@@ -89,7 +89,7 @@ namespace Cosbak.Controllers.Index
                 var fatBlockId = await WriteBlockAsync(fatBuffer, fatBuffer.Length);
                 var blockIds = new[] { fatBlockId };
 
-                _storageFacade.WriteAsync(_blobName, blockIds, _initialized.Lease);
+                await _storageFacade.WriteAsync(_blobName, blockIds, _initialized.Lease);
                 _isDirty = false;
             }
         }

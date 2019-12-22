@@ -35,23 +35,37 @@ namespace Cosbak.Controllers.Index
                 $"Index {_collection.Parent.DatabaseName}.{_collection.CollectionName}...");
             _logger.WriteEvent("Index-Collection-Start");
 
-            var file = new IndexFile(
+            var indexFile = new IndexFile(
+                _storageFacade,
+                _collection.Parent.Parent.AccountName,
+                _collection.Parent.DatabaseName,
+                _collection.CollectionName,
+                _logger);
+            var logFile = new ReadonlyLogFile(
                 _storageFacade,
                 _collection.Parent.Parent.AccountName,
                 _collection.Parent.DatabaseName,
                 _collection.CollectionName,
                 _logger);
 
-            await file.InitializeAsync();
+            await indexFile.InitializeAsync();
 
             try
             {
-                _logger.WriteEvent("Index-Collection-End");
-                await file.PersistAsync();
+                await logFile.InitializeAsync();
+                try
+                {
+                    _logger.WriteEvent("Index-Collection-End");
+                    await indexFile.PersistAsync();
+                }
+                finally
+                {
+                    await logFile.DisposeAsync();
+                }
             }
             finally
             {
-                await file.DisposeAsync();
+                await indexFile.DisposeAsync();
             }
         }
     }
