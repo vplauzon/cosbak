@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Cosbak.Controllers.LogBackup
+namespace Cosbak.Controllers
 {
     public class Block
     {

@@ -180,7 +180,10 @@ namespace Cosbak.Controllers.LogBackup
                 var blocks = _initialized.Fat.GetAllBlocks()
                     .Prepend(fatBlock);
 
-                await _storageFacade.WriteAsync(_blobName, blocks.Select(b => b.Id), _initialized.Lease);
+                await _storageFacade.WriteAsync(
+                    _blobName,
+                    blocks.Select(b => b.Id),
+                    _initialized.Lease);
                 _isDirty = false;
             }
         }

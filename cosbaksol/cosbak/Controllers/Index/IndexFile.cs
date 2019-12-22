@@ -1,6 +1,7 @@
 ﻿using Cosbak.Storage;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -99,10 +100,14 @@ namespace Cosbak.Controllers.Index
             if (_isDirty)
             {
                 var fatBuffer = JsonSerializer.SerializeToUtf8Bytes(_initialized.Fat);
-                var fatBlockId = await WriteBlockAsync(fatBuffer, fatBuffer.Length);
-                var blockIds = new[] { fatBlockId };
+                var fatBlock = await WriteBlockAsync(fatBuffer, fatBuffer.Length);
+                var blocks = _initialized.Fat.GetAllBlocks()
+                    .Prepend(fatBlock);
 
-                await _storageFacade.WriteAsync(_blobName, blockIds, _initialized.Lease);
+                await _storageFacade.WriteAsync(
+                    _blobName,
+                    blocks.Select(b => b.Id),
+                    _initialized.Lease);
                 _isDirty = false;
             }
         }
@@ -116,7 +121,30 @@ namespace Cosbak.Controllers.Index
             await _initialized.Lease.ReleaseLeaseAsync();
         }
 
-        public async Task<string> WriteBlockAsync(byte[] buffer, int length)
+        public async Task PushDocumentsAsync(
+            byte[] indexBuffer,
+            long indexLength,
+            byte[] contentBuffer,
+            long contentLength)
+        {
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
+            var indexTask = WriteBlockAsync(indexBuffer, (int)indexLength);
+            var contentTask = WriteBlockAsync(contentBuffer, (int)contentLength);
+
+            await Task.WhenAll(indexTask, contentTask);
+
+            _initialized.Fat.DocumentPartition = _initialized.Fat.DocumentPartition.AddBlocks(
+                indexTask.Result,
+                contentTask.Result);
+
+            _isDirty = true;
+        }
+
+        private async Task<Block> WriteBlockAsync(byte[] buffer, int length)
         {
             if (_initialized == null)
             {
@@ -128,7 +156,11 @@ namespace Cosbak.Controllers.Index
             await _storageFacade.WriteBlockAsync(
                 _blobName, blockId, buffer, length, _initialized.Lease);
 
-            return blockId;
+            return new Block
+            {
+                Id = blockId,
+                Size = length
+            };
         }
 
         private async Task<IndexFat> LoadFatAsync(int length)

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -55,7 +56,6 @@ namespace Cosbak.Controllers.Index
 
                 using (var indexStream = new MemoryStream(indexBuffer))
                 using (var contentStream = new MemoryStream(contentBuffer))
-                using (var contentWriter = new StreamWriter(contentStream))
                 {
                     await foreach (var logBuffer in enumerable)
                     {
@@ -67,14 +67,39 @@ namespace Cosbak.Controllers.Index
                             {
                                 var (metaData, content) = SplitDocument(doc);
 
+                                if (!HasCapacity(indexStream, contentStream, metaData))
+                                {
+                                    await _indexFile.PushDocumentsAsync(
+                                        indexBuffer,
+                                        indexStream.Position,
+                                        contentBuffer,
+                                        contentStream.Position);
+                                    indexStream.Position = 0;
+                                    contentStream.Position = 0;
+                                }
                                 metaData.Write(indexStream);
-                                contentWriter.Write(content);
-                                contentWriter.Flush();
+                                contentStream.Write(content);
                             }
-                            //await _indexFile.PersistAsync();
                         }
                     }
+                    await _indexFile.PushDocumentsAsync(
+                        indexBuffer,
+                        indexStream.Position,
+                        contentBuffer,
+                        contentStream.Position);
                 }
+            }
+
+            private bool HasCapacity(
+                Stream indexStream,
+                Stream contentStream,
+                DocumentMetaData metaData)
+            {
+                var indexSpace = indexStream.Length - indexStream.Position;
+                var contentSpace = contentStream.Length - contentStream.Position;
+
+                return indexSpace >= metaData.GetBinarySize()
+                    && contentSpace >= metaData.ContentSize;
             }
 
             private IImmutableList<JsonElement> GetDocuments(ReadOnlySpan<byte> span)
@@ -89,12 +114,12 @@ namespace Cosbak.Controllers.Index
                 return logged.Documents.ToImmutableList();
             }
 
-            private (DocumentMetaData metaData, string content) SplitDocument(JsonElement doc)
+            private (DocumentMetaData metaData, byte[] content) SplitDocument(JsonElement doc)
             {
                 var id = doc.GetProperty(Constants.ID_FIELD).GetString();
                 var partitionKey = GetPartitionKey(doc);
                 var timeStamp = doc.GetProperty(Constants.TIMESTAMP_FIELD).GetInt64();
-                var content = JsonSerializer.Serialize(CleanDocument(doc));
+                var content = JsonSerializer.SerializeToUtf8Bytes(CleanDocument(doc));
                 var metaData = new DocumentMetaData(
                     id,
                     partitionKey,
@@ -195,6 +220,7 @@ namespace Cosbak.Controllers.Index
                         _indexConstants);
 
                     await subController.IndexAsync(needCheckpointPurge);
+                    await indexFile.PersistAsync();
                     _logger.WriteEvent("Index-Collection-End");
                 }
                 finally

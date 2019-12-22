@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace Cosbak.Controllers.Index
 {
@@ -14,7 +15,7 @@ namespace Cosbak.Controllers.Index
                 ? 0
                 : partitionKey.GetHashCode();
             TimeStamp = timeStamp;
-            Size = size;
+            ContentSize = size;
         }
 
         private DocumentMetaData(string id, int partitionHash, long timeStamp, int size)
@@ -22,7 +23,7 @@ namespace Cosbak.Controllers.Index
             Id = id;
             PartitionHash = partitionHash;
             TimeStamp = timeStamp;
-            Size = size;
+            ContentSize = size;
         }
 
         public string Id { get; }
@@ -31,16 +32,28 @@ namespace Cosbak.Controllers.Index
 
         public long TimeStamp { get; }
 
-        public int Size { get; }
+        public int ContentSize { get; }
 
-        public long GetCompoundHash()
+        [JsonIgnore]
+        public long CompoundHash
         {
-            long longId = Id.GetHashCode();
-            long longPartition = PartitionHash;
-            long pushedPartition = longPartition << 32;
-            long compoundHash = pushedPartition | longId;
+            get
+            {
+                long longId = Id.GetHashCode();
+                long longPartition = PartitionHash;
+                long pushedPartition = longPartition << 32;
+                long compoundHash = pushedPartition | longId;
 
-            return compoundHash;
+                return compoundHash;
+            }
+        }
+
+        public int GetBinarySize()
+        {
+            return Id.Length
+                + 2
+                + 4
+                + 2;
         }
 
         public static DocumentMetaData Read(Stream stream)
@@ -63,7 +76,7 @@ namespace Cosbak.Controllers.Index
                 writer.Write(Id);
                 writer.Write(PartitionHash);
                 writer.Write(TimeStamp);
-                writer.Write(Size);
+                writer.Write(ContentSize);
             }
         }
     }
