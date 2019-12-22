@@ -19,8 +19,7 @@ namespace Cosbak.Controllers.Index
             #region Inner Types
             private class LoggedDocuments
             {
-                public IDictionary<string, object>[] Documents { get; set; } =
-                    new IDictionary<string, object>[0];
+                public JsonElement[] Documents { get; set; } = new JsonElement[0];
             }
             #endregion
 
@@ -78,7 +77,7 @@ namespace Cosbak.Controllers.Index
                 }
             }
 
-            private IImmutableList<IDictionary<string, object>> GetDocuments(ReadOnlySpan<byte> span)
+            private IImmutableList<JsonElement> GetDocuments(ReadOnlySpan<byte> span)
             {
                 var logged = JsonSerializer.Deserialize<LoggedDocuments>(span);
 
@@ -90,11 +89,11 @@ namespace Cosbak.Controllers.Index
                 return logged.Documents.ToImmutableList();
             }
 
-            private (DocumentMetaData metaData, string content) SplitDocument(IDictionary<string, object> doc)
+            private (DocumentMetaData metaData, string content) SplitDocument(JsonElement doc)
             {
-                var id = ((JsonElement)doc[Constants.ID_FIELD]).GetString();
+                var id = doc.GetProperty(Constants.ID_FIELD).GetString();
                 var partitionKey = GetPartitionKey(doc);
-                var timeStamp = ((JsonElement)doc[Constants.TIMESTAMP_FIELD]).GetInt64();
+                var timeStamp = doc.GetProperty(Constants.TIMESTAMP_FIELD).GetInt64();
                 var content = JsonSerializer.Serialize(CleanDocument(doc));
                 var metaData = new DocumentMetaData(
                     id,
@@ -105,42 +104,38 @@ namespace Cosbak.Controllers.Index
                 return (metaData, content);
             }
 
-            private object? GetPartitionKey(IDictionary<string, object> doc)
+            private object? GetPartitionKey(JsonElement doc)
             {
-                object? current = doc;
+                JsonElement current = doc;
 
                 for (int i = 0; i != _partitionParts.Count; ++i)
                 {
                     var part = _partitionParts[i];
+                    JsonElement output;
+                    var hasProperty = doc.TryGetProperty(part, out output);
 
-                    current = doc.ContainsKey(part)
-                        ? doc[part]
-                        : null;
-                    if (current == null || i == _partitionParts.Count - 1)
+                    if (!hasProperty || i == _partitionParts.Count - 1)
                     {
-                        return current;
+                        return output;
                     }
                     else
                     {
-                        if (i == 0)
-                        {
-                            throw new NotSupportedException();
-                        }
+                        current = (JsonElement)output;
                     }
                 }
 
                 throw new NotSupportedException("We should never reach this code path");
             }
 
-            private IImmutableDictionary<string, object> CleanDocument(IDictionary<string, object> doc)
+            private IImmutableDictionary<string, JsonElement> CleanDocument(JsonElement doc)
             {
-                var keptProperties = from pair in doc
-                                     where pair.Key != Constants.ID_FIELD
-                                     && pair.Key != "_rid"
-                                     && pair.Key != "_self"
-                                     && pair.Key != "_etag"
-                                     && pair.Key != "_attachments"
-                                     select pair;
+                var keptProperties = from property in doc.EnumerateObject()
+                                     where property.Name != Constants.ID_FIELD
+                                     && property.Name != "_rid"
+                                     && property.Name != "_self"
+                                     && property.Name != "_etag"
+                                     && property.Name != "_attachments"
+                                     select KeyValuePair.Create(property.Name, property.Value);
 
                 return ImmutableDictionary.CreateRange(keptProperties);
             }

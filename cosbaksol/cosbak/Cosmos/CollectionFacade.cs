@@ -91,7 +91,7 @@ namespace Cosbak.Cosmos
         {
             var partitionKeyDotPath = string.Join('.', _partitionPath.Split('/').Skip(1));
             var allIdsFeed = _container.GetItemQueryStreamIterator(
-                $"SELECT c.id, c.{partitionKeyDotPath} FROM c");
+                $"SELECT c.id, c.{partitionKeyDotPath} AS partition FROM c");
 
             return new StreamIterator(allIdsFeed);
         }
