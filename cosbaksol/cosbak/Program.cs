@@ -124,6 +124,8 @@ namespace Cosbak
                             await scheduler.ProcessContinuouslyAsync();
                         }
                         logger.Display($"Elapsed Time:  {watch.Elapsed}");
+                        logger.Display("Memory used:  "
+                            + $"{Process.GetCurrentProcess().PrivateMemorySize64 / 1024 / 1024} Mb");
                     }
                     catch (Exception ex)
                     {
