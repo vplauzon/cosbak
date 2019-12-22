@@ -47,6 +47,7 @@ namespace Cosbak.Controllers.Index
             try
             {
                 _logger.WriteEvent("Index-Collection-End");
+                await file.PersistAsync();
             }
             finally
             {
