@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -25,15 +26,18 @@ namespace Cosbak.Controllers.Index
 
             private readonly IndexFile _indexFile;
             private readonly ReadonlyLogFile _logFile;
+            private readonly IImmutableList<string> _partitionParts;
             private readonly IndexConstants _indexConstants;
 
             public IndexIterationController(
                 IndexFile indexFile,
                 ReadonlyLogFile logFile,
+                string partitionPath,
                 IndexConstants indexConstants)
             {
                 _indexFile = indexFile;
                 _logFile = logFile;
+                _partitionParts = partitionPath.Split('/').Skip(1).ToImmutableArray();
                 _indexConstants = indexConstants;
             }
 
@@ -44,22 +48,101 @@ namespace Cosbak.Controllers.Index
 
             private async Task IndexDocumentsAsync()
             {
+                var indexBuffer = new byte[_indexConstants.MaxIndexBufferSize];
+                var contentBuffer = new byte[_indexConstants.MaxContentBufferSize];
                 var enumerable = _logFile.LoadDocumentBufferAsync(
                     _indexFile.LastDocumentTimeStamp,
                     _indexConstants.MaxLogBufferSize);
 
-                await foreach (var logBuffer in enumerable)
+                using (var indexStream = new MemoryStream(indexBuffer))
+                using (var contentStream = new MemoryStream(contentBuffer))
+                using (var contentWriter = new StreamWriter(contentStream))
                 {
-                    foreach (var buffer in logBuffer.Buffers)
+                    await foreach (var logBuffer in enumerable)
                     {
-                        var logged = JsonSerializer.Deserialize<LoggedDocuments>(buffer.Span);
+                        foreach (var buffer in logBuffer.Buffers)
+                        {
+                            var documents = GetDocuments(buffer.Span);
 
-                        int a = 3;
+                            foreach (var doc in documents)
+                            {
+                                var (metaData, content) = SplitDocument(doc);
 
-                        ++a;
-                        //await _indexFile.PersistAsync();
+                                metaData.Write(indexStream);
+                                contentWriter.Write(content);
+                                contentWriter.Flush();
+                            }
+                            //await _indexFile.PersistAsync();
+                        }
                     }
                 }
+            }
+
+            private IImmutableList<IDictionary<string, object>> GetDocuments(ReadOnlySpan<byte> span)
+            {
+                var logged = JsonSerializer.Deserialize<LoggedDocuments>(span);
+
+                if (logged == null || logged.Documents == null || !logged.Documents.Any())
+                {
+                    throw new NotSupportedException("Logged block non-compliant");
+                }
+
+                return logged.Documents.ToImmutableList();
+            }
+
+            private (DocumentMetaData metaData, string content) SplitDocument(IDictionary<string, object> doc)
+            {
+                var id = ((JsonElement)doc[Constants.ID_FIELD]).GetString();
+                var partitionKey = GetPartitionKey(doc);
+                var timeStamp = ((JsonElement)doc[Constants.TIMESTAMP_FIELD]).GetInt64();
+                var content = JsonSerializer.Serialize(CleanDocument(doc));
+                var metaData = new DocumentMetaData(
+                    id,
+                    partitionKey,
+                    timeStamp,
+                    content.Length);
+
+                return (metaData, content);
+            }
+
+            private object? GetPartitionKey(IDictionary<string, object> doc)
+            {
+                object? current = doc;
+
+                for (int i = 0; i != _partitionParts.Count; ++i)
+                {
+                    var part = _partitionParts[i];
+
+                    current = doc.ContainsKey(part)
+                        ? doc[part]
+                        : null;
+                    if (current == null || i == _partitionParts.Count - 1)
+                    {
+                        return current;
+                    }
+                    else
+                    {
+                        if (i == 0)
+                        {
+                            throw new NotSupportedException();
+                        }
+                    }
+                }
+
+                throw new NotSupportedException("We should never reach this code path");
+            }
+
+            private IImmutableDictionary<string, object> CleanDocument(IDictionary<string, object> doc)
+            {
+                var keptProperties = from pair in doc
+                                     where pair.Key != Constants.ID_FIELD
+                                     && pair.Key != "_rid"
+                                     && pair.Key != "_self"
+                                     && pair.Key != "_etag"
+                                     && pair.Key != "_attachments"
+                                     select pair;
+
+                return ImmutableDictionary.CreateRange(keptProperties);
             }
         }
         #endregion
@@ -113,6 +196,7 @@ namespace Cosbak.Controllers.Index
                     var subController = new IndexIterationController(
                         indexFile,
                         logFile,
+                        _collection.PartitionPath,
                         _indexConstants);
 
                     await subController.IndexAsync(needCheckpointPurge);

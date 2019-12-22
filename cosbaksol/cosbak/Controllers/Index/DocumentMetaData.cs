@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 
-namespace Cosbak
+namespace Cosbak.Controllers.Index
 {
     public struct DocumentMetaData
     {
@@ -42,22 +43,28 @@ namespace Cosbak
             return compoundHash;
         }
 
-        public static DocumentMetaData Read(BinaryReader reader)
+        public static DocumentMetaData Read(Stream stream)
         {
-            var id = reader.ReadString();
-            var partitionHash = reader.ReadInt32();
-            var timeStamp = reader.ReadInt64();
-            var size = reader.ReadInt32();
+            using (var reader = new BinaryReader(stream, Encoding.UTF8, true))
+            {
+                var id = reader.ReadString();
+                var partitionHash = reader.ReadInt32();
+                var timeStamp = reader.ReadInt64();
+                var size = reader.ReadInt32();
 
-            return new DocumentMetaData(id, partitionHash, timeStamp, size);
+                return new DocumentMetaData(id, partitionHash, timeStamp, size);
+            }
         }
 
-        public void Write(BinaryWriter writer)
+        public void Write(Stream stream)
         {
-            writer.Write(Id);
-            writer.Write(PartitionHash);
-            writer.Write(TimeStamp);
-            writer.Write(Size);
+            using (var writer = new BinaryWriter(stream, Encoding.UTF8, true))
+            {
+                writer.Write(Id);
+                writer.Write(PartitionHash);
+                writer.Write(TimeStamp);
+                writer.Write(Size);
+            }
         }
     }
 }

@@ -11,5 +11,9 @@ namespace Cosbak.Controllers
         public const string LOG_EXTENSION = "log";
 
         public const string INDEX_EXTENSION = "index";
+
+        public const string ID_FIELD = "id";
+        
+        public const string TIMESTAMP_FIELD = "_ts";
     }
 }
