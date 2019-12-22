@@ -15,6 +15,8 @@ namespace Cosbak.Config
 
         public CollectionBackupPlanOverride[] Collections { get; set; } = new CollectionBackupPlanOverride[0];
 
+        public TechnicalConstants Constants { get; set; } = new TechnicalConstants();
+
         public void Validate()
         {
             CosmosAccount.Validate();

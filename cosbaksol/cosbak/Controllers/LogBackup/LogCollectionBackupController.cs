@@ -11,20 +11,19 @@ namespace Cosbak.Controllers.LogBackup
 {
     internal class LogCollectionBackupController
     {
-        private const int MAX_BATCH_SIZE = 2;
-        private const int MAX_BLOCK_COUNT = 1000;
-        private const long MAX_DOCUMENT_LOG_SIZE = 1024 * 1024 * 1024;
-        private static readonly TimeSpan MAX_CHECKPOINT_AGE = TimeSpan.FromDays(1);
-
         private readonly ICollectionFacade _collection;
         private readonly LogFile _logFile;
-        private readonly BackupPlan _plan;
+        private readonly TimeSpan _rpo;
+        private readonly BackupOptions _included;
+        private readonly LogConstants _logConstants;
         private readonly ILogger _logger;
 
         public LogCollectionBackupController(
             ICollectionFacade collectionFacade,
             IStorageFacade storageFacade,
-            BackupPlan plan,
+            TimeSpan rpo,
+            BackupOptions included,
+            LogConstants logConstants,
             ILogger logger)
         {
             _collection = collectionFacade;
@@ -34,7 +33,9 @@ namespace Cosbak.Controllers.LogBackup
                 collectionFacade.Parent.DatabaseName,
                 collectionFacade.CollectionName,
                 logger);
-            _plan = plan;
+            _rpo = rpo;
+            _included = included;
+            _logConstants = logConstants;
             _logger = logger;
         }
 
@@ -52,7 +53,7 @@ namespace Cosbak.Controllers.LogBackup
             var previousTimeStamp = _logFile.LastTimeStamp;
             var timeWindow = await _collection.SizeTimeWindowAsync(
                 previousTimeStamp,
-                MAX_BATCH_SIZE);
+                _logConstants.MaxBatchSize);
 
             _logger
                 .AddContext("CurrentTimeStamp", timeWindow.currentTimeStamp)
@@ -74,7 +75,7 @@ namespace Cosbak.Controllers.LogBackup
             var delta = TimeSpan.FromSeconds(
                 timeWindow.currentTimeStamp
                 - _logFile.LastCheckpointTimeStamp);
-            var isCheckpoint = delta >= _plan.Rpo;
+            var isCheckpoint = delta >= _rpo;
 
             if (hasCaughtUp && isCheckpoint)
             {
@@ -82,10 +83,13 @@ namespace Cosbak.Controllers.LogBackup
             }
             await _logFile.PersistAsync();
 
-            var needDocumentsPurge = _logFile.TotalDocumentBlockCount > MAX_BLOCK_COUNT
-                || _logFile.TotalDocumentSize > MAX_DOCUMENT_LOG_SIZE;
-            var needCheckpointPurge = _logFile.TotalCheckPointBlockCount > MAX_BLOCK_COUNT
-                || _logFile.TotalCheckPointSize > MAX_DOCUMENT_LOG_SIZE;
+            var needDocumentsPurge = _logFile.TotalDocumentBlockCount > _logConstants.MaxBlockCount
+                || _logFile.TotalDocumentSize > _logConstants.MaxDocumentSize;
+            var checkPointAge = _logFile.GetOldestCheckpointAge(timeWindow.currentTimeStamp);
+            var needCheckpointPurge =
+                _logFile.TotalCheckPointBlockCount > _logConstants.MaxBlockCount
+                || _logFile.TotalCheckPointSize > _logConstants.MaxDocumentSize
+                || checkPointAge > _logConstants.MaxCheckpointAge;
 
             _logger.WriteEvent("Backup-Collection-End");
 
@@ -97,16 +101,16 @@ namespace Cosbak.Controllers.LogBackup
             _logger.Display("Preparing Checkpoint...");
             _logger.WriteEvent("Checkpoint-Start");
 
-            var idsBlockNames = _plan.Included.ExplicitDelete
+            var idsBlockNames = _included.ExplicitDelete
                 ? await WriteIteratorToBlocksAsync(_collection.GetAllIds(), "LogAllIds")
                 : null;
-            var sprocsBlockNames = _plan.Included.Sprocs
+            var sprocsBlockNames = _included.Sprocs
                 ? await WriteIteratorToBlocksAsync(_collection.GetAllStoredProcedures(), "LogAllSprocs")
                 : null;
-            var functionsBlockNames = _plan.Included.Functions
+            var functionsBlockNames = _included.Functions
                 ? await WriteIteratorToBlocksAsync(_collection.GetAllFunctions(), "LogAllFunctions")
                 : null;
-            var triggersBlockNames = _plan.Included.Triggers
+            var triggersBlockNames = _included.Triggers
                 ? await WriteIteratorToBlocksAsync(_collection.GetAllTriggers(), "LogAllTriggers")
                 : null;
 

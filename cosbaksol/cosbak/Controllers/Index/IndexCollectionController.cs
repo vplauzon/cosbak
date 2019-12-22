@@ -1,4 +1,5 @@
-﻿using Cosbak.Cosmos;
+﻿using Cosbak.Config;
+using Cosbak.Cosmos;
 using Cosbak.Storage;
 using System;
 using System.Collections.Generic;
@@ -12,16 +13,19 @@ namespace Cosbak.Controllers.Index
         private readonly ILogger _logger;
         private readonly IStorageFacade _storageFacade;
         private readonly int _retentionInDays;
+        private readonly IndexConstants _indexConstants;
 
         public IndexCollectionController(
             ICollectionFacade collectionFacade,
             IStorageFacade storageFacade,
             int retentionInDays,
+            IndexConstants indexConstants,
             ILogger logger)
         {
             _collection = collectionFacade;
             _storageFacade = storageFacade;
             _retentionInDays = retentionInDays;
+            _indexConstants = indexConstants;
             _logger = logger;
         }
 

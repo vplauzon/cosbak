@@ -48,19 +48,22 @@ namespace Cosbak.Controllers
         private readonly ILogger _logger;
         private readonly ICosmosAccountFacade _cosmosFacade;
         private readonly IStorageFacade _storageFacade;
-        private IImmutableList<CollectionBackupPlan> _collectionBackupPlans;
+        private readonly IImmutableList<CollectionBackupPlan> _collectionBackupPlans;
+        private readonly TechnicalConstants _technicalConstants;
         private Initialized? _initialized;
 
         public BackupScheduler(
             ILogger logger,
             ICosmosAccountFacade cosmosFacade,
             IStorageFacade storageFacade,
-            IImmutableList<CollectionBackupPlan> collectionPlans)
+            IImmutableList<CollectionBackupPlan> collectionPlans,
+            TechnicalConstants technicalConstants)
         {
             _logger = logger;
             _cosmosFacade = cosmosFacade;
             _storageFacade = storageFacade;
             _collectionBackupPlans = collectionPlans;
+            _technicalConstants = technicalConstants;
         }
 
         public async Task InitializeAsync()
@@ -72,6 +75,7 @@ namespace Cosbak.Controllers
 
             var collectionPlans = await GetCollectionPlansAsync(
                 _collectionBackupPlans,
+                _technicalConstants,
                 _cosmosFacade,
                 _storageFacade,
                 _logger).ToEnumerable();
@@ -135,6 +139,7 @@ namespace Cosbak.Controllers
 
         private async static IAsyncEnumerable<CollectionPlan> GetCollectionPlansAsync(
             IImmutableList<CollectionBackupPlan> collectionBackupPlans,
+            TechnicalConstants technicalConstants,
             ICosmosAccountFacade cosmosFacade,
             IStorageFacade storageFacade,
             ILogger logger)
@@ -161,12 +166,15 @@ namespace Cosbak.Controllers
                             var logController = new LogCollectionBackupController(
                                 coll,
                                 storageFacade,
-                                plan,
+                                plan.Rpo,
+                                plan.Included,
+                                technicalConstants.LogConstants,
                                 collectionLogger);
                             var indexController = new IndexCollectionController(
                                 coll,
                                 storageFacade,
                                 plan.RetentionInDays,
+                                technicalConstants.IndexConstants,
                                 collectionLogger);
 
                             yield return new CollectionPlan(logController, indexController, plan);

@@ -109,7 +109,8 @@ namespace Cosbak
                         logger,
                         cosmosFacade,
                         storageFacade,
-                        configuration.GetCollectionPlans());
+                        configuration.GetCollectionPlans(),
+                        configuration.Constants);
 
                     try
                     {

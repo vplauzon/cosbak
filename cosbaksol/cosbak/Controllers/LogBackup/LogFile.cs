@@ -121,6 +121,19 @@ namespace Cosbak.Controllers.LogBackup
             }
         }
 
+        public TimeSpan GetOldestCheckpointAge(long currentTimeStamp)
+        {
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
+            return _initialized.Fat.CheckPoints.Any()
+                ? TimeSpan.FromSeconds(
+                    currentTimeStamp - _initialized.Fat.CheckPoints[0].TimeStamp)
+                : TimeSpan.Zero;
+        }
+
         public async Task InitializeAsync()
         {
             if (_initialized != null)
