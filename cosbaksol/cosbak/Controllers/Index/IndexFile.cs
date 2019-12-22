@@ -132,16 +132,19 @@ namespace Cosbak.Controllers.Index
                 throw new InvalidOperationException("InitializeAsync hasn't been called");
             }
 
-            var indexTask = WriteBlockAsync(indexBuffer, (int)indexLength);
-            var contentTask = WriteBlockAsync(contentBuffer, (int)contentLength);
+            if (indexLength > 0 && contentLength > 0)
+            {
+                var indexTask = WriteBlockAsync(indexBuffer, (int)indexLength);
+                var contentTask = WriteBlockAsync(contentBuffer, (int)contentLength);
 
-            await Task.WhenAll(indexTask, contentTask);
+                await Task.WhenAll(indexTask, contentTask);
 
-            _initialized.Fat.DocumentPartition = _initialized.Fat.DocumentPartition.AddBlocks(
-                indexTask.Result,
-                contentTask.Result);
+                _initialized.Fat.DocumentPartition = _initialized.Fat.DocumentPartition.AddBlocks(
+                    indexTask.Result,
+                    contentTask.Result);
 
-            _isDirty = true;
+                _isDirty = true;
+            }
         }
 
         private async Task<Block> WriteBlockAsync(byte[] buffer, int length)

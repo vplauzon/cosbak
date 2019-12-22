@@ -69,7 +69,7 @@ namespace Cosbak.Controllers.LogBackup
                 TimeStamp = timeStamp,
                 DocumentBatches = InProgressDocumentBatches,
                 IdsBlocks = idsBlocks,
-                SprocsBlocks= sprocsBlocks,
+                SprocsBlocks = sprocsBlocks,
                 FunctionsBlocks = functionsBlocks,
                 TriggersBlocks = triggersBlocks
             };
@@ -106,5 +106,18 @@ namespace Cosbak.Controllers.LogBackup
             return GetCheckpointBlocks()
                 .Concat(GetInProgressDocumentsBlocks());
         }
-    }
+
+        public void PurgeDocuments(long lastTimestamp)
+        {
+            var inProgressDocumentBatches =
+                from b in InProgressDocumentBatches
+                where b.TimeStamp > lastTimestamp
+                select b;
+            var checkPoints = from c in CheckPoints
+                              select c.PurgeDocuments(lastTimestamp);
+
+            InProgressDocumentBatches = inProgressDocumentBatches.ToImmutableList();
+            CheckPoints = checkPoints.ToImmutableList();
+        }
+}
 }

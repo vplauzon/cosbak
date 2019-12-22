@@ -103,7 +103,12 @@ namespace Cosbak.Controllers
 
                     if (result.NeedDocumentsPurge || result.NeedCheckpointPurge)
                     {
-                        await plan.IndexController.IndexAsync(result.NeedCheckpointPurge);
+                        var lastTimestamp =
+                            await plan.IndexController.IndexAsync(result.NeedCheckpointPurge);
+
+                        await plan.LogController.PurgeAsync(
+                            !result.NeedCheckpointPurge,
+                            lastTimestamp);
                     }
                     if (result.HasCaughtUp)
                     {

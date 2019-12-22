@@ -230,6 +230,15 @@ namespace Cosbak.Controllers.LogBackup
             }
         }
 
+        public void Purge(bool isDocumentOnlyPurge, long lastTimestamp)
+        {
+            if (!isDocumentOnlyPurge)
+            {
+            }
+
+            PurgeDocuments(lastTimestamp);
+        }
+
         public void CreateCheckpoint(
             long timeStamp,
             IImmutableList<Block>? idsBlocks,
@@ -257,6 +266,17 @@ namespace Cosbak.Controllers.LogBackup
             await _storageFacade.DownloadRangeAsync(_blobName, buffer);
 
             return JsonSerializer.Deserialize<LogFat>(buffer);
+        }
+
+        private void PurgeDocuments(long lastTimestamp)
+        {
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
+            _initialized.Fat.PurgeDocuments(lastTimestamp);
+            _isDirty = true;
         }
     }
 }

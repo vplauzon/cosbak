@@ -28,22 +28,31 @@ namespace Cosbak.Controllers.Index
             private readonly ReadonlyLogFile _logFile;
             private readonly IImmutableList<string> _partitionParts;
             private readonly IndexConstants _indexConstants;
+            private readonly ILogger _logger;
 
             public IndexIterationController(
                 IndexFile indexFile,
                 ReadonlyLogFile logFile,
                 string partitionPath,
-                IndexConstants indexConstants)
+                IndexConstants indexConstants,
+                ILogger logger)
             {
                 _indexFile = indexFile;
                 _logFile = logFile;
                 _partitionParts = partitionPath.Split('/').Skip(1).ToImmutableArray();
                 _indexConstants = indexConstants;
+                _logger = logger;
             }
 
-            public async Task IndexAsync(bool needCheckpointPurge)
+            public async Task<long> IndexAsync(bool needCheckpointPurge)
             {
                 await IndexDocumentsAsync();
+
+                if (needCheckpointPurge)
+                {
+                }
+
+                return _logFile.LastTimeStamp;
             }
 
             private async Task IndexDocumentsAsync()
@@ -63,6 +72,7 @@ namespace Cosbak.Controllers.Index
                         {
                             var documents = GetDocuments(buffer.Span);
 
+                            _logger.Display($"Indexing {documents.Count} documents...");
                             foreach (var doc in documents)
                             {
                                 var (metaData, content) = SplitDocument(doc);
@@ -187,7 +197,7 @@ namespace Cosbak.Controllers.Index
             _logger = logger;
         }
 
-        public async Task IndexAsync(bool needCheckpointPurge)
+        public async Task<long> IndexAsync(bool needCheckpointPurge)
         {
             _logger.Display(
                 $"Index {_collection.Parent.DatabaseName}.{_collection.CollectionName}...");
@@ -217,11 +227,14 @@ namespace Cosbak.Controllers.Index
                         indexFile,
                         logFile,
                         _collection.PartitionPath,
-                        _indexConstants);
+                        _indexConstants,
+                        _logger);
+                    var lastTimeStamp = await subController.IndexAsync(needCheckpointPurge);
 
-                    await subController.IndexAsync(needCheckpointPurge);
                     await indexFile.PersistAsync();
                     _logger.WriteEvent("Index-Collection-End");
+
+                    return lastTimeStamp;
                 }
                 finally
                 {

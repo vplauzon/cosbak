@@ -96,6 +96,15 @@ namespace Cosbak.Controllers.LogBackup
             return new LogBatchResult(hasCaughtUp, needDocumentsPurge, needCheckpointPurge);
         }
 
+        public async Task PurgeAsync(bool isDocumentOnlyPurge, long lastTimestamp)
+        {
+            _logger.Display(
+                $"Purging logs of {_collection.Parent.DatabaseName}.{_collection.CollectionName}...");
+
+            _logFile.Purge(isDocumentOnlyPurge, lastTimestamp);
+            await _logFile.PersistAsync();
+        }
+
         private async Task LogCheckPointAsync(long currentTimeStamp)
         {
             _logger.Display("Preparing Checkpoint...");

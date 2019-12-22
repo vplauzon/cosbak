@@ -58,6 +58,32 @@ namespace Cosbak.Controllers.Index
             _logger = logger;
         }
 
+        public long LastTimeStamp
+        {
+            get
+            {
+                if (_initialized == null)
+                {
+                    throw new InvalidOperationException("InitializeAsync hasn't been called");
+                }
+
+                return _initialized.Fat.LastTimeStamp;
+            }
+        }
+
+        public long LastCheckpointTimeStamp
+        {
+            get
+            {
+                if (_initialized == null)
+                {
+                    throw new InvalidOperationException("InitializeAsync hasn't been called");
+                }
+
+                return _initialized.Fat.LastCheckpointTimeStamp;
+            }
+        }
+
         public async Task InitializeAsync()
         {
             if (_initialized != null)
