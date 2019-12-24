@@ -146,51 +146,53 @@ namespace Cosbak.Controllers.LogBackup
             StreamIterator iterator,
             string eventName)
         {
-            var buffer = new byte[_logConstants.MaxBlockSize];
-            var blocks = ImmutableList<Block>.Empty;
-            double ru = 0;
-            var resultCount = 0;
-            var blockCount = 0;
-            int index = 0;
-
-            while (iterator.HasMoreResults)
+            using (var buffer = BufferPool.Rent(_logConstants.MaxBlockSize))
             {
-                var result = await iterator.ReadNextAsync();
+                var blocks = ImmutableList<Block>.Empty;
+                double ru = 0;
+                var resultCount = 0;
+                var blockCount = 0;
+                int index = 0;
 
-                if (result.Stream.Length > buffer.Length)
+                while (iterator.HasMoreResults)
                 {
-                    throw new NotSupportedException(
-                        $"Query return bigger than buffer:  {result.Stream.Length}");
+                    var result = await iterator.ReadNextAsync();
+
+                    if (result.Stream.Length > buffer.Buffer.Length)
+                    {
+                        throw new NotSupportedException(
+                            $"Query return bigger than buffer:  {result.Stream.Length}");
+                    }
+                    if (result.Stream.Length > buffer.Buffer.Length - index)
+                    {
+                        var block = await _logFile.WriteBlockAsync(buffer.Buffer, index);
+
+                        blocks = blocks.Add(block);
+                        ++blockCount;
+                        index = 0;
+                    }
+
+                    var memory = new Memory<byte>(buffer.Buffer, index, (int)result.Stream.Length);
+
+                    await result.Stream.ReadAsync(memory);
+                    index += memory.Length;
+                    ++resultCount;
+                    ru += result.RequestCharge;
                 }
-                if (result.Stream.Length > buffer.Length - index)
+                if (index > 0)
                 {
-                    var block = await _logFile.WriteBlockAsync(buffer, index);
+                    var block = await _logFile.WriteBlockAsync(buffer.Buffer, index);
 
                     blocks = blocks.Add(block);
                     ++blockCount;
-                    index = 0;
                 }
+                _logger
+                    .AddContext("ru", ru)
+                    .AddContext("blockCount", blockCount)
+                    .WriteEvent(eventName);
 
-                var memory = new Memory<byte>(buffer, index, (int)result.Stream.Length);
-
-                await result.Stream.ReadAsync(memory);
-                index += memory.Length;
-                ++resultCount;
-                ru += result.RequestCharge;
+                return blocks;
             }
-            if (index > 0)
-            {
-                var block = await _logFile.WriteBlockAsync(buffer, index);
-
-                blocks = blocks.Add(block);
-                ++blockCount;
-            }
-            _logger
-                .AddContext("ru", ru)
-                .AddContext("blockCount", blockCount)
-                .WriteEvent(eventName);
-
-            return blocks;
         }
 
         public async Task DisposeAsync()
