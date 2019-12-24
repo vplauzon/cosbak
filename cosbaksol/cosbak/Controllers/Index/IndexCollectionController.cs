@@ -108,6 +108,37 @@ namespace Cosbak.Controllers.Index
                 $"Index {_collection.Parent.DatabaseName}.{_collection.CollectionName}...");
             _logger.WriteEvent("Index-Collection-Start");
 
+            await LoadDocumentsAsync();
+            await LoadStoredProceduresAsync();
+            await _initialized.IndexFile.PersistAsync();
+            _logger.WriteEvent("Index-Collection-End");
+
+            return _initialized.LogFile.LastTimeStamp;
+        }
+
+        private async Task LoadStoredProceduresAsync()
+        {
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
+            _logger.Display("Index Stored Procedures");
+            _logger.WriteEvent("Index-Collection-Sprocs-Start");
+            await Task.CompletedTask;
+            _logger.WriteEvent("Index-Collection-Sprocs-End");
+        }
+
+        private async Task LoadDocumentsAsync()
+        {
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
+            _logger.Display("Index documents");
+            _logger.WriteEvent("Index-Collection-Documents-Start");
+
             var bufferSizes = GetDocumentBufferSizes();
 
             using (var indexBuffer = BufferPool.Rent(bufferSizes.indexSize))
@@ -142,10 +173,8 @@ namespace Cosbak.Controllers.Index
                     indexStream.Position,
                     contentBuffer.Buffer,
                     contentStream.Position);
-                await _initialized.IndexFile.PersistAsync();
-                _logger.WriteEvent("Index-Collection-End");
 
-                return lastTimeStamp;
+                _logger.WriteEvent("Index-Collection-Documents-End");
             }
         }
 

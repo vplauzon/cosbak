@@ -8,10 +8,12 @@
 
   <ItemGroup>
     <Compile Remove="Controllers\Backup\BackupCosmosControllerTest.cs" />
+    <Compile Remove="DocumentSpliterTest.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <None Include="Controllers\Backup\BackupCosmosControllerTest.cs" />
+    <None Include="DocumentSpliterTest.cs" />
   </ItemGroup>
 
   <ItemGroup>
