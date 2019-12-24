@@ -19,17 +19,17 @@ namespace Cosbak.Controllers
         {
             public CollectionPlan(
                 LogCollectionBackupController logController,
-                IndexCollectionController indexController,
+                Func<IndexCollectionController> indexControllerFactory,
                 BackupPlan plan)
             {
                 LogController = logController;
-                IndexController = indexController;
+                IndexControllerFactory = indexControllerFactory;
                 Plan = plan;
             }
 
             public LogCollectionBackupController LogController { get; }
 
-            public IndexCollectionController IndexController { get; }
+            public Func<IndexCollectionController> IndexControllerFactory { get; }
 
             public BackupPlan Plan { get; }
         }
@@ -103,12 +103,22 @@ namespace Cosbak.Controllers
 
                     if (result.NeedDocumentsPurge || result.NeedCheckpointPurge)
                     {
-                        var lastTimestamp =
-                            await plan.IndexController.IndexAsync(result.NeedCheckpointPurge);
+                        var indexController = plan.IndexControllerFactory();
 
-                        await plan.LogController.PurgeAsync(
-                            !result.NeedCheckpointPurge,
-                            lastTimestamp);
+                        await indexController.InitializeAsync();
+                        try
+                        {
+                            var lastTimestamp =
+                                await indexController.LoadAsync(result.NeedCheckpointPurge);
+
+                            await plan.LogController.PurgeAsync(
+                                !result.NeedCheckpointPurge,
+                                lastTimestamp);
+                        }
+                        finally
+                        {
+                            await indexController.DisposeAsync();
+                        }
                     }
                     if (result.HasCaughtUp)
                     {
@@ -175,14 +185,16 @@ namespace Cosbak.Controllers
                                 plan.Included,
                                 technicalConstants.LogConstants,
                                 collectionLogger);
-                            var indexController = new IndexCollectionController(
-                                coll,
-                                storageFacade,
-                                plan.RetentionInDays,
-                                technicalConstants.IndexConstants,
-                                collectionLogger);
 
-                            yield return new CollectionPlan(logController, indexController, plan);
+                            yield return new CollectionPlan(
+                                logController,
+                                () => new IndexCollectionController(
+                                    coll,
+                                    storageFacade,
+                                    plan.RetentionInDays,
+                                    technicalConstants.IndexConstants,
+                                    collectionLogger),
+                                plan);
                         }
                     }
                 }

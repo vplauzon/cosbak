@@ -15,173 +15,29 @@ namespace Cosbak.Controllers.Index
     internal class IndexCollectionController
     {
         #region Inner Types
-        private class IndexIterationController
+        private class Initialized
         {
-            #region Inner Types
-            private class LoggedDocuments
-            {
-                public JsonElement[] Documents { get; set; } = new JsonElement[0];
-            }
-            #endregion
-
-            private readonly IndexFile _indexFile;
-            private readonly ReadonlyLogFile _logFile;
-            private readonly IImmutableList<string> _partitionParts;
-            private readonly IndexConstants _indexConstants;
-            private readonly ILogger _logger;
-
-            public IndexIterationController(
+            public Initialized(
                 IndexFile indexFile,
-                ReadonlyLogFile logFile,
-                string partitionPath,
-                IndexConstants indexConstants,
-                ILogger logger)
+                ReadonlyLogFile logFile)
             {
-                _indexFile = indexFile;
-                _logFile = logFile;
-                _partitionParts = partitionPath.Split('/').Skip(1).ToImmutableArray();
-                _indexConstants = indexConstants;
-                _logger = logger;
+                IndexFile = indexFile;
+                LogFile = logFile;
             }
 
-            public async Task<long> IndexAsync(bool needCheckpointPurge)
-            {
-                await IndexDocumentsAsync();
+            public IndexFile IndexFile { get; }
 
-                if (needCheckpointPurge)
-                {
-                }
-
-                return _logFile.LastTimeStamp;
-            }
-
-            private async Task IndexDocumentsAsync()
-            {
-                var indexBuffer = new byte[_indexConstants.MaxIndexBufferSize];
-                var contentBuffer = new byte[_indexConstants.MaxContentBufferSize];
-                var enumerable = _logFile.LoadDocumentBufferAsync(
-                    _indexFile.LastDocumentTimeStamp,
-                    _indexConstants.MaxLogBufferSize);
-
-                using (var indexStream = new MemoryStream(indexBuffer))
-                using (var contentStream = new MemoryStream(contentBuffer))
-                {
-                    await foreach (var logBuffer in enumerable)
-                    {
-                        foreach (var buffer in logBuffer.Buffers)
-                        {
-                            var documents = GetDocuments(buffer.Span);
-
-                            _logger.Display($"Indexing {documents.Count} documents...");
-                            foreach (var doc in documents)
-                            {
-                                var (metaData, content) = SplitDocument(doc);
-
-                                if (!HasCapacity(indexStream, contentStream, metaData))
-                                {
-                                    await _indexFile.PushDocumentsAsync(
-                                        indexBuffer,
-                                        indexStream.Position,
-                                        contentBuffer,
-                                        contentStream.Position);
-                                    indexStream.Position = 0;
-                                    contentStream.Position = 0;
-                                }
-                                metaData.Write(indexStream);
-                                contentStream.Write(content);
-                            }
-                        }
-                    }
-                    await _indexFile.PushDocumentsAsync(
-                        indexBuffer,
-                        indexStream.Position,
-                        contentBuffer,
-                        contentStream.Position);
-                }
-            }
-
-            private bool HasCapacity(
-                Stream indexStream,
-                Stream contentStream,
-                DocumentMetaData metaData)
-            {
-                var indexSpace = indexStream.Length - indexStream.Position;
-                var contentSpace = contentStream.Length - contentStream.Position;
-
-                return indexSpace >= metaData.GetBinarySize()
-                    && contentSpace >= metaData.ContentSize;
-            }
-
-            private IImmutableList<JsonElement> GetDocuments(ReadOnlySpan<byte> span)
-            {
-                var logged = JsonSerializer.Deserialize<LoggedDocuments>(span);
-
-                if (logged == null || logged.Documents == null || !logged.Documents.Any())
-                {
-                    throw new NotSupportedException("Logged block non-compliant");
-                }
-
-                return logged.Documents.ToImmutableList();
-            }
-
-            private (DocumentMetaData metaData, byte[] content) SplitDocument(JsonElement doc)
-            {
-                var id = doc.GetProperty(Constants.ID_FIELD).GetString();
-                var partitionKey = GetPartitionKey(doc);
-                var timeStamp = doc.GetProperty(Constants.TIMESTAMP_FIELD).GetInt64();
-                var content = JsonSerializer.SerializeToUtf8Bytes(CleanDocument(doc));
-                var metaData = new DocumentMetaData(
-                    id,
-                    partitionKey,
-                    timeStamp,
-                    content.Length);
-
-                return (metaData, content);
-            }
-
-            private object? GetPartitionKey(JsonElement doc)
-            {
-                JsonElement current = doc;
-
-                for (int i = 0; i != _partitionParts.Count; ++i)
-                {
-                    var part = _partitionParts[i];
-                    JsonElement output;
-                    var hasProperty = doc.TryGetProperty(part, out output);
-
-                    if (!hasProperty || i == _partitionParts.Count - 1)
-                    {
-                        return output;
-                    }
-                    else
-                    {
-                        current = (JsonElement)output;
-                    }
-                }
-
-                throw new NotSupportedException("We should never reach this code path");
-            }
-
-            private IImmutableDictionary<string, JsonElement> CleanDocument(JsonElement doc)
-            {
-                var keptProperties = from property in doc.EnumerateObject()
-                                     where property.Name != Constants.ID_FIELD
-                                     && property.Name != "_rid"
-                                     && property.Name != "_self"
-                                     && property.Name != "_etag"
-                                     && property.Name != "_attachments"
-                                     select KeyValuePair.Create(property.Name, property.Value);
-
-                return ImmutableDictionary.CreateRange(keptProperties);
-            }
+            public ReadonlyLogFile LogFile { get; }
         }
         #endregion
 
         private readonly ICollectionFacade _collection;
+        private readonly IImmutableList<string> _partitionParts;
         private readonly ILogger _logger;
         private readonly IStorageFacade _storageFacade;
         private readonly int _retentionInDays;
         private readonly IndexConstants _indexConstants;
+        private Initialized? _initialized;
 
         public IndexCollectionController(
             ICollectionFacade collectionFacade,
@@ -191,17 +47,23 @@ namespace Cosbak.Controllers.Index
             ILogger logger)
         {
             _collection = collectionFacade;
+            _partitionParts = collectionFacade
+                .PartitionPath
+                .Split('/')
+                .Skip(1)
+                .ToImmutableArray();
             _storageFacade = storageFacade;
             _retentionInDays = retentionInDays;
             _indexConstants = indexConstants;
             _logger = logger;
         }
 
-        public async Task<long> IndexAsync(bool needCheckpointPurge)
+        public async Task InitializeAsync()
         {
-            _logger.Display(
-                $"Index {_collection.Parent.DatabaseName}.{_collection.CollectionName}...");
-            _logger.WriteEvent("Index-Collection-Start");
+            if (_initialized != null)
+            {
+                throw new InvalidOperationException("InitializeAsync has already been called");
+            }
 
             var indexFile = new IndexFile(
                 _storageFacade,
@@ -216,35 +78,157 @@ namespace Cosbak.Controllers.Index
                 _collection.CollectionName,
                 _logger);
 
-            await indexFile.InitializeAsync();
+            await Task.WhenAll(
+                indexFile.InitializeAsync(),
+                logFile.InitializeAsync());
 
-            try
+            _initialized = new Initialized(indexFile, logFile);
+        }
+
+        public async Task DisposeAsync()
+        {
+            if (_initialized == null)
             {
-                await logFile.InitializeAsync();
-                try
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
+            await Task.WhenAll(
+                _initialized.IndexFile.DisposeAsync(),
+                _initialized.LogFile.DisposeAsync());
+        }
+
+        public async Task<long> LoadAsync(bool needCheckpointPurge)
+        {
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
+            _logger.Display(
+                $"Index {_collection.Parent.DatabaseName}.{_collection.CollectionName}...");
+            _logger.WriteEvent("Index-Collection-Start");
+
+            var bufferSizes = GetDocumentBufferSizes();
+
+            using (var indexBuffer = BufferPool.Rent(bufferSizes.indexSize))
+            using (var contentBuffer = BufferPool.Rent(bufferSizes.contentSize))
+            using (var indexStream = new MemoryStream(indexBuffer.Buffer))
+            using (var contentStream = new MemoryStream(contentBuffer.Buffer))
+            {
+                long lastTimeStamp = 0;
+
+                await foreach (var item in _initialized.LogFile.ReadDocumentsAsync(
+                    _initialized.IndexFile.LastDocumentTimeStamp,
+                    _indexConstants.MaxLogBufferSize))
                 {
-                    var subController = new IndexIterationController(
-                        indexFile,
-                        logFile,
-                        _collection.PartitionPath,
-                        _indexConstants,
-                        _logger);
-                    var lastTimeStamp = await subController.IndexAsync(needCheckpointPurge);
+                    var (metaData, content) = SplitDocument(item.doc);
 
-                    await indexFile.PersistAsync();
-                    _logger.WriteEvent("Index-Collection-End");
-
-                    return lastTimeStamp;
+                    lastTimeStamp = item.batchTimeStamp;
+                    if (!HasCapacity(indexStream, contentStream, metaData))
+                    {
+                        await _initialized.IndexFile.PushDocumentsAsync(
+                            indexBuffer.Buffer,
+                            indexStream.Position,
+                            contentBuffer.Buffer,
+                            contentStream.Position);
+                        indexStream.Position = 0;
+                        contentStream.Position = 0;
+                    }
+                    metaData.Write(indexStream);
+                    contentStream.Write(content);
                 }
-                finally
+                await _initialized.IndexFile.PushDocumentsAsync(
+                    indexBuffer.Buffer,
+                    indexStream.Position,
+                    contentBuffer.Buffer,
+                    contentStream.Position);
+                await _initialized.IndexFile.PersistAsync();
+                _logger.WriteEvent("Index-Collection-End");
+
+                return lastTimeStamp;
+            }
+        }
+
+        private (int indexSize, int contentSize) GetDocumentBufferSizes()
+        {
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
+            var logSize = _initialized.LogFile.GetDocumentLogSize(
+                _initialized.IndexFile.LastDocumentTimeStamp);
+            var indexSize = (int)Math.Min(
+                logSize / (_indexConstants.MaxContentBufferSize / _indexConstants.MaxIndexBufferSize),
+                (long)_indexConstants.MaxIndexBufferSize);
+            var contentSize = (int)Math.Min(
+                logSize,
+                (long)_indexConstants.MaxContentBufferSize);
+
+            return (indexSize, contentSize);
+        }
+
+        private static bool HasCapacity(
+            Stream indexStream,
+            Stream contentStream,
+            DocumentMetaData metaData)
+        {
+            var indexSpace = indexStream.Length - indexStream.Position;
+            var contentSpace = contentStream.Length - contentStream.Position;
+
+            return indexSpace >= metaData.GetBinarySize()
+                && contentSpace >= metaData.ContentSize;
+        }
+
+        private (DocumentMetaData metaData, byte[] content) SplitDocument(JsonElement doc)
+        {
+            var id = doc.GetProperty(Constants.ID_FIELD).GetString();
+            var partitionKey = GetPartitionKey(doc);
+            var timeStamp = doc.GetProperty(Constants.TIMESTAMP_FIELD).GetInt64();
+            var content = JsonSerializer.SerializeToUtf8Bytes(CleanDocument(doc));
+            var metaData = new DocumentMetaData(
+                id,
+                partitionKey,
+                timeStamp,
+                content.Length);
+
+            return (metaData, content);
+        }
+
+        private object? GetPartitionKey(JsonElement doc)
+        {
+            JsonElement current = doc;
+
+            for (int i = 0; i != _partitionParts.Count; ++i)
+            {
+                var part = _partitionParts[i];
+                JsonElement output;
+                var hasProperty = doc.TryGetProperty(part, out output);
+
+                if (!hasProperty || i == _partitionParts.Count - 1)
                 {
-                    await logFile.DisposeAsync();
+                    return output;
+                }
+                else
+                {
+                    current = (JsonElement)output;
                 }
             }
-            finally
-            {
-                await indexFile.DisposeAsync();
-            }
+
+            throw new NotSupportedException("We should never reach this code path");
+        }
+
+        private IImmutableDictionary<string, JsonElement> CleanDocument(JsonElement doc)
+        {
+            var keptProperties = from property in doc.EnumerateObject()
+                                 where property.Name != Constants.ID_FIELD
+                                 && property.Name != "_rid"
+                                 && property.Name != "_self"
+                                 && property.Name != "_etag"
+                                 && property.Name != "_attachments"
+                                 select KeyValuePair.Create(property.Name, property.Value);
+
+            return ImmutableDictionary.CreateRange(keptProperties);
         }
     }
 }
