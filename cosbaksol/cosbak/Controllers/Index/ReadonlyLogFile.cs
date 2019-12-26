@@ -103,7 +103,7 @@ namespace Cosbak.Controllers.Index
             return totalSize;
         }
 
-        public async IAsyncEnumerable<(JsonElement doc, long batchTimeStamp)> ReadDocumentsAsync(
+        public async IAsyncEnumerable<BatchedItems<JsonElement>> ReadDocumentsAsync(
             long afterTimeStamp,
             int maxBufferSize)
         {
@@ -114,7 +114,6 @@ namespace Cosbak.Controllers.Index
 
             var blocks = GetDocumentBlocks(afterTimeStamp);
             var remainingBlocks = blocks.ToImmutableList();
-            long batchTimeStamp = 0;
 
             while (remainingBlocks.Any())
             {
@@ -139,12 +138,9 @@ namespace Cosbak.Controllers.Index
                         var sequence = new ReadOnlySequence<byte>(buffer.Buffer)
                             .Slice(bufferIndex, (int)page.block.Size);
 
-                        foreach (var item in ReadItemFromBuffer(sequence))
-                        {
-                            yield return (item, batchTimeStamp);
-                        }
-                        //  Completed batch:  commit timestamp
-                        batchTimeStamp = page.TimeStamp;
+                        yield return new BatchedItems<JsonElement>(
+                            page.TimeStamp,
+                            ReadItemFromBuffer(sequence));
                         bufferIndex += (int)page.block.Size;
                     }
                 }

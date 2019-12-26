@@ -148,25 +148,28 @@ namespace Cosbak.Controllers.Index
             {
                 long lastTimeStamp = 0;
 
-                await foreach (var item in _initialized.LogFile.ReadDocumentsAsync(
+                await foreach (var batch in _initialized.LogFile.ReadDocumentsAsync(
                     _initialized.IndexFile.LastDocumentTimeStamp,
                     _indexConstants.MaxLogBufferSize))
                 {
-                    var (metaData, content) = SplitDocument(item.doc);
-
-                    lastTimeStamp = item.batchTimeStamp;
-                    if (!HasCapacity(indexStream, contentStream, metaData))
+                    lastTimeStamp = batch.BatchTimeStamp;
+                    foreach (var item in batch.Items)
                     {
-                        await _initialized.IndexFile.PushDocumentsAsync(
-                            indexBuffer.Buffer,
-                            indexStream.Position,
-                            contentBuffer.Buffer,
-                            contentStream.Position);
-                        indexStream.Position = 0;
-                        contentStream.Position = 0;
+                        var (metaData, content) = SplitDocument(item);
+
+                        if (!HasCapacity(indexStream, contentStream, metaData))
+                        {
+                            await _initialized.IndexFile.PushDocumentsAsync(
+                                indexBuffer.Buffer,
+                                indexStream.Position,
+                                contentBuffer.Buffer,
+                                contentStream.Position);
+                            indexStream.Position = 0;
+                            contentStream.Position = 0;
+                        }
+                        metaData.Write(indexStream);
+                        contentStream.Write(content);
                     }
-                    metaData.Write(indexStream);
-                    contentStream.Write(content);
                 }
                 await _initialized.IndexFile.PushDocumentsAsync(
                     indexBuffer.Buffer,
