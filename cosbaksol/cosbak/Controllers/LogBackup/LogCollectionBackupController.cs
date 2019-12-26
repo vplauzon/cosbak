@@ -62,9 +62,7 @@ namespace Cosbak.Controllers.LogBackup
                 .WriteEvent("LogBatchTimeWindow");
             if (timeWindow.count != 0)
             {
-                _logger.WriteEvent("LogDocumentBatch-Start");
                 await LogDocumentBatchAsync(previousTimeStamp, timeWindow.maxTimeStamp);
-                _logger.WriteEvent("LogDocumentBatch-End");
             }
             else
             {
@@ -137,7 +135,7 @@ namespace Cosbak.Controllers.LogBackup
             var iterator = _collection.GetTimeWindowDocuments(
                 previousLastUpdateTime,
                 maxTimeStamp);
-            var blocks = await WriteIteratorToBlocksAsync(iterator, "LogDocumentBatch");
+            var blocks = await WriteIteratorToBlocksAsync(iterator, "LogDocuments");
 
             _logFile.AddDocumentBatch(maxTimeStamp, blocks);
         }
@@ -146,13 +144,15 @@ namespace Cosbak.Controllers.LogBackup
             StreamIterator iterator,
             string eventName)
         {
+            _logger.Display($"{eventName}...");
+            _logger.WriteEvent($"{eventName}-Start");
             using (var buffer = BufferPool.Rent(_logConstants.MaxBlockSize))
             {
                 var blocks = ImmutableList<Block>.Empty;
                 double ru = 0;
-                var resultCount = 0;
-                var blockCount = 0;
+                var cosmosPageCount = 0;
                 int index = 0;
+                int totalWrites = 0;
 
                 while (iterator.HasMoreResults)
                 {
@@ -167,8 +167,8 @@ namespace Cosbak.Controllers.LogBackup
                     {
                         var block = await _logFile.WriteBlockAsync(buffer.Buffer, index);
 
+                        totalWrites += index;
                         blocks = blocks.Add(block);
-                        ++blockCount;
                         index = 0;
                     }
 
@@ -176,20 +176,25 @@ namespace Cosbak.Controllers.LogBackup
 
                     await result.Stream.ReadAsync(memory);
                     index += memory.Length;
-                    ++resultCount;
+                    ++cosmosPageCount;
                     ru += result.RequestCharge;
                 }
                 if (index > 0)
                 {
                     var block = await _logFile.WriteBlockAsync(buffer.Buffer, index);
 
+                    totalWrites += index;
                     blocks = blocks.Add(block);
-                    ++blockCount;
                 }
                 _logger
                     .AddContext("ru", ru)
-                    .AddContext("blockCount", blockCount)
+                    .AddContext("cosmosPageCount", cosmosPageCount)
+                    .AddContext("totalWrites", totalWrites)
+                    .AddContext("blockCount", blocks.Count)
                     .WriteEvent(eventName);
+                _logger.Display($"Wrote {totalWrites} bytes in {blocks.Count} blocks");
+                _logger.Display($"Used {ru} RUs on {cosmosPageCount} Cosmos pages");
+                _logger.WriteEvent($"{eventName}-End");
 
                 return blocks;
             }

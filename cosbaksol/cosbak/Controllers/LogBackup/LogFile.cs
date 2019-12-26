@@ -206,6 +206,7 @@ namespace Cosbak.Controllers.LogBackup
 
             var blockId = Convert.ToBase64String(Guid.NewGuid().ToByteArray());
 
+            _logger.Display($"Write logs {length} bytes...");
             await _storageFacade.WriteBlockAsync(
                 _blobName, blockId, buffer, length, _initialized.Lease);
 

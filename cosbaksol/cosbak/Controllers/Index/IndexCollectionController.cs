@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Cosbak.Controllers.Index
@@ -146,6 +147,8 @@ namespace Cosbak.Controllers.Index
             using (var indexStream = new MemoryStream(indexBuffer.Buffer))
             using (var contentStream = new MemoryStream(contentBuffer.Buffer))
             {
+                var documentCount = 0;
+                var batchCount = 0;
                 long lastTimeStamp = 0;
 
                 await foreach (var batch in _initialized.LogFile.ReadDocumentsAsync(
@@ -153,10 +156,12 @@ namespace Cosbak.Controllers.Index
                     _indexConstants.MaxLogBufferSize))
                 {
                     lastTimeStamp = batch.BatchTimeStamp;
+                    ++batchCount;
                     foreach (var item in batch.Items)
                     {
                         var (metaData, content) = SplitDocument(item);
 
+                        ++documentCount;
                         if (!HasCapacity(indexStream, contentStream, metaData))
                         {
                             await _initialized.IndexFile.PushDocumentsAsync(
@@ -177,7 +182,11 @@ namespace Cosbak.Controllers.Index
                     contentBuffer.Buffer,
                     contentStream.Position);
 
-                _logger.WriteEvent("Index-Collection-Documents-End");
+                _logger.Display($"Indexed {documentCount} documents in {batchCount} batches");
+                _logger
+                    .AddContext("documentCount", documentCount)
+                    .AddContext("batchCount", batchCount)
+                    .WriteEvent("Index-Collection-Documents-End");
             }
         }
 
