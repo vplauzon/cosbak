@@ -103,7 +103,71 @@ namespace Cosbak.Controllers.Index
             return totalSize;
         }
 
-        public async IAsyncEnumerable<BatchedItems<JsonElement>> ReadDocumentsAsync(
+        public long GetSprocLogSize(long afterTimeStamp)
+        {
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
+            var checkPoints = from p in _initialized.Fat.CheckPoints
+                              where p.TimeStamp > afterTimeStamp
+                              select p;
+            var blocks = checkPoints
+                .SelectMany(p => p.SprocsBlocks);
+            var sizes = from b in blocks
+                        select b.Size;
+            var totalSize = sizes.Sum();
+
+            return totalSize;
+        }
+
+        //public async IAsyncEnumerable<LogItemBatch<JsonElement>> ReadSprocsAsync(
+        //    long afterTimeStamp,
+        //    int maxBufferSize)
+        //{
+        //    if (_initialized == null)
+        //    {
+        //        throw new InvalidOperationException("InitializeAsync hasn't been called");
+        //    }
+
+        //    var blocks = _initialized.Fat.CheckPoints
+        //        .Where(p => p.TimeStamp > afterTimeStamp)
+        //        .SelectMany(p => p.SprocsBlocks);
+        //    var remainingBlocks = blocks.ToImmutableList();
+
+        //    while (remainingBlocks.Any())
+        //    {
+        //        var pageBatch = GetPageFromBlocks(remainingBlocks, maxBufferSize).ToImmutableArray();
+        //        var (start, end) = GetInterval(
+        //            pageBatch.Select(b => b.block.Id),
+        //            _initialized.Blocks);
+        //        var bufferIndex = 0;
+
+        //        using (var buffer = BufferPool.Rent((int)(end - start)))
+        //        {
+        //            await _storageFacade.DownloadRangeAsync(
+        //                _blobName,
+        //                buffer.Buffer,
+        //                start,
+        //                end - start,
+        //                _initialized.SnapshotTime);
+        //            remainingBlocks = remainingBlocks.RemoveRange(pageBatch);
+
+        //            foreach (var page in pageBatch)
+        //            {
+        //                var sequence = new ReadOnlySequence<byte>(buffer.Buffer)
+        //                    .Slice(bufferIndex, (int)page.block.Size);
+        //                var batch = new LogDocumentBatch(page.TimeStamp, sequence);
+
+        //                yield return batch;
+        //                bufferIndex += (int)page.block.Size;
+        //            }
+        //        }
+        //    }
+        //}
+
+        public async IAsyncEnumerable<LogDocumentBatch> ReadDocumentsAsync(
             long afterTimeStamp,
             int maxBufferSize)
         {
@@ -137,99 +201,13 @@ namespace Cosbak.Controllers.Index
                     {
                         var sequence = new ReadOnlySequence<byte>(buffer.Buffer)
                             .Slice(bufferIndex, (int)page.block.Size);
+                        var batch = new LogDocumentBatch(page.TimeStamp, sequence);
 
-                        yield return new BatchedItems<JsonElement>(
-                            page.TimeStamp,
-                            ReadItemFromBuffer(sequence));
+                        yield return batch;
                         bufferIndex += (int)page.block.Size;
                     }
                 }
             }
-        }
-
-        private IEnumerable<(Block block, long TimeStamp)> GetDocumentBlocks(long afterTimeStamp)
-        {
-            if (_initialized == null)
-            {
-                throw new InvalidOperationException("InitializeAsync hasn't been called");
-            }
-
-            var checkPoints = from p in _initialized.Fat.CheckPoints
-                              where p.TimeStamp > afterTimeStamp
-                              select p;
-            var batches = from b in checkPoints
-                          .SelectMany(p => p.DocumentBatches)
-                          .Concat(_initialized.Fat.InProgressDocumentBatches)
-                          where b.TimeStamp > afterTimeStamp
-                          select b;
-            var blocks = batches.SelectMany(b => from block in b.Blocks
-                                                 select (block, b.TimeStamp));
-
-            return blocks;
-        }
-
-        private static IEnumerable<JsonElement> ReadItemFromBuffer(
-            ReadOnlySequence<byte> sequence)
-        {
-            var initialReader = new Utf8JsonReader(sequence);
-
-            //  To start object
-            initialReader.Read();
-            //  To property
-            initialReader.Read();
-            while (GetValue(initialReader) != "Documents")
-            {
-                //  To property value
-                initialReader.Read();
-                //  To next item
-                initialReader.Read();
-            }
-            //  To Property value
-            initialReader.Read();
-            if (initialReader.TokenType != JsonTokenType.StartArray)
-            {
-                throw new InvalidOperationException(
-                    $"Should be a start array in the JSON instead of '{initialReader.TokenType}'");
-            }
-            //  To first element in the array
-            initialReader.Read();
-
-            //  Work with index since Utf8JsonReader can't be used inside broken loops
-            var index = initialReader.TokenStartIndex;
-            do
-            {
-                var result = DeserializeElement(sequence.Slice(index));
-
-                yield return result.element;
-                index += result.offset;
-
-                if (!result.shouldContinueLoop)
-                {
-                    break;
-                }
-            }
-            while (true);
-        }
-
-        private static (
-            JsonElement element,
-            bool shouldContinueLoop,
-            long offset) DeserializeElement(ReadOnlySequence<byte> sequence)
-        {
-            //  This whole intricate routine exists because Utf8JsonReader can't exist
-            //  inside a broken loop (i.e. a loop with yields)
-            var reader = new Utf8JsonReader(sequence);
-            var element = JsonSerializer.Deserialize<JsonElement>(ref reader);
-            var shouldContinueLoop = reader.TokenType == JsonTokenType.StartObject;
-
-            return (element, shouldContinueLoop, reader.TokenStartIndex);
-        }
-
-        private static string GetValue(Utf8JsonReader reader)
-        {
-            var value = ASCIIEncoding.UTF8.GetString(reader.ValueSpan);
-
-            return value;
         }
 
         private IEnumerable<(Block block, long TimeStamp)> GetPageFromBlocks(
@@ -300,6 +278,27 @@ namespace Cosbak.Controllers.Index
             }
 
             throw new NotSupportedException("Remaining blocks that aren't in the blob");
+        }
+
+        private IEnumerable<(Block block, long TimeStamp)> GetDocumentBlocks(long afterTimeStamp)
+        {
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
+            var checkPoints = from p in _initialized.Fat.CheckPoints
+                              where p.TimeStamp > afterTimeStamp
+                              select p;
+            var batches = from b in checkPoints
+                          .SelectMany(p => p.DocumentBatches)
+                          .Concat(_initialized.Fat.InProgressDocumentBatches)
+                          where b.TimeStamp > afterTimeStamp
+                          select b;
+            var blocks = batches.SelectMany(b => from block in b.Blocks
+                                                 select (block, b.TimeStamp));
+
+            return blocks;
         }
 
         private async Task<LogFat> LoadFatAsync(int length, DateTimeOffset? snapshotTime)

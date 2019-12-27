@@ -6,6 +6,8 @@ namespace Cosbak.Controllers.Index
     internal class IndexFat
     {
         public long LastDocumentTimeStamp { get; set; }
+        
+        public long LastStoredProcedureTimeStamp { get; set; }
 
         public IndexedPartition DocumentPartition { get; set; } = new IndexedPartition();
 

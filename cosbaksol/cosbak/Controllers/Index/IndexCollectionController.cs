@@ -126,8 +126,33 @@ namespace Cosbak.Controllers.Index
 
             _logger.Display("Index Stored Procedures");
             _logger.WriteEvent("Index-Collection-Sprocs-Start");
-            await Task.CompletedTask;
+
+            var bufferSizes = GetStoredProcedureBufferSizes();
+
+            if (bufferSizes.indexSize > 0)
+            {
+                var sprocs = await LoadUntilNowSprocsIndexAsync();
+
+                using (var indexBuffer = BufferPool.Rent(bufferSizes.indexSize))
+                using (var contentBuffer = BufferPool.Rent(bufferSizes.contentSize))
+                using (var indexStream = new MemoryStream(indexBuffer.Buffer))
+                using (var contentStream = new MemoryStream(contentBuffer.Buffer))
+                {
+                    //await foreach (var checkpoint in _initialized.LogFile.ReadStoredProceduresAsync(
+                    //    _initialized.IndexFile.LastStoredProcedureTimeStamp,
+                    //    _indexConstants.MaxLogBufferSize))
+                    //{
+                    //}
+                }
+            }
             _logger.WriteEvent("Index-Collection-Sprocs-End");
+        }
+
+        private async Task<IImmutableDictionary<string, object>> LoadUntilNowSprocsIndexAsync()
+        {
+            await Task.CompletedTask;
+
+            return ImmutableDictionary<string, object>.Empty;
         }
 
         private async Task LoadDocumentsAsync()
@@ -142,51 +167,54 @@ namespace Cosbak.Controllers.Index
 
             var bufferSizes = GetDocumentBufferSizes();
 
-            using (var indexBuffer = BufferPool.Rent(bufferSizes.indexSize))
-            using (var contentBuffer = BufferPool.Rent(bufferSizes.contentSize))
-            using (var indexStream = new MemoryStream(indexBuffer.Buffer))
-            using (var contentStream = new MemoryStream(contentBuffer.Buffer))
+            if (bufferSizes.indexSize > 0)
             {
-                var documentCount = 0;
-                var batchCount = 0;
-                long lastTimeStamp = 0;
-
-                await foreach (var batch in _initialized.LogFile.ReadDocumentsAsync(
-                    _initialized.IndexFile.LastDocumentTimeStamp,
-                    _indexConstants.MaxLogBufferSize))
+                using (var indexBuffer = BufferPool.Rent(bufferSizes.indexSize))
+                using (var contentBuffer = BufferPool.Rent(bufferSizes.contentSize))
+                using (var indexStream = new MemoryStream(indexBuffer.Buffer))
+                using (var contentStream = new MemoryStream(contentBuffer.Buffer))
                 {
-                    lastTimeStamp = batch.BatchTimeStamp;
-                    ++batchCount;
-                    foreach (var item in batch.Items)
+                    var documentCount = 0;
+                    var batchCount = 0;
+                    long lastTimeStamp = 0;
+
+                    await foreach (var batch in _initialized.LogFile.ReadDocumentsAsync(
+                        _initialized.IndexFile.LastDocumentTimeStamp,
+                        _indexConstants.MaxLogBufferSize))
                     {
-                        var (metaData, content) = SplitDocument(item);
-
-                        ++documentCount;
-                        if (!HasCapacity(indexStream, contentStream, metaData))
+                        lastTimeStamp = batch.BatchTimeStamp;
+                        ++batchCount;
+                        foreach (var item in batch.Items)
                         {
-                            await _initialized.IndexFile.PushDocumentsAsync(
-                                indexBuffer.Buffer,
-                                indexStream.Position,
-                                contentBuffer.Buffer,
-                                contentStream.Position);
-                            indexStream.Position = 0;
-                            contentStream.Position = 0;
-                        }
-                        metaData.Write(indexStream);
-                        contentStream.Write(content);
-                    }
-                }
-                await _initialized.IndexFile.PushDocumentsAsync(
-                    indexBuffer.Buffer,
-                    indexStream.Position,
-                    contentBuffer.Buffer,
-                    contentStream.Position);
+                            var (metaData, content) = SplitDocument(item);
 
-                _logger.Display($"Indexed {documentCount} documents in {batchCount} batches");
-                _logger
-                    .AddContext("documentCount", documentCount)
-                    .AddContext("batchCount", batchCount)
-                    .WriteEvent("Index-Collection-Documents-End");
+                            ++documentCount;
+                            if (!HasCapacity(indexStream, contentStream, metaData))
+                            {
+                                await _initialized.IndexFile.PushDocumentsAsync(
+                                    indexBuffer.Buffer,
+                                    indexStream.Position,
+                                    contentBuffer.Buffer,
+                                    contentStream.Position);
+                                indexStream.Position = 0;
+                                contentStream.Position = 0;
+                            }
+                            metaData.Write(indexStream);
+                            contentStream.Write(content);
+                        }
+                    }
+                    await _initialized.IndexFile.PushDocumentsAsync(
+                        indexBuffer.Buffer,
+                        indexStream.Position,
+                        contentBuffer.Buffer,
+                        contentStream.Position);
+
+                    _logger.Display($"Indexed {documentCount} documents in {batchCount} batches");
+                    _logger
+                        .AddContext("documentCount", documentCount)
+                        .AddContext("batchCount", batchCount)
+                        .WriteEvent("Index-Collection-Documents-End");
+                }
             }
         }
 
@@ -198,6 +226,25 @@ namespace Cosbak.Controllers.Index
             }
 
             var logSize = _initialized.LogFile.GetDocumentLogSize(
+                _initialized.IndexFile.LastDocumentTimeStamp);
+            var indexSize = (int)Math.Min(
+                logSize / (_indexConstants.MaxContentBufferSize / _indexConstants.MaxIndexBufferSize),
+                (long)_indexConstants.MaxIndexBufferSize);
+            var contentSize = (int)Math.Min(
+                logSize,
+                (long)_indexConstants.MaxContentBufferSize);
+
+            return (indexSize, contentSize);
+        }
+
+        private (int indexSize, int contentSize) GetStoredProcedureBufferSizes()
+        {
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
+            var logSize = _initialized.LogFile.GetSprocLogSize(
                 _initialized.IndexFile.LastDocumentTimeStamp);
             var indexSize = (int)Math.Min(
                 logSize / (_indexConstants.MaxContentBufferSize / _indexConstants.MaxIndexBufferSize),

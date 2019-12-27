@@ -4,9 +4,9 @@ using System.Text;
 
 namespace Cosbak.Controllers.Index
 {
-    internal class BatchedItems<T>
+    internal abstract class LogItemBatch<T>
     {
-        public BatchedItems(long batchTimeStamp, IEnumerable<T> items)
+        protected LogItemBatch(long batchTimeStamp, IEnumerable<T> items)
         {
             BatchTimeStamp = batchTimeStamp;
             Items = items;
