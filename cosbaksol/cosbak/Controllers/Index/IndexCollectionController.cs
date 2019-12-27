@@ -32,6 +32,8 @@ namespace Cosbak.Controllers.Index
         }
         #endregion
 
+        private static readonly byte[] EMPTY_CONTENT = new byte[0];
+
         private readonly ICollectionFacade _collection;
         private readonly IImmutableList<string> _partitionParts;
         private readonly ILogger _logger;
@@ -141,10 +143,13 @@ namespace Cosbak.Controllers.Index
                     _initialized.IndexFile.LastStoredProcedureTimeStamp,
                     _indexConstants.MaxLogBufferSize))
                 {
+                    var batchIds = ImmutableHashSet<string>.Empty;
+
                     lastTimeStamp = batch.BatchTimeStamp;
                     ++batchCount;
                     foreach (var item in batch.Items)
                     {
+                        batchIds = batchIds.Add(item.Id.Id);
                         if (!sprocs.ContainsKey(item.Id.Id)
                             || sprocs[item.Id.Id].TimeStamp < item.Id.TimeStamp)
                         {
@@ -153,6 +158,15 @@ namespace Cosbak.Controllers.Index
                             sprocs = sprocs.SetItem(item.Id.Id, metaData.Id);
                             await buffer.WriteAsync(metaData, content);
                         }
+                    }
+                    var deletedIds = sprocs.Keys.ToImmutableHashSet().Except(batchIds);
+
+                    foreach (var id in deletedIds)
+                    {
+                        sprocs = sprocs.Remove(id);
+                        await buffer.WriteAsync(new ScriptMetaData(
+                            new ScriptIdentifier(id, lastTimeStamp), 0),
+                            EMPTY_CONTENT);
                     }
                 }
                 await buffer.FlushAsync();
