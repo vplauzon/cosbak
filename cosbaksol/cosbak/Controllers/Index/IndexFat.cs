@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Cosbak.Controllers.Index
 {
@@ -10,10 +11,13 @@ namespace Cosbak.Controllers.Index
         public long LastStoredProcedureTimeStamp { get; set; }
 
         public IndexedPartition DocumentPartition { get; set; } = new IndexedPartition();
+        
+        public IndexedPartition SprocPartition { get; set; } = new IndexedPartition();
 
         public IEnumerable<Block> GetAllBlocks()
         {
-            return DocumentPartition.GetAllBlocks();
+            return DocumentPartition.GetAllBlocks()
+                .Concat(SprocPartition.GetAllBlocks());
         }
     }
 }

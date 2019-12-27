@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 
 namespace Cosbak.Controllers.Index
 {
-    public struct DocumentMetaData
+    public struct DocumentMetaData : IStreamable
     {
         public DocumentMetaData(string id, object? partitionKey, long timeStamp, int size)
         {
@@ -48,14 +48,6 @@ namespace Cosbak.Controllers.Index
             }
         }
 
-        public int GetBinarySize()
-        {
-            return Id.Length
-                + 2
-                + 4
-                + 2;
-        }
-
         public static DocumentMetaData Read(Stream stream)
         {
             using (var reader = new BinaryReader(stream, Encoding.UTF8, true))
@@ -69,7 +61,9 @@ namespace Cosbak.Controllers.Index
             }
         }
 
-        public void Write(Stream stream)
+        int IStreamable.Size => Id.Length + 2 + 4 + 2;
+
+        void IStreamable.Write(Stream stream)
         {
             using (var writer = new BinaryWriter(stream, Encoding.UTF8, true))
             {

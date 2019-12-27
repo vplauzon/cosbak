@@ -122,52 +122,18 @@ namespace Cosbak.Controllers.Index
             return totalSize;
         }
 
-        //public async IAsyncEnumerable<LogItemBatch<JsonElement>> ReadSprocsAsync(
-        //    long afterTimeStamp,
-        //    int maxBufferSize)
-        //{
-        //    if (_initialized == null)
-        //    {
-        //        throw new InvalidOperationException("InitializeAsync hasn't been called");
-        //    }
+        public IAsyncEnumerable<LogDocumentBatch> ReadDocumentsFromLogFileAsync(
+            long afterTimeStamp,
+            int maxBufferSize)
+        {
+            return ReadItemsFromLogFileAsync(
+                maxBufferSize,
+                GetDocumentBlocks(afterTimeStamp),
+                (long batchTimeStamp, ReadOnlySequence<byte> sequence) =>
+                new LogDocumentBatch(batchTimeStamp, sequence));
+        }
 
-        //    var blocks = _initialized.Fat.CheckPoints
-        //        .Where(p => p.TimeStamp > afterTimeStamp)
-        //        .SelectMany(p => p.SprocsBlocks);
-        //    var remainingBlocks = blocks.ToImmutableList();
-
-        //    while (remainingBlocks.Any())
-        //    {
-        //        var pageBatch = GetPageFromBlocks(remainingBlocks, maxBufferSize).ToImmutableArray();
-        //        var (start, end) = GetInterval(
-        //            pageBatch.Select(b => b.block.Id),
-        //            _initialized.Blocks);
-        //        var bufferIndex = 0;
-
-        //        using (var buffer = BufferPool.Rent((int)(end - start)))
-        //        {
-        //            await _storageFacade.DownloadRangeAsync(
-        //                _blobName,
-        //                buffer.Buffer,
-        //                start,
-        //                end - start,
-        //                _initialized.SnapshotTime);
-        //            remainingBlocks = remainingBlocks.RemoveRange(pageBatch);
-
-        //            foreach (var page in pageBatch)
-        //            {
-        //                var sequence = new ReadOnlySequence<byte>(buffer.Buffer)
-        //                    .Slice(bufferIndex, (int)page.block.Size);
-        //                var batch = new LogDocumentBatch(page.TimeStamp, sequence);
-
-        //                yield return batch;
-        //                bufferIndex += (int)page.block.Size;
-        //            }
-        //        }
-        //    }
-        //}
-
-        public async IAsyncEnumerable<LogDocumentBatch> ReadDocumentsAsync(
+        public IAsyncEnumerable<LogSprocBatch> ReadStoredProceduresAsync(
             long afterTimeStamp,
             int maxBufferSize)
         {
@@ -176,12 +142,35 @@ namespace Cosbak.Controllers.Index
                 throw new InvalidOperationException("InitializeAsync hasn't been called");
             }
 
-            var blocks = GetDocumentBlocks(afterTimeStamp);
+            var checkPoints = from p in _initialized.Fat.CheckPoints
+                              where p.TimeStamp > afterTimeStamp
+                              select p;
+            var blocks = checkPoints
+                .SelectMany(p => p.SprocsBlocks.Select(b => (b, p.TimeStamp)));
+
+            return ReadItemsFromLogFileAsync(
+                maxBufferSize,
+                blocks,
+                (long batchTimeStamp, ReadOnlySequence<byte> sequence) =>
+                new LogSprocBatch(batchTimeStamp, sequence));
+        }
+
+        public async IAsyncEnumerable<T> ReadItemsFromLogFileAsync<T>(
+            int maxBufferSize,
+            IEnumerable<(Block block, long TimeStamp)> blocks,
+            Func<long, ReadOnlySequence<byte>, T> itemDeserializer)
+        {
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
             var remainingBlocks = blocks.ToImmutableList();
 
             while (remainingBlocks.Any())
             {
-                var pageBatch = GetPageFromBlocks(remainingBlocks, maxBufferSize).ToImmutableArray();
+                var pageBatch =
+                    GetPageFromBlocks(remainingBlocks, maxBufferSize).ToImmutableArray();
                 var (start, end) = GetInterval(
                     pageBatch.Select(b => b.block.Id),
                     _initialized.Blocks);
@@ -201,7 +190,7 @@ namespace Cosbak.Controllers.Index
                     {
                         var sequence = new ReadOnlySequence<byte>(buffer.Buffer)
                             .Slice(bufferIndex, (int)page.block.Size);
-                        var batch = new LogDocumentBatch(page.TimeStamp, sequence);
+                        var batch = itemDeserializer(page.TimeStamp, sequence);
 
                         yield return batch;
                         bufferIndex += (int)page.block.Size;

@@ -136,6 +136,32 @@ namespace Cosbak.Controllers.Index
 
         public async Task PushDocumentsAsync(
             byte[] indexBuffer,
+            int indexLength,
+            byte[] contentBuffer,
+            int contentLength)
+        {
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
+            if (indexLength > 0 && contentLength > 0)
+            {
+                var indexTask = WriteBlockAsync(indexBuffer, indexLength);
+                var contentTask = WriteBlockAsync(contentBuffer, contentLength);
+
+                await Task.WhenAll(indexTask, contentTask);
+
+                _initialized.Fat.DocumentPartition = _initialized.Fat.DocumentPartition.AddBlocks(
+                    indexTask.Result,
+                    contentTask.Result);
+
+                _isDirty = true;
+            }
+        }
+
+        public async Task PushSprocsAsync(
+            byte[] indexBuffer,
             long indexLength,
             byte[] contentBuffer,
             long contentLength)
@@ -152,7 +178,7 @@ namespace Cosbak.Controllers.Index
 
                 await Task.WhenAll(indexTask, contentTask);
 
-                _initialized.Fat.DocumentPartition = _initialized.Fat.DocumentPartition.AddBlocks(
+                _initialized.Fat.SprocPartition = _initialized.Fat.SprocPartition.AddBlocks(
                     indexTask.Result,
                     contentTask.Result);
 
