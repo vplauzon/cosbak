@@ -1,3 +1,6 @@
+using Cosbak.Commands;
+using Cosbak.Config;
+using Cosbak.Controllers;
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -12,7 +15,10 @@ namespace cosbak.test.feature
         public async Task EmptyBackup()
         {
             var container = await CosmosCollectionRental.GetCollectionAsync("empty");
+            var metaController = new MetaController();
+            var configuration = new BackupConfiguration();
 
+            await metaController.BackupAsync(configuration, BackupMode.Iterative);
         }
     }
 }

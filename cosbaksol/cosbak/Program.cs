@@ -8,9 +8,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
+
+[assembly: InternalsVisibleTo("cosbak.test.feature")]
 
 namespace Cosbak
 {
@@ -93,48 +96,10 @@ namespace Cosbak
                 }
                 else
                 {
-                    var watch = new Stopwatch();
                     var configuration = await LoadBackupConfigurationAsync(parameters.ConfigPath);
+                    var metaController = new MetaController();
 
-                    watch.Start();
-                    configuration.Validate();
-
-                    var storageFacade = CreateStorageFacade(configuration.StorageAccount);
-                    ILogger logger = new StorageFolderLogger(storageFacade.ChangeFolder("logs"));
-                    var cosmosFacade = new CosmosAccountFacade(
-                        configuration.CosmosAccount.Name,
-                        configuration.CosmosAccount.Key,
-                        logger);
-                    var scheduler = new BackupScheduler(
-                        logger,
-                        cosmosFacade,
-                        storageFacade,
-                        configuration.GetCollectionPlans(),
-                        configuration.Constants);
-
-                    try
-                    {
-                        await scheduler.InitializeAsync();
-                        if (parameters.Mode == BackupMode.Iterative)
-                        {
-                            await scheduler.ProcessIterationAsync();
-                        }
-                        else
-                        {
-                            await scheduler.ProcessContinuouslyAsync();
-                        }
-                        logger.Display($"Elapsed Time:  {watch.Elapsed}");
-                        logger.Display("Memory used:  "
-                            + $"{Process.GetCurrentProcess().PrivateMemorySize64 / 1024 / 1024} Mb");
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.DisplayError(ex);
-                    }
-                    finally
-                    {
-                        await Task.WhenAll(scheduler.DisposeAsync(), logger.FlushAsync());
-                    }
+                    await metaController.BackupAsync(configuration, parameters.Mode);
                 }
             }
         }
@@ -159,38 +124,6 @@ namespace Cosbak
             catch (FileNotFoundException ex)
             {
                 throw new CosbakException($"File '{ex.FileName}' not found");
-            }
-        }
-
-        private static IStorageFacade CreateStorageFacade(StorageAccountConfiguration description)
-        {
-            if (!string.IsNullOrWhiteSpace(description.Token))
-            {
-                return StorageFacade.FromToken(
-                    description.Name,
-                    description.Container,
-                    description.Folder,
-                    description.Token);
-            }
-            else if (!string.IsNullOrWhiteSpace(description.TokenPath))
-            {
-                throw new NotImplementedException();
-            }
-            else if (!string.IsNullOrWhiteSpace(description.Key))
-            {
-                return StorageFacade.FromKey(
-                    description.Name,
-                    description.Container,
-                    description.Folder,
-                    description.Key);
-            }
-            else if (!string.IsNullOrWhiteSpace(description.KeyPath))
-            {
-                throw new NotImplementedException();
-            }
-            else
-            {
-                throw new NotSupportedException();
             }
         }
     }
