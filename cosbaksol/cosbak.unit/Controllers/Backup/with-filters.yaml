@@ -1,8 +1,0 @@
-cosmosAccount:
-  name:  cosbak-sample
-storageAccount:
-  name:  X
-  container: Y
-  folder:  Z
-filters:
-  - mydb.mycoll
