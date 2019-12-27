@@ -150,11 +150,13 @@ namespace Cosbak.Controllers.Index
                         {
                             var (metaData, content) = item.Split();
 
+                            sprocs = sprocs.SetItem(item.Id.Id, metaData.Id);
                             await buffer.WriteAsync(metaData, content);
                         }
                     }
                 }
                 await buffer.FlushAsync();
+                _initialized.IndexFile.UpdateLastSprocTimeStamp(lastTimeStamp);
 
                 _logger.Display($"Indexed {buffer.ItemCount} stored procedures in {batchCount} batches");
                 _logger
@@ -206,6 +208,7 @@ namespace Cosbak.Controllers.Index
                     }
                 }
                 await buffer.FlushAsync();
+                _initialized.IndexFile.UpdateLastDocumentTimeStamp(lastTimeStamp);
 
                 _logger.Display($"Indexed {buffer.ItemCount} documents in {batchCount} batches");
                 _logger

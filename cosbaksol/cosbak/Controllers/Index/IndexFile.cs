@@ -160,6 +160,17 @@ namespace Cosbak.Controllers.Index
             }
         }
 
+        public void UpdateLastDocumentTimeStamp(long lastTimeStamp)
+        {
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
+            _initialized.Fat.LastDocumentTimeStamp = lastTimeStamp;
+            _isDirty = true;
+        }
+
         public async Task PushSprocsAsync(
             byte[] indexBuffer,
             long indexLength,
@@ -184,6 +195,17 @@ namespace Cosbak.Controllers.Index
 
                 _isDirty = true;
             }
+        }
+
+        public void UpdateLastSprocTimeStamp(long lastTimeStamp)
+        {
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
+            _initialized.Fat.LastStoredProcedureTimeStamp = lastTimeStamp;
+            _isDirty = true;
         }
 
         private async Task<Block> WriteBlockAsync(byte[] buffer, int length)
