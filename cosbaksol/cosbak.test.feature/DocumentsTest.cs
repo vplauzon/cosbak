@@ -16,7 +16,19 @@ namespace cosbak.test.feature
         {
             var container = await CosmosCollectionRental.GetCollectionAsync("empty");
             var metaController = new MetaController();
-            var configuration = new BackupConfiguration();
+            var configuration = new BackupConfiguration
+            {
+                CosmosAccount = CosmosCollectionRental.CosmosConfiguration,
+                StorageAccount = Storage.StorageConfiguration,
+                Collections = new[]
+                {
+                    new CollectionBackupPlanOverride
+                    {
+                        Db=CosmosCollectionRental.DatabaseName,
+                        Collection= container.Id
+                    }
+                }
+            };
 
             await metaController.BackupAsync(configuration, BackupMode.Iterative);
         }

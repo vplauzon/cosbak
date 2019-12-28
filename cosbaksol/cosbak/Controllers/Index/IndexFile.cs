@@ -38,8 +38,8 @@ namespace Cosbak.Controllers.Index
             ILogger logger)
         {
             _storageFacade = storageFacade.ChangeFolder(
-                $"{Constants.BACKUPS_FOLDER}/{accountName}/{databaseName}");
-            _blobName = $"{collectionName}.{Constants.INDEX_EXTENSION}";
+                $"{Constants.BACKUPS_FOLDER}/{accountName}");
+            _blobName = $"{databaseName}.{collectionName}.{Constants.INDEX_EXTENSION}";
             _logger = logger;
         }
 
