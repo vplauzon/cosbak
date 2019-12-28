@@ -14,7 +14,8 @@ namespace cosbak.test.feature
         [Fact]
         public async Task EmptyBackup()
         {
-            var container = await CosmosCollectionRental.GetCollectionAsync("empty");
+            var sourceContainer = await CosmosCollectionRental.GetCollectionAsync("empty");
+            var targetContainer = await CosmosCollectionRental.GetCollectionAsync("empty-restore");
             var metaController = new MetaController();
             var backupConfiguration = new BackupConfiguration
             {
@@ -25,7 +26,7 @@ namespace cosbak.test.feature
                     new CollectionBackupPlanOverride
                     {
                         Db=CosmosCollectionRental.DatabaseName,
-                        Collection= container.Id
+                        Collection= sourceContainer.Id
                     }
                 }
             };
@@ -42,7 +43,7 @@ namespace cosbak.test.feature
                 TargetCollection = new CollectionConfiguration
                 {
                     Db = CosmosCollectionRental.DatabaseName,
-                    Collection = $"{backupConfiguration.Collections[0].Collection}-restore"
+                    Collection = targetContainer.Id
                 }
             };
 

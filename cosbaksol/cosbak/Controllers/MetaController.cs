@@ -1,11 +1,13 @@
 ﻿using Cosbak.Commands;
 using Cosbak.Config;
 using Cosbak.Controllers.Index;
+using Cosbak.Controllers.Restore;
 using Cosbak.Cosmos;
 using Cosbak.Storage;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -22,10 +24,7 @@ namespace Cosbak.Controllers
 
             var storageFacade = CreateStorageFacade(configuration.StorageAccount);
             ILogger logger = new StorageFolderLogger(storageFacade.ChangeFolder("logs"));
-            var cosmosFacade = new CosmosAccountFacade(
-                configuration.CosmosAccount.Name,
-                configuration.CosmosAccount.Key,
-                logger);
+            var cosmosFacade = CreateCosmosFacade(configuration.CosmosAccount, logger);
             var scheduler = new BackupScheduler(
                 logger,
                 cosmosFacade,
@@ -72,10 +71,12 @@ namespace Cosbak.Controllers
 
             var storageFacade = CreateStorageFacade(configuration.StorageAccount);
             ILogger logger = new StorageFolderLogger(storageFacade.ChangeFolder("logs"));
-            var cosmosFacade = new CosmosAccountFacade(
-                configuration.CosmosAccount.Name,
-                configuration.CosmosAccount.Key,
+            var cosmosFacade = CreateCosmosFacade(
+                configuration.CosmosAccount,
                 logger) as ICosmosAccountFacade;
+            var collectionLogger = logger
+                .AddContext("Db", configuration.SourceCollection.Db)
+                .AddContext("Collection", configuration.SourceCollection.Collection);
             var indexController = new IndexCollectionController(
                 configuration.SourceCollection.Account,
                 configuration.SourceCollection.Db,
@@ -83,9 +84,7 @@ namespace Cosbak.Controllers
                 storageFacade,
                 null,
                 configuration.Constants.IndexConstants,
-                logger
-                .AddContext("Db", configuration.SourceCollection.Db)
-                .AddContext("Collection", configuration.SourceCollection.Collection));
+                collectionLogger);
 
             try
             {
@@ -101,9 +100,29 @@ namespace Cosbak.Controllers
                         await indexController.LoadUntilAsync(pointInTime);
                     }
 
-                    logger.Display($"Elapsed Time:  {watch.Elapsed}");
-                    logger.Display("Memory used:  "
-                        + $"{Process.GetCurrentProcess().PrivateMemorySize64 / 1024 / 1024} Mb");
+                    var collection = await FindOrCreateCollectionAsync(
+                        cosmosFacade,
+                        configuration.TargetCollection);
+                    var restoreController = new RestoreController(
+                        configuration.SourceCollection.Account,
+                        configuration.SourceCollection.Db,
+                        configuration.SourceCollection.Collection,
+                        storageFacade,
+                        collection,
+                        collectionLogger);
+
+                    await restoreController.InitializeAsync();
+                    try
+                    {
+                        await restoreController.RestoreAsync();
+                        logger.Display($"Elapsed Time:  {watch.Elapsed}");
+                        logger.Display("Memory used:  "
+                            + $"{Process.GetCurrentProcess().PrivateMemorySize64 / 1024 / 1024} Mb");
+                    }
+                    finally
+                    {
+                        await restoreController.DisposeAsync();
+                    }
                 }
                 finally
                 {
@@ -113,6 +132,35 @@ namespace Cosbak.Controllers
             catch (Exception ex)
             {
                 logger.DisplayError(ex);
+            }
+        }
+
+        private async Task<ICollectionFacade> FindOrCreateCollectionAsync(
+            ICosmosAccountFacade cosmosFacade,
+            CollectionConfiguration targetCollection)
+        {
+            var dbs = await cosmosFacade.GetDatabasesAsync();
+            var db = dbs.Where(d => d.DatabaseName == targetCollection.Db).FirstOrDefault();
+
+            if (db == null)
+            {
+                throw new CosbakException($"Can't find database {targetCollection.Db}");
+            }
+            else
+            {
+                var collections = await db.GetCollectionsAsync();
+                var collection = collections
+                    .Where(c => c.CollectionName == targetCollection.Collection)
+                    .FirstOrDefault();
+
+                if (collection == null)
+                {
+                    throw new CosbakException($"Can't find collection {targetCollection.Collection}");
+                }
+                else
+                {
+                    return collection;
+                }
             }
         }
 
@@ -146,6 +194,16 @@ namespace Cosbak.Controllers
             {
                 throw new NotSupportedException();
             }
+        }
+
+        private static CosmosAccountFacade CreateCosmosFacade(
+            CosmosAccountConfiguration configuration,
+            ILogger logger)
+        {
+            return new CosmosAccountFacade(
+                configuration.Name,
+                configuration.Key,
+                logger);
         }
     }
 }

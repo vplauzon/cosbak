@@ -103,6 +103,11 @@ namespace Cosbak.Controllers.LogBackup
             await _logFile.PersistAsync();
         }
 
+        public async Task DisposeAsync()
+        {
+            await _logFile.DisposeAsync();
+        }
+
         private async Task LogCheckPointAsync(long currentTimeStamp)
         {
             _logger.Display("Preparing Checkpoint...");
@@ -198,11 +203,6 @@ namespace Cosbak.Controllers.LogBackup
 
                 return blocks;
             }
-        }
-
-        public async Task DisposeAsync()
-        {
-            await _logFile.DisposeAsync();
         }
     }
 }

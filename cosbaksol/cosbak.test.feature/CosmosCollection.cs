@@ -6,7 +6,7 @@ using Xunit;
 namespace cosbak.test.feature
 {
     [CollectionDefinition("Cosmos collection")]
-    public class CosmosCollection: ICollectionFixture<CosmosFixture>
+    public class CosmosCollection : ICollectionFixture<CosmosFixture>
     {
     }
 }
