@@ -17,7 +17,18 @@ namespace cosbak.test.feature
         {
             var sourceContainer = await CosmosCollectionRental.GetCollectionAsync("empty");
             var targetContainer = await CosmosCollectionRental.GetCollectionAsync("empty-restore");
-            
+
+            await BackupRestoreAsync(sourceContainer, targetContainer);
+            await CollectionComparer.CompareDocumentCountAsync(sourceContainer, targetContainer);
+        }
+
+        [Fact]
+        public async Task OneDocument()
+        {
+            var sourceContainer = await CosmosCollectionRental.GetCollectionAsync("empty");
+            var targetContainer = await CosmosCollectionRental.GetCollectionAsync("empty-restore");
+
+            await sourceContainer.CreateItemAsync(new { id = "Test" });
             await BackupRestoreAsync(sourceContainer, targetContainer);
             await CollectionComparer.CompareDocumentCountAsync(sourceContainer, targetContainer);
         }
