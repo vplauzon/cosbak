@@ -1,6 +1,7 @@
 using Cosbak.Commands;
 using Cosbak.Config;
 using Cosbak.Controllers;
+using Microsoft.Azure.Cosmos;
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -16,6 +17,13 @@ namespace cosbak.test.feature
         {
             var sourceContainer = await CosmosCollectionRental.GetCollectionAsync("empty");
             var targetContainer = await CosmosCollectionRental.GetCollectionAsync("empty-restore");
+            
+            await BackupRestoreAsync(sourceContainer, targetContainer);
+            await CollectionComparer.CompareDocumentCountAsync(sourceContainer, targetContainer);
+        }
+
+        private static async Task BackupRestoreAsync(Container sourceContainer, Container targetContainer)
+        {
             var metaController = new MetaController();
             var backupConfiguration = new BackupConfiguration
             {
