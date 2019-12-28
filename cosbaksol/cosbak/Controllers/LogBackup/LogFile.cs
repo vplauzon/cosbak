@@ -134,7 +134,7 @@ namespace Cosbak.Controllers.LogBackup
                 : TimeSpan.Zero;
         }
 
-        public async Task InitializeAsync()
+        public async Task InitializeAsync(string partitionPath)
         {
             if (_initialized != null)
             {
@@ -159,8 +159,8 @@ namespace Cosbak.Controllers.LogBackup
             {
                 var blocks = await _storageFacade.GetBlocksAsync(_blobName);
                 var logFat = blocks.Count == 0
-                    ? new LogFat()
-                    : await LoadFatAsync((int)blocks[0].Length);
+                    ? new LogFat { PartitionPath = partitionPath }
+                    : await LoadFatAsync((int)blocks[0].Length, partitionPath);
 
                 _initialized = new Initialized(lease, logFat);
             }
@@ -260,13 +260,21 @@ namespace Cosbak.Controllers.LogBackup
             _isDirty = true;
         }
 
-        private async Task<LogFat> LoadFatAsync(int length)
+        private async Task<LogFat> LoadFatAsync(int length, string partitionPath)
         {
             var buffer = new byte[length];
 
             await _storageFacade.DownloadRangeAsync(_blobName, buffer);
 
-            return JsonSerializer.Deserialize<LogFat>(buffer);
+            var logFat = JsonSerializer.Deserialize<LogFat>(buffer);
+
+            if (logFat.PartitionPath != partitionPath)
+            {
+                throw new CosbakException(
+                    $"Partition path changed from {logFat.PartitionPath} to {partitionPath}");
+            }
+
+            return logFat;
         }
 
         private void PurgeDocuments(long lastTimestamp)

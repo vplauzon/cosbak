@@ -39,9 +39,9 @@ namespace Cosbak.Controllers.LogBackup
             _logger = logger;
         }
 
-        public async Task InitializeAsync()
+        public async Task InitializeAsync(string partitionPath)
         {
-            await _logFile.InitializeAsync();
+            await _logFile.InitializeAsync(partitionPath);
         }
 
         public async Task<LogBatchResult> LogBatchAsync()

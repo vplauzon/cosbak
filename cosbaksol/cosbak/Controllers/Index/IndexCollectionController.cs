@@ -34,27 +34,27 @@ namespace Cosbak.Controllers.Index
 
         private static readonly byte[] EMPTY_CONTENT = new byte[0];
 
-        private readonly ICollectionFacade _collection;
-        private readonly IImmutableList<string> _partitionParts;
+        private readonly string _account;
+        private readonly string _db;
+        private readonly string _collection;
         private readonly ILogger _logger;
         private readonly IStorageFacade _storageFacade;
-        private readonly int _retentionInDays;
+        private readonly int? _retentionInDays;
         private readonly IndexConstants _indexConstants;
         private Initialized? _initialized;
 
         public IndexCollectionController(
-            ICollectionFacade collectionFacade,
+            string account,
+            string db,
+            string collection,
             IStorageFacade storageFacade,
-            int retentionInDays,
+            int? retentionInDays,
             IndexConstants indexConstants,
             ILogger logger)
         {
-            _collection = collectionFacade;
-            _partitionParts = collectionFacade
-                .PartitionPath
-                .Split('/')
-                .Skip(1)
-                .ToImmutableArray();
+            _account = account;
+            _db = db;
+            _collection = collection;
             _storageFacade = storageFacade;
             _retentionInDays = retentionInDays;
             _indexConstants = indexConstants;
@@ -70,15 +70,15 @@ namespace Cosbak.Controllers.Index
 
             var indexFile = new IndexFile(
                 _storageFacade,
-                _collection.Parent.Parent.AccountName,
-                _collection.Parent.DatabaseName,
-                _collection.CollectionName,
+                _account,
+                _db,
+                _collection,
                 _logger);
             var logFile = new ReadonlyLogFile(
                 _storageFacade,
-                _collection.Parent.Parent.AccountName,
-                _collection.Parent.DatabaseName,
-                _collection.CollectionName,
+                _account,
+                _db,
+                _collection,
                 _logger);
 
             await Task.WhenAll(
@@ -107,8 +107,7 @@ namespace Cosbak.Controllers.Index
                 throw new InvalidOperationException("InitializeAsync hasn't been called");
             }
 
-            _logger.Display(
-                $"Index {_collection.Parent.DatabaseName}.{_collection.CollectionName}...");
+            _logger.Display($"Index {_db}.{_collection}...");
             _logger.WriteEvent("Index-Collection-Start");
 
             await LoadDocumentsAsync();
@@ -117,6 +116,16 @@ namespace Cosbak.Controllers.Index
             _logger.WriteEvent("Index-Collection-End");
 
             return _initialized.LogFile.LastTimeStamp;
+        }
+
+        public Task LoadUntilAsync(DateTime? pointInTime)
+        {
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
+            throw new NotImplementedException();
         }
 
         private async Task LoadStoredProceduresAsync()
@@ -216,7 +225,7 @@ namespace Cosbak.Controllers.Index
                     ++batchCount;
                     foreach (var item in batch.Items)
                     {
-                        var (metaData, content) = SplitDocument(item);
+                        var (metaData, content) = SplitDocument(item, _initialized.LogFile.PartitionParts);
 
                         await buffer.WriteAsync(metaData, content);
                     }
@@ -270,10 +279,12 @@ namespace Cosbak.Controllers.Index
             return (indexSize, contentSize);
         }
 
-        private (DocumentMetaData metaData, byte[] content) SplitDocument(JsonElement doc)
+        private static (DocumentMetaData metaData, byte[] content) SplitDocument(
+            JsonElement doc,
+            IImmutableList<string> partitionParts)
         {
             var id = doc.GetProperty(Constants.ID_FIELD).GetString();
-            var partitionKey = GetPartitionKey(doc);
+            var partitionKey = GetPartitionKey(doc, partitionParts);
             var timeStamp = doc.GetProperty(Constants.TIMESTAMP_FIELD).GetInt64();
             var content = JsonSerializer.SerializeToUtf8Bytes(CleanDocument(doc));
             var metaData = new DocumentMetaData(
@@ -285,17 +296,17 @@ namespace Cosbak.Controllers.Index
             return (metaData, content);
         }
 
-        private object? GetPartitionKey(JsonElement doc)
+        private static object? GetPartitionKey(JsonElement doc, IImmutableList<string> partitionParts)
         {
             JsonElement current = doc;
 
-            for (int i = 0; i != _partitionParts.Count; ++i)
+            for (int i = 0; i != partitionParts.Count; ++i)
             {
-                var part = _partitionParts[i];
+                var part = partitionParts[i];
                 JsonElement output;
                 var hasProperty = doc.TryGetProperty(part, out output);
 
-                if (!hasProperty || i == _partitionParts.Count - 1)
+                if (!hasProperty || i == partitionParts.Count - 1)
                 {
                     return output;
                 }
@@ -308,7 +319,7 @@ namespace Cosbak.Controllers.Index
             throw new NotSupportedException("We should never reach this code path");
         }
 
-        private IImmutableDictionary<string, JsonElement> CleanDocument(JsonElement doc)
+        private static IImmutableDictionary<string, JsonElement> CleanDocument(JsonElement doc)
         {
             var keptProperties = from property in doc.EnumerateObject()
                                  where property.Name != Constants.ID_FIELD

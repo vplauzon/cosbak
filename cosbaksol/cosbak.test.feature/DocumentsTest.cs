@@ -16,7 +16,7 @@ namespace cosbak.test.feature
         {
             var container = await CosmosCollectionRental.GetCollectionAsync("empty");
             var metaController = new MetaController();
-            var configuration = new BackupConfiguration
+            var backupConfiguration = new BackupConfiguration
             {
                 CosmosAccount = CosmosCollectionRental.CosmosConfiguration,
                 StorageAccount = Storage.StorageConfiguration,
@@ -29,8 +29,25 @@ namespace cosbak.test.feature
                     }
                 }
             };
+            var restoreConfiguration = new RestoreConfiguration
+            {
+                CosmosAccount = backupConfiguration.CosmosAccount,
+                StorageAccount = backupConfiguration.StorageAccount,
+                SourceCollection = new CompleteCollectionConfiguration
+                {
+                    Account = backupConfiguration.CosmosAccount.Name,
+                    Db = CosmosCollectionRental.DatabaseName,
+                    Collection = backupConfiguration.Collections[0].Collection,
+                },
+                TargetCollection = new CollectionConfiguration
+                {
+                    Db = CosmosCollectionRental.DatabaseName,
+                    Collection = $"{backupConfiguration.Collections[0].Collection}-restore"
+                }
+            };
 
-            await metaController.BackupAsync(configuration, BackupMode.Iterative);
+            await metaController.BackupAsync(backupConfiguration, BackupMode.Iterative);
+            await metaController.RestoreAsync(restoreConfiguration);
         }
     }
 }

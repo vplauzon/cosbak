@@ -19,15 +19,19 @@ namespace Cosbak.Controllers
         {
             public CollectionPlan(
                 LogCollectionBackupController logController,
+                ICollectionFacade collection,
                 Func<IndexCollectionController> indexControllerFactory,
                 BackupPlan plan)
             {
                 LogController = logController;
+                Collection = collection;
                 IndexControllerFactory = indexControllerFactory;
                 Plan = plan;
             }
 
             public LogCollectionBackupController LogController { get; }
+
+            public ICollectionFacade Collection { get; }
 
             public Func<IndexCollectionController> IndexControllerFactory { get; }
 
@@ -79,8 +83,9 @@ namespace Cosbak.Controllers
                 _cosmosFacade,
                 _storageFacade,
                 _logger).ToEnumerable();
-            var initializeControllerTasks = from p in collectionPlans
-                                            select p.LogController.InitializeAsync();
+            var initializeControllerTasks =
+                from p in collectionPlans
+                select p.LogController.InitializeAsync(p.Collection.PartitionPath);
 
             await Task.WhenAll(initializeControllerTasks);
             _initialized = new Initialized(collectionPlans);
@@ -188,8 +193,11 @@ namespace Cosbak.Controllers
 
                             yield return new CollectionPlan(
                                 logController,
+                                coll,
                                 () => new IndexCollectionController(
-                                    coll,
+                                    coll.Parent.Parent.AccountName,
+                                    coll.Parent.DatabaseName,
+                                    coll.CollectionName,
                                     storageFacade,
                                     plan.RetentionInDays,
                                     technicalConstants.IndexConstants,

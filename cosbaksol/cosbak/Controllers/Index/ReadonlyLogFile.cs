@@ -25,12 +25,18 @@ namespace Cosbak.Controllers.Index
             {
                 SnapshotTime = snapshotTime;
                 Fat = fat;
+                PartitionParts = Fat.PartitionPath
+                    .Split('/')
+                    .Skip(1)
+                    .ToImmutableArray();
                 Blocks = blocks;
             }
 
             public DateTimeOffset? SnapshotTime { get; }
 
             public LogFat Fat { get; }
+
+            public IImmutableList<string> PartitionParts { get; }
 
             public IImmutableList<BlockItem> Blocks { get; }
         }
@@ -49,8 +55,8 @@ namespace Cosbak.Controllers.Index
             ILogger logger)
         {
             _storageFacade = storageFacade.ChangeFolder(
-                $"{Constants.BACKUPS_FOLDER}/{accountName}/{databaseName}");
-            _blobName = $"{collectionName}.{Constants.LOG_EXTENSION}";
+                $"{Constants.BACKUPS_FOLDER}/{accountName}");
+            _blobName = $"{databaseName}.{collectionName}.{Constants.LOG_EXTENSION}";
             _logger = logger;
         }
 
@@ -64,6 +70,19 @@ namespace Cosbak.Controllers.Index
                 }
 
                 return _initialized.Fat.LastTimeStamp;
+            }
+        }
+
+        public IImmutableList<string> PartitionParts
+        {
+            get
+            {
+                if (_initialized == null)
+                {
+                    throw new InvalidOperationException("InitializeAsync hasn't been called");
+                }
+
+                return _initialized.PartitionParts;
             }
         }
 

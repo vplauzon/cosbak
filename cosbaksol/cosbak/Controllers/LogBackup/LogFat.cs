@@ -8,6 +8,8 @@ namespace Cosbak.Controllers.LogBackup
 {
     internal class LogFat
     {
+        public string PartitionPath { get; set; } = string.Empty;
+
         public ImmutableList<DocumentBatch> InProgressDocumentBatches { get; set; }
             = ImmutableList<DocumentBatch>.Empty;
 
