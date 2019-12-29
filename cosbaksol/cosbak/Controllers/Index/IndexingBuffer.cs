@@ -34,11 +34,11 @@ namespace Cosbak.Controllers.Index
 
         public int ItemCount { get; private set; }
 
-        public async Task WriteAsync(IStreamable metaData, byte[] content)
+        public async Task WriteAsync(IMetaData metaData, byte[] content)
         {
             var indexSpace = _indexStream.Length - _indexStream.Position;
             var contentSpace = _contentStream.Length - _contentStream.Position;
-            var hasCapacity = indexSpace >= metaData.Size
+            var hasCapacity = indexSpace >= metaData.IndexSize
                 && contentSpace >= content.Length;
 
             if(!hasCapacity)

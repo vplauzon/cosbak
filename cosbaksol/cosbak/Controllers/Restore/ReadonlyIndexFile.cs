@@ -3,6 +3,7 @@ using Cosbak.Storage;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -17,18 +18,18 @@ namespace Cosbak.Controllers.Restore
             public Initialized(
                 DateTimeOffset? snapshotTime,
                 IndexFat fat,
-                IImmutableList<BlockItem> blocks)
+                IImmutableList<BlockItem> blobBlocks)
             {
                 SnapshotTime = snapshotTime;
                 Fat = fat;
-                Blocks = blocks;
+                BlobBlocks = blobBlocks;
             }
 
             public DateTimeOffset? SnapshotTime { get; }
 
             public IndexFat Fat { get; }
 
-            public IImmutableList<BlockItem> Blocks { get; }
+            public IImmutableList<BlockItem> BlobBlocks { get; }
         }
         #endregion
 
@@ -74,6 +75,29 @@ namespace Cosbak.Controllers.Restore
             }
         }
 
+        public async IAsyncEnumerable<IEnumerable<JsonElement>> ReadLatestDocumentsAsync(long upToTimeStamp)
+        {
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+            using (var indexBuffer =
+                await LoadBlocksAsync(_initialized.Fat.DocumentPartition.IndexBlocks))
+            using (var contentBuffer =
+                await LoadBlocksAsync(_initialized.Fat.DocumentPartition.ContentBlocks))
+            {
+                var indexed = new SortedIndexedDocumentEnumerable(
+                    indexBuffer.Buffer,
+                    _initialized.Fat.DocumentPartition.IndexBlocks.Sum(b => (int)b.Size),
+                    contentBuffer.Buffer);
+                var latestDocuments = from i in indexed.GetLatestItems(upToTimeStamp)
+                                      let doc = JsonSerializer.Deserialize<JsonElement>(i.content.Span)
+                                      select doc;
+
+                yield return latestDocuments;
+            }
+        }
+
         public async Task DisposeAsync()
         {
             if (_initialized == null)
@@ -82,6 +106,26 @@ namespace Cosbak.Controllers.Restore
             }
 
             await _storageFacade.ClearSnapshotsAsync(_blobName);
+        }
+
+        private async Task<BufferPool> LoadBlocksAsync(IImmutableList<Block> blocks)
+        {
+            if (_initialized == null)
+            {
+                throw new InvalidOperationException("InitializeAsync hasn't been called");
+            }
+
+            var (start, end) = Block.GetInterval(blocks, _initialized.BlobBlocks);
+            var buffer = BufferPool.Rent((int)(end - start));
+
+            await _storageFacade.DownloadRangeAsync(
+                _blobName,
+                buffer.Buffer,
+                start,
+                end - start,
+                _initialized.SnapshotTime);
+
+            return buffer;
         }
 
         private async Task<IndexFat> LoadFatAsync(int length, DateTimeOffset? snapshotTime)

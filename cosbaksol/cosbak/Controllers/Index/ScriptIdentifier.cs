@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Cosbak.Controllers.Index
 {
-    internal class ScriptIdentifier
+    internal struct ScriptIdentifier
     {
         public ScriptIdentifier(string id, long timeStamp)
         {

@@ -322,11 +322,11 @@ namespace Cosbak.Controllers.Index
         private static IImmutableDictionary<string, JsonElement> CleanDocument(JsonElement doc)
         {
             var keptProperties = from property in doc.EnumerateObject()
-                                 where property.Name != Constants.ID_FIELD
-                                 && property.Name != "_rid"
+                                 where property.Name != "_rid"
                                  && property.Name != "_self"
                                  && property.Name != "_etag"
                                  && property.Name != "_attachments"
+                                 && property.Name != "_ts"
                                  select KeyValuePair.Create(property.Name, property.Value);
 
             return ImmutableDictionary.CreateRange(keptProperties);

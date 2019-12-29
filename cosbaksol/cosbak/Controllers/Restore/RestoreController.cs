@@ -40,12 +40,18 @@ namespace Cosbak.Controllers.Restore
 
         public async Task RestoreAsync()
         {
-            await Task.CompletedTask;
+            await RestoreDocumentsAsync();
         }
 
         public async Task DisposeAsync()
         {
             await _indexFile.DisposeAsync();
+        }
+
+        private async Task RestoreDocumentsAsync()
+        {
+            await Task.CompletedTask;
+            throw new NotImplementedException();
         }
     }
 }

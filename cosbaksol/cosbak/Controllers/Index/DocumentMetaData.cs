@@ -6,40 +6,38 @@ using System.Text.Json.Serialization;
 
 namespace Cosbak.Controllers.Index
 {
-    public struct DocumentMetaData : IStreamable
+    public struct DocumentMetaData : IMetaData
     {
-        public DocumentMetaData(string id, object? partitionKey, long timeStamp, int size)
+        private readonly string _id;
+        private readonly long _timeStamp;
+        private readonly int _contentSize;
+
+        public DocumentMetaData(string id, object? partitionKey, long timeStamp, int contentSize)
         {
-            Id = id;
+            _id = id;
             PartitionHash = partitionKey == null
                 ? 0
                 : partitionKey.GetHashCode();
-            TimeStamp = timeStamp;
-            ContentSize = size;
+            _timeStamp = timeStamp;
+            _contentSize = contentSize;
         }
 
-        private DocumentMetaData(string id, int partitionHash, long timeStamp, int size)
+        private DocumentMetaData(string id, int partitionHash, long timeStamp, int contentSize)
         {
-            Id = id;
+            _id = id;
             PartitionHash = partitionHash;
-            TimeStamp = timeStamp;
-            ContentSize = size;
+            _timeStamp = timeStamp;
+            _contentSize = contentSize;
         }
-
-        public string Id { get; }
 
         public int PartitionHash { get; }
-
-        public long TimeStamp { get; }
-
-        public int ContentSize { get; }
 
         [JsonIgnore]
         public long CompoundHash
         {
             get
             {
-                long longId = Id.GetHashCode();
+                long longId = _id.GetHashCode();
                 long longPartition = PartitionHash;
                 long pushedPartition = longPartition << 32;
                 long compoundHash = pushedPartition | longId;
@@ -61,16 +59,22 @@ namespace Cosbak.Controllers.Index
             }
         }
 
-        int IStreamable.Size => Id.Length + 2 + 4 + 2;
+        string IMetaData.Id => _id;
 
-        void IStreamable.Write(Stream stream)
+        int IMetaData.IndexSize => _id.Length + 2 + 4 + 2;
+
+        int IMetaData.ContentSize => _contentSize;
+        
+        long IMetaData.TimeStamp => _timeStamp;
+
+        void IMetaData.Write(Stream stream)
         {
             using (var writer = new BinaryWriter(stream, Encoding.UTF8, true))
             {
-                writer.Write(Id);
+                writer.Write(_id);
                 writer.Write(PartitionHash);
-                writer.Write(TimeStamp);
-                writer.Write(ContentSize);
+                writer.Write(_timeStamp);
+                writer.Write(_contentSize);
             }
         }
     }

@@ -1,10 +1,16 @@
 ﻿using System.IO;
 
-namespace Cosbak.Controllers.Index
+namespace Cosbak.Controllers
 {
-    public interface IStreamable
+    public interface IMetaData
     {
-        int Size { get; }
+        string Id { get; }
+
+        int IndexSize { get; }
+        
+        int ContentSize { get; }
+
+        long TimeStamp { get; }
 
         void Write(Stream stream);
     }

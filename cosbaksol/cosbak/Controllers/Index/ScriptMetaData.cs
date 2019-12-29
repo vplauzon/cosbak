@@ -1,31 +1,36 @@
 ﻿using System;
-using System.Drawing;
 using System.IO;
 using System.Text;
 
 namespace Cosbak.Controllers.Index
 {
-    internal class ScriptMetaData : IStreamable
+    internal class ScriptMetaData : IMetaData
     {
+        private readonly int _contentSize;
+
         public ScriptMetaData(ScriptIdentifier id, int contentSize)
         {
             Id = id;
-            ContentSize = contentSize;
+            _contentSize = contentSize;
         }
 
         public ScriptIdentifier Id { get; }
 
-        public int ContentSize { get; }
+        string IMetaData.Id => Id.Id;
+        
+        int IMetaData.IndexSize => 2 + 4 + 2;
 
-        int IStreamable.Size => 2 + 4 + 2;
+        int IMetaData.ContentSize => _contentSize;
 
-        void IStreamable.Write(Stream stream)
+        long IMetaData.TimeStamp => Id.TimeStamp;
+
+        void IMetaData.Write(Stream stream)
         {
             using (var writer = new BinaryWriter(stream, Encoding.UTF8, true))
             {
                 writer.Write(Id.Id);
                 writer.Write(Id.TimeStamp);
-                writer.Write(ContentSize);
+                writer.Write(_contentSize);
             }
         }
     }

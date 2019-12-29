@@ -190,8 +190,8 @@ namespace Cosbak.Controllers.Index
             {
                 var pageBatch =
                     GetPageFromBlocks(remainingBlocks, maxBufferSize).ToImmutableArray();
-                var (start, end) = GetInterval(
-                    pageBatch.Select(b => b.block.Id),
+                var (start, end) = Block.GetInterval(
+                    pageBatch.Select(b => b.block),
                     _initialized.Blocks);
                 var bufferIndex = 0;
 
@@ -244,48 +244,6 @@ namespace Cosbak.Controllers.Index
             }
 
             return remainingBlocks;
-        }
-
-        private (long start, long end) GetInterval(
-            IEnumerable<string> blockIds,
-            IImmutableList<BlockItem> blocks)
-        {
-            long start = 0;
-            long index = 0;
-            var isStarted = false;
-
-            foreach (var block in blocks)
-            {
-                if (block.Id == blockIds.First())
-                {
-                    if (!isStarted)
-                    {
-                        isStarted = true;
-                        start = index;
-                    }
-                    else
-                    {
-                    }
-                    blockIds = blockIds.Skip(1);
-                    if (!blockIds.Any())
-                    {
-                        return (start, index + block.Length);
-                    }
-                }
-                else
-                {
-                    if (!isStarted)
-                    {
-                    }
-                    else
-                    {
-                        throw new NotSupportedException("Blocks aren't contiguous");
-                    }
-                }
-                index += block.Length;
-            }
-
-            throw new NotSupportedException("Remaining blocks that aren't in the blob");
         }
 
         private IEnumerable<(Block block, long TimeStamp)> GetDocumentBlocks(long afterTimeStamp)
