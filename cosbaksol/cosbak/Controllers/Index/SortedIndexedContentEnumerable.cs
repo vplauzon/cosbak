@@ -1,11 +1,12 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Dynamic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Text.Json;
 
 namespace Cosbak.Controllers.Index
 {
@@ -85,7 +86,7 @@ namespace Cosbak.Controllers.Index
             _indexDeserializer = indexDeserializer;
         }
 
-        public IEnumerable<(INDEX index, Stream content)> AllItems
+        public IEnumerable<(INDEX index, object content)> AllItems
         {
             get
             {
@@ -94,13 +95,14 @@ namespace Cosbak.Controllers.Index
                     _indexStream.Position = offset.IndexOffset;
 
                     var meta = _indexDeserializer(_indexStream);
-                    var contentStream = new MemoryStream(
+                    var reader = new StreamReader(new MemoryStream(
                         _contentBuffer,
                         offset.ContentOffset,
                         meta.ContentSize,
-                        false);
+                        false));
+                    var content = new JsonSerializer().Deserialize(reader, typeof(JObject));
 
-                    yield return (meta, contentStream);
+                    yield return (meta, content);
                 }
             }
         }
@@ -109,31 +111,29 @@ namespace Cosbak.Controllers.Index
             string id,
             IEnumerable<(
                 INDEX index,
-                Stream content)> items)> GetAllItemsById()
+                object content)> items)> GetAllItemsById()
         {
             var currentId = (string?)null;
-            var items = ImmutableList<(INDEX index, Stream content)>.Empty;
+            var items = ImmutableList<(INDEX index, object content)>.Empty;
 
             foreach (var item in AllItems)
             {
-                if (currentId == null || item.index.Id == currentId)
+                if (currentId != null && item.index.Id != currentId)
                 {
-                    currentId = item.index.Id;
-                    items = items.Add(item);
+                    yield return (currentId, items);
+                    items = ImmutableList<(INDEX index, object content)>.Empty;
                 }
-                else
-                {
-                    yield return (currentId, items.ToImmutableArray());
-                }
+                currentId = item.index.Id;
+                items = items.Add(item);
             }
 
             if (currentId != null)
             {
-                yield return (currentId, items.ToImmutableArray());
+                yield return (currentId, items);
             }
         }
 
-        public IEnumerable<(INDEX index, Stream content)> GetLatestItems(
+        public IEnumerable<(INDEX index, object content)> GetLatestItems(
             long upToTimeStamp)
         {
             foreach (var grouping in GetAllItemsById())

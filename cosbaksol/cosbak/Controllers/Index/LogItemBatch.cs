@@ -79,9 +79,23 @@ namespace Cosbak.Controllers.Index
             //  inside a broken loop (i.e. a loop with yields)
             var reader = new Utf8JsonReader(sequence);
             var element = JsonSerializer.Deserialize<JsonElement>(ref reader);
-            var shouldContinueLoop = reader.TokenType == JsonTokenType.StartObject;
+            var offset = reader.TokenStartIndex;
 
-            return (element, shouldContinueLoop, reader.TokenStartIndex);
+            do
+            {
+                var character = (char)sequence.FirstSpan[(int)++offset];
+
+                if (character == '{')
+                {
+                    return (element, true, offset);
+                }
+                else if (character == ']')
+                {
+                    return (element, false, offset);
+                }
+            }
+            while (true);
+
         }
 
         private static string GetValue(Utf8JsonReader reader)

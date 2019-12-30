@@ -76,7 +76,7 @@ namespace Cosbak.Controllers.Restore
             }
         }
 
-        public async IAsyncEnumerable<IEnumerable<Stream>> ReadLatestDocumentsAsync(long upToTimeStamp)
+        public async IAsyncEnumerable<IEnumerable<object>> ReadLatestDocumentsAsync(long upToTimeStamp)
         {
             if (_initialized == null)
             {

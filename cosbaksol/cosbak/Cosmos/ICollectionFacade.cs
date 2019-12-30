@@ -27,6 +27,6 @@ namespace Cosbak.Cosmos
         
         StreamIterator GetAllTriggers();
 
-        Task WriteDocumentAsync(Stream stream);
+        Task WriteDocumentAsync(object document);
     }
 }

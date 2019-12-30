@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
+[assembly: InternalsVisibleTo("cosbak.test.unit")]
 [assembly: InternalsVisibleTo("cosbak.test.feature")]
 
 namespace Cosbak

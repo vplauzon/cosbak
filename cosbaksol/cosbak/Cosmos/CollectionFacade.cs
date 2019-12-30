@@ -121,9 +121,9 @@ namespace Cosbak.Cosmos
             return new StreamIterator(allTriggerFeed);
         }
 
-        async Task ICollectionFacade.WriteDocumentAsync(Stream stream)
+        async Task ICollectionFacade.WriteDocumentAsync(object document)
         {
-            var response = await _container.CreateItemStreamAsync(stream, PartitionKey.None);
+            await _container.CreateItemAsync(document, PartitionKey.None);
         }
     }
 }

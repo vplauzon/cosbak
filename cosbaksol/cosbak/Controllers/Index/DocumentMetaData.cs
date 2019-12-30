@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 
 namespace Cosbak.Controllers.Index
 {
-    public struct DocumentMetaData : IMetaData
+    public class DocumentMetaData : IMetaData
     {
         private readonly string _id;
         private readonly long _timeStamp;

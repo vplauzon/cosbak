@@ -42,11 +42,11 @@ namespace cosbak.test.feature
                 var sourceItem = sourceItems.Current;
                 var targetItem = targetItems.Current;
 
-                CompareItems(sourceItem, targetItem);
+                CompareDocuments(sourceItem, targetItem);
             }
         }
 
-        private static void CompareItems(
+        private static void CompareDocuments(
             IDictionary<string, object> sourceItem,
             IDictionary<string, object> targetItem)
         {
@@ -73,18 +73,33 @@ namespace cosbak.test.feature
             }
             else
             {
-                var sourceItem = ProjectToDictionary(obj1);
-                var targetItem = ProjectToDictionary(obj2);
-
-                Assert.NotNull(sourceItem);
-                Assert.NotNull(targetItem);
-
-                if (sourceItem == null || targetItem == null)
+                if (obj1 is IEnumerable<object>)
                 {
-                    throw new InvalidCastException("Impossible after asserts");
-                }
+                    var collection1 = (IEnumerable<object>)obj1;
+                    var collection2 = (IEnumerable<object>)obj2;
 
-                CompareItems(sourceItem, targetItem);
+                    Assert.Equal(collection1.Count(), collection2.Count());
+
+                    foreach (var pair in collection1.Zip(collection2))
+                    {
+                        CompareValue(pair.First, pair.Second);
+                    }
+                }
+                else
+                {
+                    var sourceItem = ProjectToDictionary(obj1);
+                    var targetItem = ProjectToDictionary(obj2);
+
+                    Assert.NotNull(sourceItem);
+                    Assert.NotNull(targetItem);
+
+                    if (sourceItem == null || targetItem == null)
+                    {
+                        throw new InvalidCastException("Impossible after asserts");
+                    }
+
+                    CompareDocuments(sourceItem, targetItem);
+                }
             }
         }
 

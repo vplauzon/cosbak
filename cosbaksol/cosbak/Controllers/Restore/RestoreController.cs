@@ -61,9 +61,9 @@ namespace Cosbak.Controllers.Restore
             {
                 var tasks = new List<Task>(2 * COSMOS_BATCH);
 
-                foreach (var stream in batch)
+                foreach (var content in batch)
                 {
-                    tasks.Add(_collectionFacade.WriteDocumentAsync(stream));
+                    tasks.Add(_collectionFacade.WriteDocumentAsync(content));
                     if (tasks.Count >= 2 * COSMOS_BATCH)
                     {
                         await Task.WhenAll(tasks.Take(COSMOS_BATCH));
