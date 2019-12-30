@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using YamlDotNet.Serialization;
 
 namespace Cosbak.Controllers
 {
@@ -114,7 +115,7 @@ namespace Cosbak.Controllers
                     await restoreController.InitializeAsync();
                     try
                     {
-                        await restoreController.RestoreAsync();
+                        await restoreController.RestoreAsync(pointInTime);
                         logger.Display($"Elapsed Time:  {watch.Elapsed}");
                         logger.Display("Memory used:  "
                             + $"{Process.GetCurrentProcess().PrivateMemorySize64 / 1024 / 1024} Mb");

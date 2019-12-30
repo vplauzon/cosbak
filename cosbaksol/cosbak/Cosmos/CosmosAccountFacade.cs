@@ -15,10 +15,16 @@ namespace Cosbak.Cosmos
 
         public CosmosAccountFacade(string accountName, string key, ILogger logger)
         {
+            var options = new CosmosClientOptions
+            {
+                AllowBulkExecution = true
+            };
+
             _accountName = accountName;
             _client = new CosmosClient(
                 $"https://{_accountName}.documents.azure.com:443/",
-                key);
+                key,
+                options);
             _logger = logger.AddContext("account", accountName);
         }
 

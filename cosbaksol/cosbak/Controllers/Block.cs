@@ -22,38 +22,45 @@ namespace Cosbak.Controllers
             var blockIds = from b in blocks
                            select b.Id;
 
-            foreach (var blobBlock in blobBlocks)
+            if (blockIds.Any())
             {
-                if (blobBlock.Id == blockIds.First())
+                foreach (var blobBlock in blobBlocks)
                 {
-                    if (!isStarted)
+                    if (blobBlock.Id == blockIds.First())
                     {
-                        isStarted = true;
-                        start = index;
+                        if (!isStarted)
+                        {
+                            isStarted = true;
+                            start = index;
+                        }
+                        else
+                        {
+                        }
+                        blockIds = blockIds.Skip(1);
+                        if (!blockIds.Any())
+                        {
+                            return (start, index + blobBlock.Length);
+                        }
                     }
                     else
                     {
+                        if (!isStarted)
+                        {
+                        }
+                        else
+                        {
+                            throw new NotSupportedException("Blocks aren't contiguous");
+                        }
                     }
-                    blockIds = blockIds.Skip(1);
-                    if (!blockIds.Any())
-                    {
-                        return (start, index + blobBlock.Length);
-                    }
+                    index += blobBlock.Length;
                 }
-                else
-                {
-                    if (!isStarted)
-                    {
-                    }
-                    else
-                    {
-                        throw new NotSupportedException("Blocks aren't contiguous");
-                    }
-                }
-                index += blobBlock.Length;
-            }
 
-            throw new NotSupportedException("Remaining blocks that aren't in the blob");
+                throw new NotSupportedException("Remaining blocks that aren't in the blob");
+            }
+            else
+            {
+                return (0, 0);
+            }
         }
     }
 }

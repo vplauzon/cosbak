@@ -18,22 +18,28 @@ namespace cosbak.test.feature
             var sourceContainer = await CosmosCollectionRental.GetCollectionAsync("empty");
             var targetContainer = await CosmosCollectionRental.GetCollectionAsync("empty-restore");
 
-            await BackupRestoreAsync(sourceContainer, targetContainer);
+            await BackupAsync(sourceContainer);
+            await RestoreAsync(sourceContainer, targetContainer);
             await CollectionComparer.CompareDocumentCountAsync(sourceContainer, targetContainer);
         }
 
         [Fact]
         public async Task OneDocument()
         {
-            var sourceContainer = await CosmosCollectionRental.GetCollectionAsync("empty");
-            var targetContainer = await CosmosCollectionRental.GetCollectionAsync("empty-restore");
+            var sourceContainer = await CosmosCollectionRental.GetCollectionAsync("one-document");
+            var targetContainer = await CosmosCollectionRental.GetCollectionAsync("one-document-restore");
 
-            await sourceContainer.CreateItemAsync(new { id = "Test" });
-            await BackupRestoreAsync(sourceContainer, targetContainer);
+            await sourceContainer.CreateItemAsync(new
+            {
+                id = "test",
+                name = "John"
+            });
+            await BackupAsync(sourceContainer);
+            await RestoreAsync(sourceContainer, targetContainer);
             await CollectionComparer.CompareDocumentCountAsync(sourceContainer, targetContainer);
         }
 
-        private static async Task BackupRestoreAsync(Container sourceContainer, Container targetContainer)
+        private static async Task BackupAsync(Container sourceContainer)
         {
             var metaController = new MetaController();
             var backupConfiguration = new BackupConfiguration
@@ -44,20 +50,27 @@ namespace cosbak.test.feature
                 {
                     new CollectionBackupPlanOverride
                     {
-                        Db=CosmosCollectionRental.DatabaseName,
-                        Collection= sourceContainer.Id
+                        Db = CosmosCollectionRental.DatabaseName,
+                        Collection = sourceContainer.Id
                     }
                 }
             };
+
+            await metaController.BackupAsync(backupConfiguration, BackupMode.Iterative);
+        }
+
+        private static async Task RestoreAsync(Container sourceContainer, Container targetContainer)
+        {
+            var metaController = new MetaController();
             var restoreConfiguration = new RestoreConfiguration
             {
-                CosmosAccount = backupConfiguration.CosmosAccount,
-                StorageAccount = backupConfiguration.StorageAccount,
+                CosmosAccount = CosmosCollectionRental.CosmosConfiguration,
+                StorageAccount = Storage.StorageConfiguration,
                 SourceCollection = new CompleteCollectionConfiguration
                 {
-                    Account = backupConfiguration.CosmosAccount.Name,
+                    Account = CosmosCollectionRental.CosmosConfiguration.Name,
                     Db = CosmosCollectionRental.DatabaseName,
-                    Collection = backupConfiguration.Collections[0].Collection,
+                    Collection = sourceContainer.Id,
                 },
                 TargetCollection = new CollectionConfiguration
                 {
@@ -66,7 +79,6 @@ namespace cosbak.test.feature
                 }
             };
 
-            await metaController.BackupAsync(backupConfiguration, BackupMode.Iterative);
             await metaController.RestoreAsync(restoreConfiguration);
         }
     }

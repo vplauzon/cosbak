@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Immutable;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace Cosbak.Cosmos
@@ -25,5 +26,7 @@ namespace Cosbak.Cosmos
         StreamIterator GetAllFunctions();
         
         StreamIterator GetAllTriggers();
+
+        Task WriteDocumentAsync(Stream stream);
     }
 }

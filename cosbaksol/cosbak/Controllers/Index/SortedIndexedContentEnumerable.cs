@@ -39,7 +39,7 @@ namespace Cosbak.Controllers.Index
         private readonly ImmutableArray<Offset> _sortedOffsets;
         private readonly Func<Stream, INDEX> _indexDeserializer;
         private readonly Stream _indexStream;
-        private readonly ReadOnlyMemory<byte> _contentBuffer;
+        private readonly byte[] _contentBuffer;
 
         public SortedIndexedContentEnumerable(
             byte[] indexBuffer,
@@ -49,7 +49,7 @@ namespace Cosbak.Controllers.Index
             Func<INDEX, INDEX, int> comparer)
         {
             _indexStream = new MemoryStream(indexBuffer);
-            _contentBuffer = new ReadOnlyMemory<byte>(contentBuffer);
+            _contentBuffer = contentBuffer;
 
             var offsets = new List<Offset>();
             var offset = new Offset();
@@ -85,7 +85,7 @@ namespace Cosbak.Controllers.Index
             _indexDeserializer = indexDeserializer;
         }
 
-        public IEnumerable<(INDEX index, ReadOnlyMemory<byte> content)> AllItems
+        public IEnumerable<(INDEX index, Stream content)> AllItems
         {
             get
             {
@@ -94,9 +94,13 @@ namespace Cosbak.Controllers.Index
                     _indexStream.Position = offset.IndexOffset;
 
                     var meta = _indexDeserializer(_indexStream);
-                    var contentBuffer = _contentBuffer.Slice(offset.ContentOffset, meta.IndexSize);
+                    var contentStream = new MemoryStream(
+                        _contentBuffer,
+                        offset.ContentOffset,
+                        meta.ContentSize,
+                        false);
 
-                    yield return (meta, contentBuffer);
+                    yield return (meta, contentStream);
                 }
             }
         }
@@ -105,10 +109,10 @@ namespace Cosbak.Controllers.Index
             string id,
             IEnumerable<(
                 INDEX index,
-                ReadOnlyMemory<byte> content)> items)> GetAllItemsById()
+                Stream content)> items)> GetAllItemsById()
         {
             var currentId = (string?)null;
-            var items = ImmutableList<(INDEX index, ReadOnlyMemory<byte> content)>.Empty;
+            var items = ImmutableList<(INDEX index, Stream content)>.Empty;
 
             foreach (var item in AllItems)
             {
@@ -129,7 +133,7 @@ namespace Cosbak.Controllers.Index
             }
         }
 
-        public IEnumerable<(INDEX index, ReadOnlyMemory<byte> content)> GetLatestItems(
+        public IEnumerable<(INDEX index, Stream content)> GetLatestItems(
             long upToTimeStamp)
         {
             foreach (var grouping in GetAllItemsById())

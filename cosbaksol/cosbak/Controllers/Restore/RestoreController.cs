@@ -2,6 +2,7 @@
 using Cosbak.Storage;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -9,6 +10,8 @@ namespace Cosbak.Controllers.Restore
 {
     internal class RestoreController
     {
+        const int COSMOS_BATCH = 100;
+
         private readonly ILogger _logger;
         private readonly IStorageFacade _storageFacade;
         private readonly ICollectionFacade _collectionFacade;
@@ -38,9 +41,13 @@ namespace Cosbak.Controllers.Restore
             await _indexFile.InitializeAsync();
         }
 
-        public async Task RestoreAsync()
+        public async Task RestoreAsync(DateTime? pointInTime)
         {
-            await RestoreDocumentsAsync();
+            var timeStamp = pointInTime == null
+                ? long.MaxValue
+                : throw new NotSupportedException();
+
+            await RestoreDocumentsAsync(timeStamp);
         }
 
         public async Task DisposeAsync()
@@ -48,10 +55,23 @@ namespace Cosbak.Controllers.Restore
             await _indexFile.DisposeAsync();
         }
 
-        private async Task RestoreDocumentsAsync()
+        private async Task RestoreDocumentsAsync(long timeStamp)
         {
-            await Task.CompletedTask;
-            throw new NotImplementedException();
+            await foreach (var batch in _indexFile.ReadLatestDocumentsAsync(timeStamp))
+            {
+                var tasks = new List<Task>(2 * COSMOS_BATCH);
+
+                foreach (var stream in batch)
+                {
+                    tasks.Add(_collectionFacade.WriteDocumentAsync(stream));
+                    if (tasks.Count >= 2 * COSMOS_BATCH)
+                    {
+                        await Task.WhenAll(tasks.Take(COSMOS_BATCH));
+                        tasks.RemoveRange(0, COSMOS_BATCH);
+                    }
+                }
+                await Task.WhenAll(tasks);
+            }
         }
     }
 }

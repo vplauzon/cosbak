@@ -3,6 +3,7 @@ using Cosbak.Storage;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -75,7 +76,7 @@ namespace Cosbak.Controllers.Restore
             }
         }
 
-        public async IAsyncEnumerable<IEnumerable<JsonElement>> ReadLatestDocumentsAsync(long upToTimeStamp)
+        public async IAsyncEnumerable<IEnumerable<Stream>> ReadLatestDocumentsAsync(long upToTimeStamp)
         {
             if (_initialized == null)
             {
@@ -91,8 +92,7 @@ namespace Cosbak.Controllers.Restore
                     _initialized.Fat.DocumentPartition.IndexBlocks.Sum(b => (int)b.Size),
                     contentBuffer.Buffer);
                 var latestDocuments = from i in indexed.GetLatestItems(upToTimeStamp)
-                                      let doc = JsonSerializer.Deserialize<JsonElement>(i.content.Span)
-                                      select doc;
+                                      select i.content;
 
                 yield return latestDocuments;
             }

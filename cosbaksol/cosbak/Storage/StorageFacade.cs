@@ -146,11 +146,18 @@ namespace Cosbak.Storage
         {
             var blob = _container.GetBlobReference(_blobPrefix + path, snapshotTime);
 
-            return await blob.DownloadRangeToByteArrayAsync(
-                buffer,
-                0,
-                blobOffset == null ? 0 : blobOffset,
-                length == null ? buffer.Length : length);
+            if (buffer.Length > 0 && (length == null || length > 0))
+            {
+                return await blob.DownloadRangeToByteArrayAsync(
+                    buffer,
+                    0,
+                    blobOffset == null ? 0 : blobOffset,
+                    length == null ? buffer.Length : length);
+            }
+            else
+            {
+                return 0;
+            }
         }
 
         async Task IStorageFacade.CreateEmptyBlockBlobAsync(string blobPath)

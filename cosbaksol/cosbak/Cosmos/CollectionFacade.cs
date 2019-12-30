@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -118,6 +119,11 @@ namespace Cosbak.Cosmos
                 "SELECT * FROM c");
 
             return new StreamIterator(allTriggerFeed);
+        }
+
+        async Task ICollectionFacade.WriteDocumentAsync(Stream stream)
+        {
+            await _container.CreateItemStreamAsync(stream, PartitionKey.Null);
         }
     }
 }
