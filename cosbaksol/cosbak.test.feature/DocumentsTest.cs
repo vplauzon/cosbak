@@ -32,11 +32,17 @@ namespace cosbak.test.feature
             await sourceContainer.CreateItemAsync(new
             {
                 id = "test",
-                name = "John"
+                name = "John",
+                age = 40,
+                address = new
+                {
+                    street = "Baker",
+                    number = "221B"
+                }
             });
             await BackupAsync(sourceContainer);
             await RestoreAsync(sourceContainer, targetContainer);
-            await CollectionComparer.CompareDocumentCountAsync(sourceContainer, targetContainer);
+            await CollectionComparer.CompareDocumentsAsync(sourceContainer, targetContainer);
         }
 
         private static async Task BackupAsync(Container sourceContainer)
