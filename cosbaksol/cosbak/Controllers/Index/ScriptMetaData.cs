@@ -18,7 +18,7 @@ namespace Cosbak.Controllers.Index
 
         string IMetaData.Id => Id.Id;
         
-        int IMetaData.IndexSize => 2 + 4 + 2;
+        int IMetaData.IndexSize => 4 + 8 + 4;
 
         int IMetaData.ContentSize => _contentSize;
 

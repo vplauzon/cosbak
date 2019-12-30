@@ -75,7 +75,7 @@ namespace Cosbak.Controllers
             var cosmosFacade = CreateCosmosFacade(
                 configuration.CosmosAccount,
                 logger) as ICosmosAccountFacade;
-            var collectionLogger = logger
+            var sourceCollectionLogger = logger
                 .AddContext("Db", configuration.SourceCollection.Db)
                 .AddContext("Collection", configuration.SourceCollection.Collection);
             var indexController = new IndexCollectionController(
@@ -85,7 +85,7 @@ namespace Cosbak.Controllers
                 storageFacade,
                 null,
                 configuration.Constants.IndexConstants,
-                collectionLogger);
+                sourceCollectionLogger);
 
             try
             {
@@ -104,13 +104,16 @@ namespace Cosbak.Controllers
                     var collection = await FindOrCreateCollectionAsync(
                         cosmosFacade,
                         configuration.TargetCollection);
+                    var targetCollectionLogger = logger
+                        .AddContext("Db", configuration.TargetCollection.Db)
+                        .AddContext("Collection", configuration.TargetCollection.Collection);
                     var restoreController = new RestoreController(
                         configuration.SourceCollection.Account,
                         configuration.SourceCollection.Db,
                         configuration.SourceCollection.Collection,
                         storageFacade,
                         collection,
-                        collectionLogger);
+                        targetCollectionLogger);
 
                     await restoreController.InitializeAsync();
                     try

@@ -123,7 +123,7 @@ namespace Cosbak.Cosmos
 
         async Task ICollectionFacade.WriteDocumentAsync(Stream stream)
         {
-            await _container.CreateItemStreamAsync(stream, PartitionKey.Null);
+            var response = await _container.CreateItemStreamAsync(stream, PartitionKey.None);
         }
     }
 }

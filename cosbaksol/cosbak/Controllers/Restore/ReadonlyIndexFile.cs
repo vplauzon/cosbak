@@ -48,7 +48,7 @@ namespace Cosbak.Controllers.Restore
         {
             _storageFacade = storageFacade.ChangeFolder(
                 $"{Constants.BACKUPS_FOLDER}/{accountName}");
-            _blobName = $"{databaseName}.{collectionName}.{Constants.LOG_EXTENSION}";
+            _blobName = $"{databaseName}.{collectionName}.{Constants.INDEX_EXTENSION}";
             _logger = logger;
         }
 
